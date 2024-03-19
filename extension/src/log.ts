@@ -16,7 +16,7 @@ export function getLevel() {
 	return LogLevel[global_level];
 }
 
-export function log(level: LogLevel, ...message: Array<string>) {
+export function log(level: LogLevel, ...message: Array<any>) {
 	if(global_level > level || level === LogLevel.None) return;
 
 	const now = new Date().toJSON().replace('T', ' ').slice(0, -1);
