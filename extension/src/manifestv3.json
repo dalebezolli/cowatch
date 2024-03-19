@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "cowatch",
+  "version": "0.0.1",
+  "permissions": ["webNavigation", "scripting", "tabs"],
+
+  "background": {
+    "service_worker": "core.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "js": ["client_manager.js"],
+      "matches": ["https://www.youtube.com/*"]
+    }
+  ]
+}
