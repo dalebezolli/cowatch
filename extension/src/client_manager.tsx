@@ -1,10 +1,13 @@
-import * as React from 'react';
-import * as Server from 'react-dom/server';
+import * as browser from 'webextension-polyfill';
 import { LogLevel, log } from './log';
 
+function injectPlayerInterceptor() {
+	const player_interceptor_script = document.createElement('script');
+	player_interceptor_script.src = browser.runtime.getURL('./player_interceptor.js');
+	document.head.append(player_interceptor_script);
 
-function Greet() {
-	log(LogLevel.Debug, 'Created greet component')();
-	return <h1>Hello, world!</h1>
+	log(LogLevel.Debug, 'Successfully injected player interceptor.')();
 }
-console.log(Server.renderToString(<Greet />));
+
+// TODO: Run when server message arrives
+injectPlayerInterceptor();

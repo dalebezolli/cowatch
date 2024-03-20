@@ -2,8 +2,9 @@
   "name": "cowatch",
   "version": "0.0.1",
   "scripts": {
-    "build:firefox": "rm -r ./dist/* && cp ./src/manifest.json ./dist/manifest.json && node ./esbuild.config.mjs",
-    "build:chrome": "rm -r ./dist/* && cp ./src/manifestv3.json ./dist/manifest.json && node ./esbuild.config.mjs"
+    "build": "npm run build:firefox && npm run build:chrome",
+    "build:firefox": "cp ./src/manifest_firefox.json ./dist/firefox/manifest.json && node ./esbuild.config.mjs ./dist/firefox/",
+    "build:chrome": "cp ./src/manifest_chrome.json ./dist/chrome/manifest.json && node ./esbuild.config.mjs ./dist/chrome/"
   },
   "type": "module",
   "keywords": [],
