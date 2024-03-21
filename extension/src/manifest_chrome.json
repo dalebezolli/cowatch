@@ -17,7 +17,7 @@
   ],
 
   "web_accessible_resources": [{
-    "resources": ["player_interceptor.js"],
+    "resources": ["room_ui.css", "room_ui.js", "player_interceptor.js"],
     "matches": ["https://www.youtube.com/*"]
   }]
 

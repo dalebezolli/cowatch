@@ -22,3 +22,10 @@ await esbuild.build({
 	outfile: outpath + 'player_interceptor.js',
 	format: 'esm'
 });
+
+await esbuild.build({
+	entryPoints: ['./src/room_ui.tsx'],
+	bundle: true,
+	outfile: outpath + 'room_ui.js',
+	format: 'esm'
+});
