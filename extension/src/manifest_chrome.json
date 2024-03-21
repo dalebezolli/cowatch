@@ -14,5 +14,11 @@
       "js": ["client_manager.js"],
       "matches": ["https://www.youtube.com/*"]
     }
-  ]
+  ],
+
+  "web_accessible_resources": [{
+    "resources": ["player_interceptor.js"],
+    "matches": ["https://www.youtube.com/*"]
+  }]
+
 }
