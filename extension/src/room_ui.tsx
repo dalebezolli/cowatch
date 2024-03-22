@@ -4,10 +4,11 @@ import {
 	cowatchRoot, cowatchHeader,
 	cowatchFlexPushRight, cowatchTitle,
 
-	cowatchButtonRound, cowatchButton, cowatchButtonPrimary, cowatchButtonFull, cowatchButtonShadow,
+	cowatchButtonRound, cowatchButton, cowatchButtonPrimary, cowatchButtonFull, cowatchButtonShadow, cowatchButtonNoBrLeft,
+	cowatchInput,
 
 	cowatchContent, cowatchContentFlexCenter, cowatchContentBackContainer,
-	cowatchIconPrompt, cowatchIconPromptIcon, cowatchButtonContainer
+	cowatchIconPrompt, cowatchIconPromptIcon, cowatchButtonContainer, cowatchInputButtonContainer
 
 } from './room_ui.module.css';
 
@@ -127,10 +128,11 @@ function CowatchContent({ user, status, onChangeStatus }: { user: YoutubeUser, s
 				<p>Type room's ID</p>
 			</div>
 
-			<section className={cowatchButtonContainer}>
+			<section className={cowatchInputButtonContainer}>
+				<input id='input-room-code' placeholder='eg. 42o6N' className={cowatchInput} />
 				<button
 					onClick={() => onChangeStatus(CowatchStatus.Connected)}
-					className={cowatchButton + ' ' + cowatchButtonPrimary}
+					className={cowatchButton + ' ' + cowatchButtonPrimary + ' ' + cowatchButtonNoBrLeft}
 				>
 					<Icon icon={SVGIcon.Eye} size={24} />
 					Join
