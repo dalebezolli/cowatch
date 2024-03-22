@@ -4,9 +4,9 @@ import {
 	cowatchRoot, cowatchHeader,
 	cowatchFlexPushRight, cowatchTitle,
 
-	cowatchButtonRound, cowatchButton, cowatchButtonPrimary, cowatchButtonFull,
+	cowatchButtonRound, cowatchButton, cowatchButtonPrimary, cowatchButtonFull, cowatchButtonShadow,
 
-	cowatchContent, cowatchContentInitial, cowatchContentBackContainer,
+	cowatchContent, cowatchContentFlexCenter, cowatchContentBackContainer,
 	cowatchIconPrompt, cowatchIconPromptIcon, cowatchButtonContainer
 
 } from './room_ui.module.css';
@@ -94,7 +94,7 @@ function CowatchContent({ user, status, onChangeStatus }: { user: YoutubeUser, s
 	let selected_content: React.ReactElement;
 
 	const content_initial = (
-		<section className={cowatchContentInitial}>
+		<section className={cowatchContentFlexCenter}>
 			<div className={cowatchIconPrompt}>
 				<img className={cowatchIconPromptIcon} src={user.user_image} />
 				<p>Start by hosting or joining a room</p>
@@ -121,7 +121,7 @@ function CowatchContent({ user, status, onChangeStatus }: { user: YoutubeUser, s
 	);
 
 	const content_join = (
-		<section className={cowatchContentInitial}>
+		<section className={cowatchContentFlexCenter}>
 			<div className={cowatchIconPrompt}>
 				<img className={cowatchIconPromptIcon} src={user.user_image} />
 				<p>Type room's ID</p>
@@ -138,7 +138,10 @@ function CowatchContent({ user, status, onChangeStatus }: { user: YoutubeUser, s
 			</section>
 
 			<div className={cowatchContentBackContainer}>
-				<button onClick={() => onChangeStatus(CowatchStatus.Initial)} className={cowatchButton}>
+				<button
+					onClick={() => onChangeStatus(CowatchStatus.Initial)}
+					className={cowatchButton + ' ' + cowatchButtonShadow}
+				>
 					Go Back
 				</button>
 			</div>
@@ -146,7 +149,7 @@ function CowatchContent({ user, status, onChangeStatus }: { user: YoutubeUser, s
 	);
 
 	const content_host_options = (
-		<section className={cowatchContentInitial}>
+		<section className={cowatchContentFlexCenter}>
 			<p>Host options</p>
 
 			<div onClick={() => onChangeStatus(CowatchStatus.Initial)} className={cowatchContentBackContainer}>
@@ -158,7 +161,7 @@ function CowatchContent({ user, status, onChangeStatus }: { user: YoutubeUser, s
 	);
 
 	const content_loading = (
-		<section className={cowatchContentInitial}>
+		<section className={cowatchContentFlexCenter}>
 			<p>Loading ...</p>
 		</section>
 	);

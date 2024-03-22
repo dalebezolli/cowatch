@@ -20,6 +20,8 @@
 }
 
 .cowatchRoot {
+	box-sizing: content-box;
+
 	background-color: var(--cowatch-color-neutral-800);
 	border: 1px solid var(--cowatch-color-neutral-600);
 	border-radius: var(--cowatch-br-rg);
@@ -112,6 +114,10 @@
 	border-color: transparent;
 }
 
+.cowatchButtonShadow {
+	border-color: transparent;
+}
+
 .cowatchButtonFull {
 	width: 100%;
 }
@@ -140,10 +146,13 @@
 }
 
 .cowatchContent {
-	min-height: 320px;
+	height: 320px;
 }
 
-.cowatchContentInitial {
+.cowatchContentFlexCenter {
+	box-sizing: border-box;
+	height: 100%;
+
 	padding-top: var(--cowatch-gaps-2lg);
 
 	display: flex;
@@ -152,4 +161,13 @@
 	align-items: center;
 }
 
-.cowatchContentBackContainer {}
+.cowatchContentBackContainer {
+	width: 100%;
+	flex-grow: 1;
+
+	padding: 32px 16px 16px 0;
+
+	display: flex;
+	justify-content: end;
+	align-items: end;
+}
