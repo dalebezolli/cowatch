@@ -4,11 +4,14 @@ import {
 	cowatchRoot, cowatchHeader,
 	cowatchFlexPushRight, cowatchTitle,
 
-	cowatchButtonRound, cowatchButton, cowatchButtonPrimary, cowatchButtonFull, cowatchButtonShadow, cowatchButtonNoBrLeft,
+	cowatchButtonRound, cowatchButton, cowatchButtonPrimary, cowatchButtonFull,
+	cowatchButtonShadow, cowatchButtonNoBrLeft, cowatchButtonError,
 	cowatchInput,
 
 	cowatchContent, cowatchContentFlexCenter, cowatchContentBackContainer,
-	cowatchIconPrompt, cowatchIconPromptIcon, cowatchButtonContainer, cowatchInputButtonContainer
+	cowatchIconPrompt, cowatchIconPromptIcon, cowatchButtonContainer, cowatchInputButtonContainer,
+	cowatchContentConnected, cowatchContentJoinlistContainer, cowatchContentConnectedButtons,
+	cowatchContentClientContainer, cowatchCOntentClientIcon, cowatchContentClientHosting,
 
 } from './room_ui.module.css';
 
@@ -92,6 +95,23 @@ function CowatchHeader({ onPressX }: { onPressX: (event) => void }) {
 }
 
 function CowatchContent({ user, status, onChangeStatus }: { user: YoutubeUser, status: CowatchStatus, onChangeStatus: (status: CowatchStatus) => void }) {
+	let [users, setUsers] = React.useState([
+		{
+			username: user.username,
+			icon: user.user_image,
+			isMuted: false, state: 'hosting'
+		},
+		{
+			username: 'User1',
+			icon: 'https://yt3.ggpht.com/yti/ANjgQV_yCkzU6LxRLLnoDZctnqHKd2jn6Gl9mqyVYdWFzQ=s108-c-k-c0x00ffffff-no-rj',
+			isMuted: true, state: 'listening'
+		},
+		{
+			username: 'User2',
+			icon: 'https://yt3.ggpht.com/yti/ANjgQV_yCkzU6LxRLLnoDZctnqHKd2jn6Gl9mqyVYdWFzQ=s108-c-k-c0x00ffffff-no-rj',
+			isMuted: false, state: 'listening'
+		},
+	]);
 	let selected_content: React.ReactElement;
 
 	const content_initial = (
@@ -169,11 +189,47 @@ function CowatchContent({ user, status, onChangeStatus }: { user: YoutubeUser, s
 	);
 
 	const content_connected = (
-		<section>
-			<section>
-			</section>
-			<section>
-				<button>
+		<section className={cowatchContentConnected}>
+			<ul className={cowatchContentJoinlistContainer} >
+				{
+					users.length && users.map(user => (
+						<li key={user.username} className={cowatchContentClientContainer}>
+							<img src={user.icon} className={cowatchCOntentClientIcon} />
+							{user.username}
+
+							{
+								user.state === 'hosting' && (
+									<div className={cowatchContentClientHosting}>
+										<Icon icon={SVGIcon.Broadcast} size={18} />
+										Hosting
+									</div>
+								)
+							}
+
+							{
+								user.isMuted && (
+									<Icon icon={SVGIcon.Mute} size={18} />
+								)
+							}
+
+							<button className={cowatchButtonRound + ' ' + cowatchFlexPushRight}>
+								<Icon icon={SVGIcon.Kebab} size={18} />
+							</button>
+						</li>
+					))
+				}
+			</ul>
+
+			<section className={cowatchContentConnectedButtons}>
+				<button
+					onClick={() => onChangeStatus(CowatchStatus.Initial)}
+					className={cowatchButton + ' ' + cowatchButtonError}
+				>
+					<Icon icon={SVGIcon.PhoneDisconnect} size={24} />
+					Disconnect
+				</button>
+				<button className={cowatchButtonRound + ' ' + cowatchFlexPushRight}>
+					<Icon icon={SVGIcon.Cog} size={24} />
 				</button>
 			</section>
 		</section>
@@ -249,6 +305,50 @@ function Icon({ icon, size }: { icon: SVGIcon, size: number }) {
 				</svg>
 			);
 			break;
+		case SVGIcon.PhoneDisconnect:
+			dom_icon = (
+				<svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M8.77964 8.5L9.26995 5.8699L7.81452 2H4.0636C2.93605 2 2.04804 2.93086 2.2164 4.04576C2.50361 5.94771 3.17338 8.90701 4.72526 11.7468M10.9413 13.5C11.778 14.244 12.7881 14.8917 14 15.5L18.1182 14.702L22 16.1812V19.7655C22 20.9575 20.9679 21.8664 19.8031 21.613C16.9734 20.9974 11.9738 19.506 8.22388 16.1812" stroke="#F1F1F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M21 3L3 21" stroke="#F1F1F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+				</svg>
+			);
+			break;
+		case SVGIcon.Cog:
+			dom_icon = (
+				<svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="#F1F1F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M19.6224 10.3954L18.5247 7.7448L20 6L18 4L16.2647 5.48295L13.5578 4.36974L12.9353 2H10.981L10.3491 4.40113L7.70441 5.51596L6 4L4 6L5.45337 7.78885L4.3725 10.4463L2 11V13L4.40111 13.6555L5.51575 16.2997L4 18L6 20L7.79116 18.5403L10.397 19.6123L11 22H13L13.6045 19.6132L16.2551 18.5155C16.6969 18.8313 18 20 18 20L20 18L18.5159 16.2494L19.6139 13.598L21.9999 12.9772L22 11L19.6224 10.3954Z" stroke="#F1F1F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+				</svg>
+			);
+			break;
+		case SVGIcon.Broadcast:
+			dom_icon = (
+				<svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M17.5 8C17.5 8 19 9.5 19 12C19 14.5 17.5 16 17.5 16" stroke="#F1F1F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M20.5 5C20.5 5 23 7.5 23 12C23 16.5 20.5 19 20.5 19" stroke="#F1F1F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M6.5 8C6.5 8 5 9.5 5 12C5 14.5 6.5 16 6.5 16" stroke="#F1F1F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M3.5 5C3.5 5 1 7.5 1 12C1 16.5 3.5 19 3.5 19" stroke="#F1F1F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" fill="#F1F1F1" stroke="#F1F1F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+				</svg>
+			);
+			break;
+		case SVGIcon.Mute:
+			dom_icon = (
+				<svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M18 14L20.0005 12M20.0005 12L22 10M20.0005 12L18 10M20.0005 12L22 14" stroke="#F1F1F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M2 13.8571V10.1429C2 9.03829 2.89543 8.14286 4 8.14286H6.9C7.09569 8.14286 7.28708 8.08544 7.45046 7.97772L13.4495 4.02228C14.1144 3.5839 15 4.06075 15 4.85714V19.1429C15 19.9392 14.1144 20.4161 13.4495 19.9777L7.45046 16.0223C7.28708 15.9146 7.09569 15.8571 6.9 15.8571H4C2.89543 15.8571 2 14.9617 2 13.8571Z" stroke="#F1F1F1" strokeWidth="1.5" />
+				</svg>
+			);
+			break;
+		case SVGIcon.Kebab:
+			dom_icon = (
+				<svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M12 5H12.0001" stroke="#F1F1F1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M12 12H12.0001" stroke="#F1F1F1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M12 19H12.0001" stroke="#F1F1F1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+				</svg>
+			);
+			break;
 		default:
 			dom_icon = <div></div>
 	}
@@ -300,7 +400,12 @@ enum SVGIcon {
 	XMark,
 	Group,
 	Eye,
-	ArrowLeft
+	ArrowLeft,
+	PhoneDisconnect,
+	Cog,
+	Broadcast,
+	Mute,
+	Kebab,
 };
 
 enum CowatchStatus {

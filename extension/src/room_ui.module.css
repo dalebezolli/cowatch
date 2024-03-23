@@ -5,10 +5,15 @@
 	--cowatch-color-neutral-500: hsla(0, 100%, 100%, 0.4);
 	--cowatch-color-neutral-50: hsl(0, 0%, 95%);
 
+	--cowatch-color-red-400: hsla(0, 100%, 50%, .85);
+	--cowatch-color-red-500: hsla(0, 100%, 50%, .7);
+	--cowatch-color-red-700: hsla(0, 100%, 50%, .5);
+
 	--cowatch-br-rg: 8px;
 	--cowatch-br-md: 16px;
 	--cowatch-br-lg: 32px;
 
+	--cowatch-gaps-xsm: 4px;
 	--cowatch-gaps-sm: 6px;
 	--cowatch-gaps-rg: 8px;
 	--cowatch-gaps-md: 16px;
@@ -46,8 +51,11 @@
 }
 
 .cowatchButtonRound {
+	aspect-ratio: 1/1;
+
 	padding: 6px;
 	display: flex;
+	justify-content: center;
 	align-items: center;
 
 	background-color: transparent;
@@ -62,7 +70,7 @@
 	cursor: pointer;
 }
 
-.cowatchButtonRound:where(:hover, :focus) {
+.cowatchButtonRound:hover {
 	background-color: var(--cowatch-color-neutral-600);
 }
 
@@ -90,7 +98,7 @@
 	cursor: pointer;
 }
 
-.cowatchButton:where(:hover, :focus) {
+.cowatchButton:hover {
 	background-color: var(--cowatch-color-neutral-600);
 }
 
@@ -104,7 +112,7 @@
 	border-color: transparent;
 }
 
-.cowatchButtonPrimary:where(:hover, :focus) {
+.cowatchButtonPrimary:hover {
 	background-color: var(--cowatch-color-neutral-550);
 	border-color: transparent;
 }
@@ -116,6 +124,18 @@
 
 .cowatchButtonShadow {
 	border-color: transparent;
+}
+
+.cowatchButtonError {
+	background-color: var(--cowatch-color-red-700);
+}
+
+.cowatchButtonError:hover {
+	background-color: var(--cowatch-color-red-500);
+}
+
+.cowatchButtonError:active {
+	background-color: var(--cowatch-color-red-400);
 }
 
 .cowatchButtonFull {
@@ -200,4 +220,49 @@
 	display: flex;
 	justify-content: end;
 	align-items: end;
+}
+
+.cowatchContentConnected {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+.cowatchContentJoinlistContainer {
+	width: 100%;
+	flex-grow: 1;
+
+	overflow-y: scroll;
+}
+
+.cowatchContentConnectedButtons {
+	padding: 8px 24px;
+	display: flex;
+
+	background-color: var(--cowatch-color-neutral-600);
+
+	border-radius: 0 0 var(--cowatch-gaps-rg) var(--cowatch-gaps-rg);
+}
+
+.cowatchContentClientContainer {
+	padding: var(--cowatch-gaps-rg) var(--cowatch-gaps-2md);
+
+	display: flex;
+	align-items: center;
+	gap: var(--cowatch-gaps-md);
+}
+
+.cowatchContentClientContainer:hover {
+	background-color: var(--cowatch-color-neutral-600);
+}
+
+.cowatchCOntentClientIcon {
+	width: 24px;
+	border-radius: 100%;
+}
+
+.cowatchContentClientHosting {
+	display: flex;
+	align-items: center;
+	gap: var(--cowatch-gaps-xsm);
 }
