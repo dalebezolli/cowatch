@@ -5,7 +5,7 @@ import {
 	cowatchFlexPushRight, cowatchTitle,
 
 	cowatchButtonRound, cowatchButton, cowatchButtonPrimary, cowatchButtonFull,
-	cowatchButtonShadow, cowatchButtonNoBrLeft, cowatchButtonError,
+	cowatchButtonShadow, cowatchButtonNoBrLeft, cowatchButtonSuccess, cowatchButtonError,
 	cowatchInput,
 
 	cowatchContent, cowatchContentFlexCenter, cowatchContentBackContainer,
@@ -123,7 +123,7 @@ function CowatchContent({ user, status, onChangeStatus }: { user: YoutubeUser, s
 
 			<section className={cowatchButtonContainer}>
 				<button
-					onClick={() => onChangeStatus(CowatchStatus.HostOptions)}
+					onClick={() => onChangeStatus(CowatchStatus.Loading)}
 					className={cowatchButton + ' ' + cowatchButtonPrimary}
 				>
 					<Icon icon={SVGIcon.Group} size={24} />
@@ -228,7 +228,10 @@ function CowatchContent({ user, status, onChangeStatus }: { user: YoutubeUser, s
 					<Icon icon={SVGIcon.PhoneDisconnect} size={24} />
 					Disconnect
 				</button>
-				<button className={cowatchButtonRound + ' ' + cowatchFlexPushRight}>
+				<button
+					onClick={() => onChangeStatus(CowatchStatus.Options)}
+					className={cowatchButtonRound + ' ' + cowatchFlexPushRight}
+				>
 					<Icon icon={SVGIcon.Cog} size={24} />
 				</button>
 			</section>
@@ -236,9 +239,27 @@ function CowatchContent({ user, status, onChangeStatus }: { user: YoutubeUser, s
 	);
 
 	const content_options = (
-		<>
-			<p>Options</p>
-		</>
+		<section className={cowatchContentConnected}>
+			<ul className={cowatchContentJoinlistContainer} >
+			</ul>
+
+			<section className={cowatchContentConnectedButtons}>
+				<button
+					onClick={() => onChangeStatus(CowatchStatus.Initial)}
+					className={cowatchButton + ' ' + cowatchButtonSuccess}
+				>
+					<Icon icon={SVGIcon.CheckMark} size={24} />
+					Save
+				</button>
+				<button
+					onClick={() => onChangeStatus(CowatchStatus.Initial)}
+					className={cowatchButton + ' ' + cowatchButtonError}
+				>
+					<Icon icon={SVGIcon.XMark} size={24} />
+					Exit
+				</button>
+			</section>
+		</section>
 	);
 
 	switch(status) {
@@ -273,6 +294,13 @@ function Icon({ icon, size }: { icon: SVGIcon, size: number }) {
 	let dom_icon: React.ReactElement;
 
 	switch(icon) {
+		case SVGIcon.CheckMark:
+			dom_icon = (
+				<svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M1 13.6L7.28571 20L23 4" stroke="#F1F1F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+				</svg>
+			);
+			break;
 		case SVGIcon.XMark:
 			dom_icon = (
 				<svg width={size} height={size} viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
@@ -397,6 +425,7 @@ async function getYoutubeUser(): Promise<YoutubeUser> {
 }
 
 enum SVGIcon {
+	CheckMark,
 	XMark,
 	Group,
 	Eye,
