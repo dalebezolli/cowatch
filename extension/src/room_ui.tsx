@@ -175,7 +175,7 @@ function CowatchContent({ user, status, onChangeStatus }: { user: YoutubeUser, s
 			<p>Host options</p>
 
 			<div onClick={() => onChangeStatus(CowatchStatus.Initial)} className={cowatchContentBackContainer}>
-				<button className={cowatchButton}>
+				<button className={cowatchButton + ' ' + cowatchButtonShadow}>
 					Go Back
 				</button>
 			</div>
