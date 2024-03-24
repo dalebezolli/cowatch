@@ -29,6 +29,8 @@
 }
 
 .cowatchRoot {
+	position: relative;
+
 	box-sizing: content-box;
 
 	background-color: var(--cowatch-color-neutral-800);
@@ -41,13 +43,33 @@
 }
 
 .cowatchHeader {
+	position: relative;
+	z-index: 10;
+
 	padding: 8px 24px;
-	align-items: center;
 
 	display: flex;
+	align-items: center;
 	gap: var(--cowatch-gaps-rg);
 
+	background-color: var(--cowatch-color-neutral-800);
 	border-bottom: 1px solid var(--cowatch-color-neutral-600);
+}
+
+.cowatchError {
+	position: absolute;
+	inset-inline: 0;
+	z-index: 5;
+
+	padding: 8px 24px;
+
+	display: flex;
+	align-items: center;
+	gap: var(--cowatch-gaps-rg);
+
+	background-color: var(--cowatch-color-red-400);
+
+	cursor: pointer;
 }
 
 .cowatchFlexPushRight {
