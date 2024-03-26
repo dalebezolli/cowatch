@@ -1,10 +1,17 @@
 import * as browser from 'webextension-polyfill';
 import { LogLevel, log } from './log';
+import { getUser } from './user_collector';
+
+(async function init() {
+	const basicUser = await getUser();
+
+	sendMessageToCore('EstablishConnection', basicUser);
+	injectRoomUI();
+})();
+
 
 // TODO: Run when room is established
 //injectPlayerInterceptor();
-// TODO: Run when connection is initialized
-injectRoomUI();
 
 function injectPlayerInterceptor() {
 	const player_interceptor_script = document.createElement('script');
@@ -25,4 +32,11 @@ function injectRoomUI() {
 	link_room_ui_css.href = browser.runtime.getURL('./room_ui.css');
 	link_room_ui_css.rel = 'stylesheet';
 	document.head.append(link_room_ui_css);
+}
+
+function sendMessageToCore<T extends ContentScriptActionType>(
+	action: T,
+	payload: ContentScriptActionBody[T]
+) {
+	browser.runtime.sendMessage({ action, payload });
 }
