@@ -2,6 +2,7 @@ import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import {
 	cowatchRoot, cowatchHeader,
+	cowatchError,
 	cowatchFlexPushRight, cowatchTitle,
 
 	cowatchButtonRound, cowatchButton, cowatchButtonPrimary, cowatchButtonFull,
@@ -58,6 +59,7 @@ async function initializeRoot() {
 
 function Cowatch({ user }: { user: YoutubeUser }) {
 	const [open, setOpen] = React.useState(true);
+	const [error, setError] = React.useState('Test');
 	const [content_status, setContentStatus] = React.useState(CowatchStatus.Initial);
 
 	const toggleClose = () => {
@@ -73,6 +75,7 @@ function Cowatch({ user }: { user: YoutubeUser }) {
 	return (
 		<section id='cowatch-root' className={cowatchRoot}>
 			<CowatchHeader onPressX={toggleClose} />
+			<CowatchError error={error} onClose={() => setError('')} />
 			<CowatchContent
 				user={user}
 				status={content_status}
@@ -94,7 +97,22 @@ function CowatchHeader({ onPressX }: { onPressX: (event) => void }) {
 	);
 }
 
-function CowatchContent({ user, status, onChangeStatus }: { user: YoutubeUser, status: CowatchStatus, onChangeStatus: (status: CowatchStatus) => void }) {
+function CowatchError({ error, onClose }: { error?: string, onClose: () => void }) {
+	if(!error) return;
+
+	return (
+		<div className={cowatchError} onClick={onClose}>
+			<Icon icon={SVGIcon.Error} size={18} />
+			<p>{error}</p>
+		</div>
+	);
+}
+
+function CowatchContent({ user, status, onChangeStatus }: {
+	user: YoutubeUser,
+	status: CowatchStatus,
+	onChangeStatus: (status: CowatchStatus) => void
+}) {
 	let [users, setUsers] = React.useState([
 		{
 			username: user.username,
@@ -377,6 +395,22 @@ function Icon({ icon, size }: { icon: SVGIcon, size: number }) {
 				</svg>
 			);
 			break;
+		case SVGIcon.Error:
+			dom_icon = (
+				<svg width={size} height={size} viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<g clip-path="url(#clip0_149_598)">
+						<path d="M9 5.25V9.75" stroke="#F1F1F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+						<path d="M9 12.7575L9.0075 12.7492" stroke="#F1F1F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+						<path d="M9 16.5C13.1421 16.5 16.5 13.1421 16.5 9C16.5 4.85786 13.1421 1.5 9 1.5C4.85786 1.5 1.5 4.85786 1.5 9C1.5 13.1421 4.85786 16.5 9 16.5Z" stroke="#F1F1F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					</g>
+					<defs>
+						<clipPath id="clip0_149_598">
+							<rect width="18" height="18" fill="white" />
+						</clipPath>
+					</defs>
+				</svg>
+			);
+			break;
 		default:
 			dom_icon = <div></div>
 	}
@@ -435,6 +469,7 @@ enum SVGIcon {
 	Broadcast,
 	Mute,
 	Kebab,
+	Error,
 };
 
 enum CowatchStatus {
