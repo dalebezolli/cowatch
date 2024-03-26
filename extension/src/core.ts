@@ -3,13 +3,16 @@ import { LogLevel, log } from './log';
 
 const FAILED_CONNECTION_TOTAL_ATTEMPT = 5;
 const FAILED_CONNECTION_REATTEMPT_MS = 5000;
-const COWATCH_OWL_SERVER_URL = 'ws://192.168.2.30:8080/test';
+const COWATCH_OWL_SERVER_HOST = '192.168.2.30:8080';
 
+// TODO: Initialize on browser storage instead as the script isn't persistent
 const cowatch_state = {
 	failed_connection_attempt: 0,
 	managed_tab_id: -1,
 	server_status: 'disconnected' as ServerStatus,
-	username: 'User',
+	token: '',
+	username: '',
+	usericon: '',
 	room_settings: {
 		room_id: '',
 		connected_clients: [] as Array<Client>
@@ -22,6 +25,11 @@ const cowatch_state = {
 onStartup(cowatch_state);
 
 browser.runtime.onInstalled.addListener(onInstalled);
+
+browser.runtime.onMessage.addListener(message => {
+	const contentAction: { action: ContentScriptActionType, payload: ContentScriptActionBody[ContentScriptActionType] } = message;
+	onContentMessage(contentAction.action, contentAction.payload);
+});
 
 
 
@@ -45,8 +53,24 @@ function onInstalled() {
 
 function onServerMessage() { }
 
-function onClientMessage() { }
+function onContentMessage<T extends ContentScriptActionType>(
+	action: T,
+	payload: ContentScriptActionBody[T]
+) {
+	log(LogLevel.Debug, 'Received message from content with data: ', { action, payload })();
+	if(cowatch_state.server_status !== 'connected') {
+		log(LogLevel.Error, 'No server connection', { action, payload })();
+		return;
+	}
 
+	switch(action) {
+		case 'EstablishConnection':
+			saveBasicUser(cowatch_state, payload as BasicUser);
+			log(LogLevel.Debug, 'Attempting to establish connection with the following: ', JSON.stringify({ action, payload }))();
+			cowatch_state.server_connection.send(JSON.stringify({ action, payload: JSON.stringify(payload) }))
+			break;
+	}
+}
 
 
 /* FUNCTIONS */
@@ -57,7 +81,7 @@ async function createConnectionToServer(cowatch_state: CowatchState) {
 	let connection: WebSocket | null = null;
 	try {
 		connection = await new Promise((resolve: (value: WebSocket) => void, reject: (value: Error) => void) => {
-			const connection = new WebSocket(COWATCH_OWL_SERVER_URL);
+			const connection = new WebSocket(`ws://${COWATCH_OWL_SERVER_HOST}/reflect`);
 			connection.addEventListener('open', () => {
 				resolve(connection);
 			});
@@ -85,6 +109,10 @@ async function createConnectionToServer(cowatch_state: CowatchState) {
 	log(LogLevel.Debug, 'Successfully created connection to server.')();
 }
 
+function saveBasicUser(currentState: CowatchState, basicUser: BasicUser) {
+	currentState.username = basicUser.username;
+	currentState.usericon = basicUser.user_image;
+}
 
 
 /* DEFINITIONS */
@@ -101,7 +129,9 @@ type CowatchState = {
 	managed_tab_id: number,
 	server_connection: WebSocket,
 	server_status: ServerStatus,
+	token: string,
 	username: string,
+	usericon: string,
 	room_settings: {
 		room_id: string,
 		connected_clients: Array<Client>
