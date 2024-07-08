@@ -1,69 +1,36 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"github.com/gorilla/websocket"
-	"math/rand"
-	"net"
+	"log"
 	"net/http"
-	"strings"
+	"net"
+	"github.com/gorilla/websocket"
 )
 
 const address = ":8080"
 
-var alnum = [62]byte{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
+type IPAddress net.Addr
+type RoomID string
 
-type PublicToken [6]byte
-
-type Action int
+type ClientType int
 
 const (
-	EstablishConnection Action = iota
+	ClientTypeInnactive = iota
+	ClientTypeHost
+	ClientTypeViewer
 )
 
-type ClientMessage struct {
-	Action  Action `json:"action"`
-	Payload string `json:"payload"`
+type ClientRecord struct {
+	Type   ClientType
+	Name   string
+	Image  string
+	Email  string
+	RoomID RoomID
 }
 
-type BasicUser struct {
-	Username string `json:"username"`
-	UserIcon string `json:"user_image"`
-}
-
-type ServerMessage struct {
-	Action  Action `json:"action"`
-	Status  bool   `json:"status"`
-	Payload string `json:"payload"`
-}
-
-type Room struct {
-	Listeners  map[net.Addr]PublicToken
-	Hosts      map[net.Addr]PublicToken
-	Reflection Reflection
-}
-
-type Client struct {
-	Token    PublicToken
-	Username string
-	UserIcon string
-	IsMuted  bool
-	Room     string
-}
-
-type PingMesage struct {
-	Username string `json:"username"`
-	UserIcon string `json:"usericon"`
-}
-
-type Reflection struct {
-	Id          string
-	Author      string
-	Title       string
-	State       int
-	CurrentTime float32
-	Duration    float32
+type RoomRecord struct {
+	Host    ClientRecord
+	Viewers []ClientRecord
 }
 
 var upgrader = websocket.Upgrader{
@@ -71,113 +38,60 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func newRandPublicToken() PublicToken {
-	var id [6]byte
+var activeClients map[IPAddress]ClientRecord
+var activeRooms map[RoomID]RoomRecord
 
-	for i := 0; i < 6; i++ {
-		id[i] = alnum[rand.Intn(62)]
+/*
+ Caches the client in the activeClients map and sends a response to the client
+ If initialization fails, it reutrns false
+*/
+func initializeClient(connection *websocket.Conn) bool {
+	_, exists := activeClients[IPAddress(connection.RemoteAddr())]
+
+	if exists {
+		return false
 	}
 
-	return id
+	activeClients[IPAddress(connection.RemoteAddr())] = ClientRecord{
+		Type: ClientTypeInnactive,
+		Name: "",
+		Image: "",
+		Email: "",
+		RoomID: "",
+	}
+
+	log.Printf("[%s] Initialized client\n", connection.RemoteAddr())
+	return true
 }
 
-func establishConnection(basicUser BasicUser, connection *websocket.Conn, clients map[net.Addr]Client) error {
-	publicToken := newRandPublicToken()
-	newClient := Client{
-		Token:    publicToken,
-		Username: basicUser.Username,
-		UserIcon: basicUser.UserIcon,
-		IsMuted:  false,
-		Room:     "",
+func reflect(writer http.ResponseWriter, request *http.Request) {
+	upgrader.CheckOrigin = func(request *http.Request) bool {
+		return true
 	}
 
-	clients[connection.RemoteAddr()] = newClient
+	connection, error := upgrader.Upgrade(writer, request, nil)
 
-	jsonBytes, errorMarshal := json.Marshal(newClient)
-
-	if errorMarshal != nil {
-		return errorMarshal
-	}
-
-	errorUpdateUser := connection.WriteJSON(ServerMessage{
-		Action:  EstablishConnection,
-		Status:  true,
-		Payload: string(jsonBytes),
-	})
-
-	if errorUpdateUser != nil {
-		return errorUpdateUser
-	}
-
-	fmt.Printf("[%s] Authenticated %s with public token: %s\n", connection.RemoteAddr(), newClient.Username, newClient.Token)
-
-	return nil
-}
-
-func handleClientMessage(connection *websocket.Conn, message ClientMessage, clients map[net.Addr]Client) error {
-	fmt.Printf("[%s] Handling message %d with %s\n", connection.RemoteAddr(), message.Action, message.Payload)
-
-	switch message.Action {
-	case EstablishConnection:
-		var basicUser BasicUser
-
-		parseError := json.NewDecoder(strings.NewReader(message.Payload)).Decode(&basicUser)
-		if parseError != nil {
-			return parseError
-		}
-
-		errorEstablishConnection := establishConnection(basicUser, connection, clients)
-
-		if errorEstablishConnection != nil {
-			return errorEstablishConnection
-		}
-
-		break
-	}
-
-	return nil
-}
-
-// We'll hold a map of rooms and a map of clients for bidirectional manipulation
-// rooms := make(map[string]Room)
-var clients = make(map[net.Addr]Client)
-
-func main() {
-
-	http.HandleFunc("/reflect", func(writer http.ResponseWriter, request *http.Request) {
-		upgrader.CheckOrigin = func(request *http.Request) bool {
-			return true
-		}
-
-		connection, error := upgrader.Upgrade(writer, request, nil)
-
-		if error != nil {
-			fmt.Printf("[%s] There was an error while creating the Websocket connection: %v\n", connection.RemoteAddr(), error)
-			return
-		}
-
-		fmt.Printf("[%s] Connected to ws.\n", connection.RemoteAddr())
-
-		for {
-			var receivedMessage ClientMessage
-			errorParse := connection.ReadJSON(&receivedMessage)
-
-			if errorParse != nil {
-				fmt.Printf("[%s] There was an error while reading json: %v\n", connection.RemoteAddr(), errorParse)
-			}
-
-			if errorHandle := handleClientMessage(connection, receivedMessage, clients); errorHandle != nil {
-				fmt.Printf("[%s] There was an error while handling client message: %v\n", connection.RemoteAddr(), errorParse)
-			}
-		}
-
-	})
-
-	error := http.ListenAndServe(address, nil)
+	log.Printf("[%s] Connected.\n", connection.RemoteAddr())
 
 	if error != nil {
-		fmt.Printf("Error while serving: %v\n", error)
+		log.Panicf("[%s] There was an error while creating the Websocket connection: %v\n", connection.RemoteAddr(), error)
+		return
 	}
 
-	fmt.Print("Server started on port 8080")
+	if ok := initializeClient(connection); !ok {
+		log.Panicf("[%s] The client is already connected, is this a mistake?\n", connection.RemoteAddr())
+	}
+}
+
+func main() {
+	log.Printf("Cowatch starting on: %s\n", address)
+
+	activeClients = make(map[IPAddress]ClientRecord)
+	activeRooms = make(map[RoomID]RoomRecord)
+
+	http.HandleFunc("/reflect", reflect)
+
+	if err := http.ListenAndServe(address, nil) ; err != nil {
+		log.Fatalf("Error while serving:\n%s", err);
+	}
 }
