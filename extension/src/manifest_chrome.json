@@ -4,14 +4,9 @@
   "version": "0.0.1",
   "permissions": ["webNavigation", "scripting", "tabs"],
 
-  "background": {
-    "service_worker": "core.js",
-    "type": "module"
-  },
-
   "content_scripts": [
     {
-      "js": ["client_manager.js"],
+      "js": ["core.js"],
       "matches": ["https://www.youtube.com/*"]
     }
   ],
@@ -20,5 +15,4 @@
     "resources": ["room_ui.css", "room_ui.js", "player_interceptor.js"],
     "matches": ["https://www.youtube.com/*"]
   }]
-
 }
