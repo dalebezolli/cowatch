@@ -29,3 +29,10 @@ await esbuild.build({
 	outfile: outpath + 'room_ui.js',
 	format: 'esm'
 });
+
+await esbuild.build({
+	entryPoints: ['./src/user_collector.ts'],
+	bundle: true,
+	outfile: outpath + 'user_collector.js',
+	format: 'esm'
+});

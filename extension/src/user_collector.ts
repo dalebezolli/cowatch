@@ -1,48 +1,52 @@
 import { log, LogLevel } from './log';
+import { sleep } from './utils';
 
-const FAILED_USER_COLLECTION_REATEMPT_MS = 2000;
+const FAILED_USER_COLLECTION_REATEMPT_MS = 5000;
+const FAILED_USER_COLLECTION_REATEMPT_COUNT = 1000;
 
-async function getUser(): Promise<BasicUser> {
-	log(LogLevel.Debug, 'Getting user details')();
-	let failed_attempt = 0;
-	let youtube_user: BasicUser = { username: '', user_image: '' };
-	let hasError = false;
+getUser();
 
-	do {
-		if(hasError) {
-			log(LogLevel.Warn, `Reatempt ${failed_attempt} to collect user details... Retying in ${FAILED_USER_COLLECTION_REATEMPT_MS / 1000}`)();
-			await sleep(FAILED_USER_COLLECTION_REATEMPT_MS);
-		}
+async function getUser() {
+	try {
+		const user = await getYoutubeUser();
+		log(LogLevel.Info, `Successfully Collected user: ${user.name}`)();
+	} catch(err) {
+		log(LogLevel.Error, 'No user could be found.')();
+	}
+}
 
-		try {
-			youtube_user = await attemptGetYoutubeUser();
-			hasError = false;
-		} catch(error) {
-			hasError = true;
-			failed_attempt++;
-		}
-	} while(hasError && failed_attempt);
-
-	if(hasError) {
-		throw new Error('Cannot collect user info from specified dom elements');
+async function getYoutubeUser() {
+	const user = {
+		name: '',
+		image: '',
 	}
 
-	return youtube_user;
+	let domUsername: HTMLElement | null;
+	let domImage: HTMLElement | null;
+
+	let didCollectUserData = false;
+	let collectAttempt = 0;
+
+	while(collectAttempt < FAILED_USER_COLLECTION_REATEMPT_COUNT && !didCollectUserData) {
+		log(LogLevel.Info, `Attempting to collect user information (Attempt ${collectAttempt + 1})`)();
+		try {
+			domUsername = document.getElementById('account-name');
+			domImage = document.getElementById('avatar-btn');
+
+			if(!domImage) throw new Error('Could not find username or userimage sources.');
+			if(domImage.getElementsByTagName('img')[0]?.src.length === 0) throw new Error('Username or User Image missing from sources.');
+
+			user.name = domUsername?.textContent ?? 'User';
+			user.image = domImage.getElementsByTagName('img')[0].src;
+			
+			didCollectUserData = true;
+		} catch(err) {
+			collectAttempt++;
+			await sleep(FAILED_USER_COLLECTION_REATEMPT_MS);
+		}
+	}
+
+	if(!didCollectUserData) throw new Error('Cannot collect user information.');
+
+	return user;
 }
-
-async function attemptGetYoutubeUser(): Promise<BasicUser> {
-	let username = document.getElementById('display-name')?.textContent ?? '';
-	let user_image = document.getElementById('avatar-btn')?.getElementsByTagName('img')[0]?.src ?? '';
-
-	if(!username || !user_image) throw new Error('Faiiled to collect user data');
-
-	return { username, user_image };
-}
-
-async function sleep(ms: number) {
-	await new Promise((resolve, _) => {
-		setTimeout(() => resolve(null), ms)
-	});
-}
-
-export { getUser };

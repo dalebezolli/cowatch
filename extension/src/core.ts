@@ -1,5 +1,6 @@
 import * as browser from 'webextension-polyfill';
 import { LogLevel, log } from './log';
+import { sleep } from './utils';
 
 const FAILED_CONNECTION_TOTAL_ATTEMPT = 5;
 const FAILED_CONNECTION_REATTEMPT_MS = 5000;
@@ -34,22 +35,30 @@ async function onStartup() {
 		return;
 	}
 
-	// TODO: Inject user collection
+	log(LogLevel.Info, 'Injecting user info collector...')();
+	injectUserCollector();
+	log(LogLevel.Info, 'Injecting room ui...')();
 	injectRoomUI();
 }
 
 /* Functions */
 function injectRoomUI() {
-	log(LogLevel.Debug, 'Attempting to inject room ui')();
-	const script_room_ui = document.createElement('script');
-	script_room_ui.src = browser.runtime.getURL('./room_ui.js');
-	script_room_ui.defer = true;
-	document.head.append(script_room_ui);
+	const domScriptRoomUI = document.createElement('script');
+	domScriptRoomUI.src = browser.runtime.getURL('./room_ui.js');
+	domScriptRoomUI.defer = true;
+	document.head.append(domScriptRoomUI);
 
-	const link_room_ui_css = document.createElement('link');
-	link_room_ui_css.href = browser.runtime.getURL('./room_ui.css');
-	link_room_ui_css.rel = 'stylesheet';
-	document.head.append(link_room_ui_css);
+	const domLinkCSSRoomUI = document.createElement('link');
+	domLinkCSSRoomUI.href = browser.runtime.getURL('./room_ui.css');
+	domLinkCSSRoomUI.rel = 'stylesheet';
+	document.head.append(domLinkCSSRoomUI);
+}
+
+function injectUserCollector() {
+	const domScriptUserCollector = document.createElement('script');
+	domScriptUserCollector.src = browser.runtime.getURL('./user_collector.js');
+	domScriptUserCollector.defer = true;
+	document.head.append(domScriptUserCollector);
 }
 
 async function connectToServer(clientState: ClientState) {
@@ -74,7 +83,7 @@ async function connectToServer(clientState: ClientState) {
 			isConnected = true;
 		} catch(error) {
 			connectionAttempt++;
-			await new Promise((resolve, _) => setTimeout(() => resolve(true), FAILED_CONNECTION_REATTEMPT_MS));
+			await sleep(FAILED_CONNECTION_REATTEMPT_MS);
 		}
 	}
 

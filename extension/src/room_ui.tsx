@@ -38,29 +38,29 @@ async function initializeRoot() {
 		return;
 	}
 
-	let youtube_user: YoutubeUser;
-	try {
-		youtube_user = await getYoutubeUser();
-	} catch(error) {
-		log(LogLevel.Error, 'Failed to collect user information')();
-		return;
-	}
-
-	log(LogLevel.Debug, 'Collected user information: ', youtube_user)();
-
 	const cowatch_container = document.createElement('div');
 	cowatch_container.id = 'cowatch-container';
 	cowatch_container.style.marginBottom = '8px';
 	root_container.prepend(cowatch_container);
 
 	const cowatch_root = createRoot(cowatch_container);
-	cowatch_root.render(<Cowatch user={youtube_user} />);
+	cowatch_root.render(<Cowatch />);
 }
 
-function Cowatch({ user }: { user: YoutubeUser }) {
+type CowatchState = 'open' | 'closed' | 'error'
+
+function Cowatch() {
 	const [open, setOpen] = React.useState(true);
-	const [error, setError] = React.useState('Test');
+	const [error, setError] = React.useState('');
 	const [content_status, setContentStatus] = React.useState(CowatchStatus.Initial);
+
+	React.useEffect(() => {
+		log(LogLevel.Debug, 'Setting up message receiver')();
+		document.addEventListener('CowatchManagerMessage', (event) => {
+			log(LogLevel.Debug, 'Received message from content:', event)();
+		})
+
+	}, []);
 
 	const toggleClose = () => {
 		setOpen(!open);
@@ -77,7 +77,7 @@ function Cowatch({ user }: { user: YoutubeUser }) {
 			<CowatchHeader onPressX={toggleClose} />
 			<CowatchError error={error} onClose={() => setError('')} />
 			<CowatchContent
-				user={user}
+				user={{ username: 'test', user_image: '' }}
 				status={content_status}
 				onChangeStatus={setContentStatus}
 			/>
@@ -416,46 +416,6 @@ function Icon({ icon, size }: { icon: SVGIcon, size: number }) {
 	}
 
 	return dom_icon;
-}
-
-async function getYoutubeUser(): Promise<YoutubeUser> {
-	log(LogLevel.Debug, 'Getting user details')();
-	let failed_attempt = 0;
-	let youtube_user: YoutubeUser = { username: '', user_image: '' };
-	let hasError = false;
-
-	do {
-		hasError = false;
-
-		try {
-			youtube_user = await attemptGetYoutubeUser();
-		} catch(error) {
-			failed_attempt++;
-			log(LogLevel.Warn, `Attempt ${failed_attempt} to collect user details... Retying in ${FAILED_INITIALIZATION_REATEMPT_MS / 1000}`)();
-			hasError = true;
-		}
-
-		if(hasError) {
-			await new Promise((resolve, _) => {
-				setTimeout(() => resolve(null), FAILED_INITIALIZATION_REATEMPT_MS)
-			});
-		}
-	} while(hasError && failed_attempt <= FAILED_INITIALIZATION_TOTAL_ATTEMPT);
-
-	if(hasError) {
-		throw new Error('Cannot collect user info from specified dom elements');
-	}
-
-	return youtube_user;
-
-	async function attemptGetYoutubeUser(): Promise<YoutubeUser> {
-		let username = document.getElementById('account-name')?.textContent ?? 'User';
-		let user_image = document.getElementById('avatar-btn')?.getElementsByTagName('img')[0]?.src ?? '';
-
-		if(!username || !user_image) throw new Error('Faiiled to collect user data');
-
-		return { username, user_image };
-	}
 }
 
 enum SVGIcon {
