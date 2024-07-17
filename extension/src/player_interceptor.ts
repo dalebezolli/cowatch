@@ -49,7 +49,7 @@ function setReflectionSnapshot(new_reflection: ReflectionSnapshot) {
 }
 
 /* DEFINITIONS */
-interface YoutubePlayer {
+interface YoutubePlayer extends HTMLElement {
 	getVideoData: () => { video_id: string, title: string, author: string };
 	getPlayerState: () => number;
 	getCurrentTime: () => number;

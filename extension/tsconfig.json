@@ -1,11 +1,19 @@
 {
   "compilerOptions": {
-    "allowJS": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+
     "target": "es2022",
     "moduleResolution": "node",
     "jsx": "react-jsx",
-    "typeRoots": ["./node_modules/@types", "./src/typings"]
+    "typeRoots": ["./node_modules/@types", "./src/typings"],
+    "allowSyntheticDefaultImports": true,
+    "downlevelIteration": true
+  },
+  "typeAcquisition": {
+    "enable": true
   },
   "include": ["./src/**/*"],
-  "types": ["./src/*"]
+  "types": ["./src/*"],
+  "files": ["./src/types.d.ts"]
 }
