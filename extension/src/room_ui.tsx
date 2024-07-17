@@ -12,92 +12,113 @@ import {
 	cowatchContent, cowatchContentFlexCenter, cowatchContentBackContainer,
 	cowatchIconPrompt, cowatchIconPromptIcon, cowatchButtonContainer, cowatchInputButtonContainer,
 	cowatchContentConnected, cowatchContentJoinlistContainer, cowatchContentConnectedButtons,
-	cowatchContentClientContainer, cowatchCOntentClientIcon, cowatchContentClientHosting,
+	cowatchContentClientContainer, cowatchCOntentClientIcon
 
 } from './room_ui.module.css';
 
 import { LogLevel, log } from './log';
+import { onCoreAction, triggerUserAction } from './events';
+import { CowatchContentProps, CowatchContentInitialProps, CowatchErrorProps, CowatchHeaderProps, CowatchStatus, Room, User, CowatchContentJoinOptionsProps, CowatchContentConnectedProps, SVGIcon, IconProps } from './types';
+import { sleep } from './utils';
 
-const FAILED_INITIALIZATION_TOTAL_ATTEMPT = 25;
+const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = 25;
 const FAILED_INITIALIZATION_REATEMPT_MS = 1000;
-let failed_initialization_attempt_count = 0;
 
 initializeRoot();
 
 async function initializeRoot() {
-	const root_container = document.getElementById('secondary-inner');
-	log(LogLevel.Debug, 'Initializing root', root_container)();
+	let failedInitCount = 0;
+	let didSucceed = false;
 
-	if(!root_container && failed_initialization_attempt_count <= FAILED_INITIALIZATION_TOTAL_ATTEMPT) {
-		failed_initialization_attempt_count++;
-		log(LogLevel.Warn, `Attempt ${failed_initialization_attempt_count} to reinitialize frontend... Retying in ${FAILED_INITIALIZATION_REATEMPT_MS / 1000}`)();
-		setTimeout(initializeRoot, FAILED_INITIALIZATION_REATEMPT_MS);
-		return;
-	} else if(!root_container) {
-		log(LogLevel.Error, 'Failed to initialize frontend')();
-		return;
+	log(LogLevel.Info, `Attempt ${failedInitCount + 1} to initialize frontend...`)();
+	while(failedInitCount < FAILED_INITIALIZATION_TOTAL_ATTEMPTS && didSucceed === false) {
+		didSucceed = attemptToInitializeRoot();
+		if(!didSucceed) await sleep(FAILED_INITIALIZATION_REATEMPT_MS);
 	}
 
-	const cowatch_container = document.createElement('div');
-	cowatch_container.id = 'cowatch-container';
-	cowatch_container.style.marginBottom = '8px';
-	root_container.prepend(cowatch_container);
+	if(!didSucceed) {
+		log(LogLevel.Error, 'Failed to initialize frontend')();
+	}
 
-	const cowatch_root = createRoot(cowatch_container);
-	cowatch_root.render(<Cowatch />);
+	log(LogLevel.Info, 'Initialized frontend successfully')();
 }
 
-type CowatchState = 'open' | 'closed' | 'error'
+function attemptToInitializeRoot(): boolean {
+	const rootContainer = document.getElementById('secondary-inner');
+
+	if(rootContainer == null) {
+		return false;
+	}
+
+	const cowatchContainer = document.createElement('div');
+	cowatchContainer.id = 'cowatch-container';
+	cowatchContainer.style.marginBottom = '8px';
+	rootContainer.prepend(cowatchContainer);
+
+	const cowatchRoot = createRoot(cowatchContainer);
+	cowatchRoot.render(<Cowatch />);
+
+	return true;
+}
 
 function Cowatch() {
 	const [open, setOpen] = React.useState(true);
 	const [error, setError] = React.useState('');
-	const [content_status, setContentStatus] = React.useState(CowatchStatus.Initial);
+	const [contentStatus, setContentStatus] = React.useState(CowatchStatus.Initial);
+	const [roomState, setRoomState] = React.useState<Room>({
+		roomID: '',
+		host: null,
+		viewers: [],
+	});
+
+	const [userState, setUserState] = React.useState<User>({
+		name: '',
+		image: '',
+	});
 
 	React.useEffect(() => {
-		log(LogLevel.Debug, 'Setting up message receiver')();
-		document.addEventListener('CowatchManagerMessage', (event) => {
-			log(LogLevel.Debug, 'Received message from content:', event)();
-		})
-
+		onCoreAction('HostRoom', handleHosting);
 	}, []);
 
-	const toggleClose = () => {
-		setOpen(!open);
-	};
-
-	if(!open) {
-		return (
-			<button className={cowatchButton + ' ' + cowatchButtonFull} onClick={toggleClose}>Show Room</button>
-		);
+	function handleHosting({ room }: { room: Room }) {
+		setRoomState(room);
+		setContentStatus(CowatchStatus.Connected);
 	}
+
+
+	const toggleClose = () => setOpen(!open);
+
+	if(!open) return <button className={cowatchButton + ' ' + cowatchButtonFull} onClick={toggleClose}>Show Room</button>
 
 	return (
 		<section id='cowatch-root' className={cowatchRoot}>
-			<CowatchHeader onPressX={toggleClose} />
+			<CowatchHeader onPressClose={toggleClose} />
 			<CowatchError error={error} onClose={() => setError('')} />
 			<CowatchContent
-				user={{ username: 'test', user_image: '' }}
-				status={content_status}
+				room={roomState}
+				user={userState}
+				status={contentStatus}
 				onChangeStatus={setContentStatus}
 			/>
 		</section>
 	);
 }
 
-function CowatchHeader({ onPressX }: { onPressX: (event) => void }) {
+function CowatchHeader({ onPressClose }: CowatchHeaderProps) {
 	return (
 		<header className={cowatchHeader}>
 			<h2 className={cowatchTitle}>cowatch</h2>
 			<button
 				className={cowatchButtonRound + ' ' + cowatchFlexPushRight}
-				onClick={onPressX}
-			><Icon icon={SVGIcon.XMark} size={28} /></button>
+				onClick={onPressClose}
+			>
+				<Icon icon={SVGIcon.XMark} size={28} />
+			</button>
 		</header>
 	);
 }
 
-function CowatchError({ error, onClose }: { error?: string, onClose: () => void }) {
+function CowatchError({ error, onClose }: CowatchErrorProps) {
 	if(!error) return;
 
 	return (
@@ -108,40 +129,71 @@ function CowatchError({ error, onClose }: { error?: string, onClose: () => void 
 	);
 }
 
-function CowatchContent({ user, status, onChangeStatus }: {
-	user: YoutubeUser,
-	status: CowatchStatus,
-	onChangeStatus: (status: CowatchStatus) => void
-}) {
-	let [users, setUsers] = React.useState([
-		{
-			username: user.username,
-			icon: user.user_image,
-			isMuted: false, state: 'hosting'
-		},
-		{
-			username: 'User1',
-			icon: 'https://yt3.ggpht.com/yti/ANjgQV_yCkzU6LxRLLnoDZctnqHKd2jn6Gl9mqyVYdWFzQ=s108-c-k-c0x00ffffff-no-rj',
-			isMuted: true, state: 'listening'
-		},
-		{
-			username: 'User2',
-			icon: 'https://yt3.ggpht.com/yti/ANjgQV_yCkzU6LxRLLnoDZctnqHKd2jn6Gl9mqyVYdWFzQ=s108-c-k-c0x00ffffff-no-rj',
-			isMuted: false, state: 'listening'
-		},
-	]);
-	let selected_content: React.ReactElement;
+function CowatchContent({ room, user, status, onChangeStatus }: CowatchContentProps) {
+	let selectedContent: React.ReactElement;
+	
+	function onRequestHost() {
+		onChangeStatus(CowatchStatus.Loading);
+		triggerUserAction('HostRoom', {});
+	}
 
-	const content_initial = (
+	function onRequestJoin() {
+		onChangeStatus(CowatchStatus.Loading);
+		// triggerUserAction('JoinRoom', {roomID: room.roomID});
+	}
+
+	function onRequestDisconnect() {
+		onChangeStatus(CowatchStatus.Loading);
+		// triggerUserAction();
+	}
+
+	function onSettings() {
+		onChangeStatus(CowatchStatus.Options);
+	}
+
+	switch(status) {
+		case CowatchStatus.Initial:
+			selectedContent = <CowatchContentInitial user={user} onHost={onRequestHost} onJoin={onRequestJoin} />;
+			break;
+		case CowatchStatus.Join:
+			selectedContent = <CowatchContentJoinOptions user={user} />;
+			break;
+		case CowatchStatus.HostOptions:
+			selectedContent = <CowatchContentHostOptions />;
+			break;
+		case CowatchStatus.Options:
+			selectedContent = <CowatchContentOptions />;
+			break;
+		case CowatchStatus.Connected:
+			selectedContent = <CowatchContentConnected user={user} room={room} onDisconnect={onRequestDisconnect} onSettings={onSettings} />;
+			break;
+		case CowatchStatus.Loading:
+			selectedContent = (
+				<section className={cowatchContentFlexCenter}>
+					<p>Loading ...</p>
+				</section>
+			)
+			break;
+	}
+
+	return (
+		<div className={cowatchContent}>
+			{selectedContent}
+		</div>
+	);
+}
+
+function CowatchContentInitial({ user, onHost, onJoin }: CowatchContentInitialProps) {
+	return (
 		<section className={cowatchContentFlexCenter}>
 			<div className={cowatchIconPrompt}>
-				<img className={cowatchIconPromptIcon} src={user.user_image} />
+				<img className={cowatchIconPromptIcon} src={user.image} />
 				<p>Start by hosting or joining a room</p>
 			</div>
 
 			<section className={cowatchButtonContainer}>
 				<button
-					onClick={() => onChangeStatus(CowatchStatus.Loading)}
+					onClick={onHost}
 					className={cowatchButton + ' ' + cowatchButtonPrimary}
 				>
 					<Icon icon={SVGIcon.Group} size={24} />
@@ -149,7 +201,7 @@ function CowatchContent({ user, status, onChangeStatus }: {
 				</button>
 
 				<button
-					onClick={() => onChangeStatus(CowatchStatus.Join)}
+					onClick={onJoin}
 					className={cowatchButton + ' ' + cowatchButtonPrimary}
 				>
 					<Icon icon={SVGIcon.Eye} size={24} />
@@ -158,20 +210,22 @@ function CowatchContent({ user, status, onChangeStatus }: {
 			</section>
 		</section>
 	);
+}
 
-	const content_join = (
+function CowatchContentJoinOptions({ user }: CowatchContentJoinOptionsProps) {
+	return (
 		<section className={cowatchContentFlexCenter}>
 			<div className={cowatchIconPrompt}>
-				<img className={cowatchIconPromptIcon} src={user.user_image} />
+				<img className={cowatchIconPromptIcon} src={user.image} />
 				<p>Type room's ID</p>
 			</div>
 
 			<section className={cowatchInputButtonContainer}>
 				<input id='input-room-code' placeholder='eg. 42o6N' className={cowatchInput} />
 				<button
-					onClick={() => onChangeStatus(CowatchStatus.Connected)}
+					onClick={() => null}
 					className={cowatchButton + ' ' + cowatchButtonPrimary + ' ' + cowatchButtonNoBrLeft}
-				>
+					>
 					<Icon icon={SVGIcon.Eye} size={24} />
 					Join
 				</button>
@@ -179,136 +233,108 @@ function CowatchContent({ user, status, onChangeStatus }: {
 
 			<div className={cowatchContentBackContainer}>
 				<button
-					onClick={() => onChangeStatus(CowatchStatus.Initial)}
+					onClick={() => null}
 					className={cowatchButton + ' ' + cowatchButtonShadow}
-				>
+					>
 					Go Back
 				</button>
 			</div>
 		</section>
 	);
+}
 
-	const content_host_options = (
+function CowatchContentHostOptions() {
+	return (
 		<section className={cowatchContentFlexCenter}>
 			<p>Host options</p>
 
-			<div onClick={() => onChangeStatus(CowatchStatus.Initial)} className={cowatchContentBackContainer}>
+			<div onClick={() => null} className={cowatchContentBackContainer}>
 				<button className={cowatchButton + ' ' + cowatchButtonShadow}>
 					Go Back
 				</button>
 			</div>
 		</section>
 	);
+}
 
-	const content_loading = (
-		<section className={cowatchContentFlexCenter}>
-			<p>Loading ...</p>
-		</section>
-	);
-
-	const content_connected = (
+function CowatchContentConnected({ user, room, onDisconnect, onSettings }: CowatchContentConnectedProps) {
+	return (
 		<section className={cowatchContentConnected}>
 			<ul className={cowatchContentJoinlistContainer} >
 				{
-					users.length && users.map(user => (
-						<li key={user.username} className={cowatchContentClientContainer}>
-							<img src={user.icon} className={cowatchCOntentClientIcon} />
-							{user.username}
-
-							{
-								user.state === 'hosting' && (
-									<div className={cowatchContentClientHosting}>
-										<Icon icon={SVGIcon.Broadcast} size={18} />
-										Hosting
-									</div>
-								)
-							}
-
-							{
-								user.isMuted && (
-									<Icon icon={SVGIcon.Mute} size={18} />
-								)
-							}
+					room.host ? (
+						<li key={room.host.name} className={cowatchContentClientContainer}>
+							<img src={room.host.image} className={cowatchCOntentClientIcon} />
+							{room.host.name}
 
 							<button className={cowatchButtonRound + ' ' + cowatchFlexPushRight}>
 								<Icon icon={SVGIcon.Kebab} size={18} />
 							</button>
 						</li>
-					))
+					) : null
+				}
+
+				{
+					room.viewers.length ? room.viewers.map(user => (
+					<li key={user.name} className={cowatchContentClientContainer}>
+							<img src={user.image} className={cowatchCOntentClientIcon} />
+							{user.name}
+
+							<button className={cowatchButtonRound + ' ' + cowatchFlexPushRight}>
+								<Icon icon={SVGIcon.Kebab} size={18} />
+							</button>
+						</li>
+						)) :
+					null
 				}
 			</ul>
 
 			<section className={cowatchContentConnectedButtons}>
 				<button
-					onClick={() => onChangeStatus(CowatchStatus.Initial)}
+					onClick={onDisconnect}
 					className={cowatchButton + ' ' + cowatchButtonError}
-				>
+					>
 					<Icon icon={SVGIcon.PhoneDisconnect} size={24} />
 					Disconnect
 				</button>
 				<button
-					onClick={() => onChangeStatus(CowatchStatus.Options)}
+					onClick={onSettings}
 					className={cowatchButtonRound + ' ' + cowatchFlexPushRight}
-				>
+					>
 					<Icon icon={SVGIcon.Cog} size={24} />
 				</button>
 			</section>
 		</section>
 	);
+}
 
-	const content_options = (
+function CowatchContentOptions() {
+	return (
 		<section className={cowatchContentConnected}>
 			<ul className={cowatchContentJoinlistContainer} >
 			</ul>
 
 			<section className={cowatchContentConnectedButtons}>
 				<button
-					onClick={() => onChangeStatus(CowatchStatus.Initial)}
+					onClick={() => null}
 					className={cowatchButton + ' ' + cowatchButtonSuccess}
-				>
+					>
 					<Icon icon={SVGIcon.CheckMark} size={24} />
 					Save
 				</button>
 				<button
-					onClick={() => onChangeStatus(CowatchStatus.Initial)}
+					onClick={() => null}
 					className={cowatchButton + ' ' + cowatchButtonError}
-				>
+					>
 					<Icon icon={SVGIcon.XMark} size={24} />
 					Exit
 				</button>
 			</section>
 		</section>
 	);
-
-	switch(status) {
-		case CowatchStatus.Initial:
-			selected_content = content_initial;
-			break;
-		case CowatchStatus.Join:
-			selected_content = content_join;
-			break;
-		case CowatchStatus.HostOptions:
-			selected_content = content_host_options;
-			break;
-		case CowatchStatus.Options:
-			selected_content = content_options;
-			break;
-		case CowatchStatus.Connected:
-			selected_content = content_connected;
-			break;
-		case CowatchStatus.Loading:
-			selected_content = content_loading;
-			break;
-	}
-
-	return (
-		<div className={cowatchContent}>
-			{selected_content}
-		</div>
-	);
 }
 
-function Icon({ icon, size }: { icon: SVGIcon, size: number }) {
+function Icon({ icon, size }: IconProps) {
 	let dom_icon: React.ReactElement;
 
 	switch(icon) {
@@ -416,32 +442,4 @@ function Icon({ icon, size }: { icon: SVGIcon, size: number }) {
 	}
 
 	return dom_icon;
-}
-
-enum SVGIcon {
-	CheckMark,
-	XMark,
-	Group,
-	Eye,
-	ArrowLeft,
-	PhoneDisconnect,
-	Cog,
-	Broadcast,
-	Mute,
-	Kebab,
-	Error,
-};
-
-enum CowatchStatus {
-	Initial,
-	HostOptions,
-	Join,
-	Loading,
-	Connected,
-	Options
-};
-
-type YoutubeUser = {
-	username: string,
-	user_image: string,
 }
