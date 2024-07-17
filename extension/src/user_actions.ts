@@ -2,7 +2,7 @@ import * as browser from 'webextension-polyfill';
 import { onUserAction } from "./events";
 import { LogLevel, log } from "./log";
 import { getState } from "./state";
-import { UserActionDetails, UserActionType } from "./types";
+import { Status, UserActionDetails, UserActionType } from "./types";
 
 const actionList = new Map<UserActionType, (action: UserActionDetails[UserActionType]) => void>([
 	['CollectUser', onClientCollectUser],
@@ -16,7 +16,9 @@ export function initializeUserActions() {
 }
 
 function onClientCollectUser(action: UserActionDetails['CollectUser']) {
-	if(action.status === 'ok') getState().user = { ...action.user };
+	if(action.status === Status.ERROR) return;
+
+	getState().user = { ...action.user };
 
 	log(LogLevel.Info, 'Injecting room ui...')();
 	injectRoomUI();
