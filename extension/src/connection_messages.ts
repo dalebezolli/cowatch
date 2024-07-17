@@ -18,5 +18,5 @@ function onConnectionResponseHostRoom(room: Room) {
 	getState().clientStatus = 'host';
 	getState().room = { ...room };
 
-	triggerCoreAction('HostRoom', { room });
+	triggerCoreAction('SendState', { ...getState() });
 }

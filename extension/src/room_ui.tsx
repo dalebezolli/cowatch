@@ -18,7 +18,7 @@ import {
 
 import { LogLevel, log } from './log';
 import { onCoreAction, triggerUserAction } from './events';
-import { CowatchContentProps, CowatchContentInitialProps, CowatchErrorProps, CowatchHeaderProps, CowatchStatus, Room, User, CowatchContentJoinOptionsProps, CowatchContentConnectedProps, SVGIcon, IconProps } from './types';
+import { CowatchContentProps, CowatchContentInitialProps, CowatchErrorProps, CowatchHeaderProps, CowatchStatus, Room, User, CowatchContentJoinOptionsProps, CowatchContentConnectedProps, SVGIcon, IconProps, ClientState } from './types';
 import { sleep } from './utils';
 
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = 25;
@@ -56,6 +56,7 @@ function attemptToInitializeRoot(): boolean {
 	rootContainer.prepend(cowatchContainer);
 
 	const cowatchRoot = createRoot(cowatchContainer);
+
 	cowatchRoot.render(<Cowatch />);
 
 	return true;
@@ -71,17 +72,21 @@ function Cowatch() {
 		viewers: [],
 	});
 
-	const [userState, setUserState] = React.useState<User>({
-		name: '',
-		image: '',
-	});
+	const [userState, setUserState] = React.useState<User>({ name: '', image: '' });
 
 	React.useEffect(() => {
-		onCoreAction('HostRoom', handleHosting);
+		onCoreAction('SendState', handleState);
+
+		triggerUserAction('GetState', {});
 	}, []);
 
-	function handleHosting({ room }: { room: Room }) {
-		setRoomState(room);
+	function handleState(state: ClientState) {
+		log(LogLevel.Info, 'Sent state:', state)();
+
+		setUserState(state.user);
+		if(state.clientStatus === 'innactive') return;
+
+		setRoomState(state.room);
 		setContentStatus(CowatchStatus.Connected);
 	}
 

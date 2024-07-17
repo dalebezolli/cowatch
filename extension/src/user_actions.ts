@@ -1,11 +1,12 @@
 import * as browser from 'webextension-polyfill';
-import { onUserAction } from "./events";
+import { onUserAction, triggerCoreAction } from "./events";
 import { LogLevel, log } from "./log";
 import { getState } from "./state";
 import { Status, UserActionDetails, UserActionType } from "./types";
 
 const actionList = new Map<UserActionType, (action: UserActionDetails[UserActionType]) => void>([
 	['CollectUser', onClientCollectUser],
+	['GetState', onClientGetState],
 	['HostRoom', onClientRequestHostRoom],
 ]);
 
@@ -22,6 +23,10 @@ function onClientCollectUser(action: UserActionDetails['CollectUser']) {
 
 	log(LogLevel.Info, 'Injecting room ui...')();
 	injectRoomUI();
+}
+
+function onClientGetState() {
+	triggerCoreAction('SendState', { ...getState() });
 }
 
 function onClientRequestHostRoom() {

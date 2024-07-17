@@ -40,23 +40,17 @@ export type UserActionDetails = {
 		user: User,
 		errorMessage?: string,
 	},
-	'HostRoom': {
-	},
+	'GetState': {},
+	'HostRoom': {},
 	'JoinRoom': {
 		roomID: string,
 	},
-	'DisconnectRoom': {
-	},
+	'DisconnectRoom': {},
 };
 
 export type CoreActionType = keyof CoreActionDetails;
 export type CoreActionDetails = {
-	'HostRoom': {
-		room: Room,
-	},
-	'JoinRoom': {
-		room: Room,
-	}
+	'SendState': ClientState,
 };
 
 // TODO: Update once the server's JSONs are sent appropriately
