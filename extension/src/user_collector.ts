@@ -5,6 +5,8 @@ import { sleep } from './utils';
 
 const FAILED_USER_COLLECTION_REATEMPT_MS = 5000;
 const FAILED_USER_COLLECTION_REATEMPT_COUNT = 1000;
+const LOCALSTORAGE_USERNAME_KEY = 'cowatch_username';
+const DEFAULT_USERNAME = 'User';
 
 asyncCollectUser();
 
@@ -36,10 +38,17 @@ function collectYoutubeUser(user: User): boolean {
 	if(!domImage) return false;
 	if(domImage.getElementsByTagName('img')[0]?.src.length === 0) return false;
 
-	let userDefinedUsername = 'User';
+	let userDefinedUsername = '';
 	if(!domUsername?.textContent) {
-		userDefinedUsername = prompt('What is your username?') ?? userDefinedUsername;
+		userDefinedUsername = localStorage.getItem(LOCALSTORAGE_USERNAME_KEY) ?? '';
 	}
+
+	while(userDefinedUsername === '') {
+		userDefinedUsername = prompt('What is your username?') ?? DEFAULT_USERNAME;
+		userDefinedUsername = userDefinedUsername.trim();
+	}
+
+	localStorage.setItem(LOCALSTORAGE_USERNAME_KEY, userDefinedUsername);
 
 	user.name = domUsername?.textContent ?? userDefinedUsername;
 	user.image = domImage.getElementsByTagName('img')[0].src;
