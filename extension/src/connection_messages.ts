@@ -8,6 +8,7 @@ const actionList = new Map<ServerMessageType, (action: ServerMessageDetails[Serv
 	['HostRoom', onConnectionResponseHostRoom],
 	['JoinRoom', onConnectionResponseJoinRoom],
 	['DisconnectRoom', onConnectionResponseDisconnectRoom],
+	['ReflectRoom', onConnectionResponseReflectRoom],
 ]);
 
 export function initializeConnectionMessages() {
@@ -39,4 +40,8 @@ function onConnectionResponseDisconnectRoom(action: ServerMessageDetails['Discon
 	};
 
 	triggerCoreAction('SendState', { ...getState() });
+}
+
+function onConnectionResponseReflectRoom(action: ServerMessageDetails['ReflectRoom']) {
+	triggerCoreAction('UpdatePlayer', action);
 }

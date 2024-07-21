@@ -67,7 +67,7 @@ export type ServerMessageDetails = {
 	'HostRoom': Room,
 	'JoinRoom': Room,
 	'DisconnectRoom': {},
-	'ReflectRoom': {},
+	'ReflectRoom': ReflectionSnapshot,
 };
 
 export type ServerEvent = {
@@ -88,10 +88,23 @@ export type ReflectionSnapshot = {
 
 export interface YoutubePlayer extends HTMLElement {
 	getVideoData: () => { video_id: string, title: string, author: string };
-	getPlayerState: () => number;
+	getPlayerState: () => YoutubePlayerState;
 	getCurrentTime: () => number;
 	getDuration: () => number;
+	playVideo: () => void;
+	pauseVideo: () => void;
+	seekTo: (seconds: number) => void;
+	loadVideoById: (videoId: string) => void;
 };
+
+export enum YoutubePlayerState {
+    Unstarted = -1,
+    Ended = 0,
+    Playing = 1,
+    Paused = 2,
+    Buffering = 3,
+    VideoCued = 5,
+}
 
 export enum CowatchStatus {
 	Initial,

@@ -1,12 +1,14 @@
 import { onCoreAction, triggerUserAction } from './events';
 import { LogLevel, log } from './log';
-import { CoreActionDetails, ReflectionSnapshot, YoutubePlayer } from './types';
+import { CoreActionDetails, ReflectionSnapshot, YoutubePlayer, YoutubePlayerState } from './types';
 import { sleep } from './utils';
 
 // TODO: Initialize with user snapshot interval
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = 25;
 const FAILED_INITIALIZATION_REATEMPT_MS = 1000;
-const INITIAL_REFLECTION_SNAPSHOT_INTERVAL = 200;
+
+const INITIAL_REFLECTION_SNAPSHOT_INTERVAL = 1000;
+const REFLECTION_RESYNC_OFFSET = 2;
 const ID_MOVIE_PLAYER = 'movie_player';
 
 const state = {
@@ -44,6 +46,7 @@ async function intializePlayerInterceptor() {
 	state.moviePlayer = moviePlayer;
 
 	onCoreAction('SendState', handleState);
+	onCoreAction('UpdatePlayer', syncPlayer);
 }
 
 function handleState(action: CoreActionDetails['SendState']) {
@@ -52,7 +55,10 @@ function handleState(action: CoreActionDetails['SendState']) {
 	}
 
 	if(state.refelctionIntervalReference == null && action.clientStatus === 'host') {
-		state.refelctionIntervalReference = setInterval(collectReflection, INITIAL_REFLECTION_SNAPSHOT_INTERVAL);
+		state.refelctionIntervalReference = setInterval(() => {
+			collectReflection();
+			triggerUserAction('SendReflection', state.reflectionSnapshot);
+		}, INITIAL_REFLECTION_SNAPSHOT_INTERVAL);
 	}
 	
 	if(state.refelctionIntervalReference !== null && action.clientStatus !== 'host') {
@@ -61,11 +67,38 @@ function handleState(action: CoreActionDetails['SendState']) {
 	}
 }
 
+function syncPlayer(reflection: ReflectionSnapshot) {
+	collectReflection();
+
+	if(reflection.id !== state.reflectionSnapshot.id) {
+		// TODO: Limit the rate at which this is running as a video cannot load fast enough.
+		state.moviePlayer.loadVideoById(reflection.id);
+	}
+	
+	if(reflection.state !== state.reflectionSnapshot.state) {
+		switch(reflection.state) {
+			case YoutubePlayerState.Buffering:
+			case YoutubePlayerState.Playing:
+				state.moviePlayer.playVideo();
+				break;
+			case YoutubePlayerState.Unstarted:
+			case YoutubePlayerState.Paused:
+				state.moviePlayer.pauseVideo();
+				break;
+		}
+	}
+	
+	if(Math.abs(reflection.currentTime - state.reflectionSnapshot.currentTime) > REFLECTION_RESYNC_OFFSET) {
+		state.moviePlayer.seekTo(reflection.currentTime);
+	}
+
+	log(LogLevel.Warn, "Syncing player", reflection)();
+}
+
 function collectReflection() {
 	const reflection_frame = calculateReflectionSnapshot(state.moviePlayer);
 	setReflectionSnapshot(reflection_frame);
 	log(LogLevel.Debug, reflection_frame)();
-	triggerUserAction('SendReflection', state.reflectionSnapshot);
 }
 
 function calculateReflectionSnapshot(player: YoutubePlayer): ReflectionSnapshot {
