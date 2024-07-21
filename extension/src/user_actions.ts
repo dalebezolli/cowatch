@@ -8,6 +8,7 @@ const actionList = new Map<UserActionType, (action: UserActionDetails[UserAction
 	['CollectUser', onClientCollectUser],
 	['GetState', onClientGetState],
 	['HostRoom', onClientRequestHostRoom],
+	['JoinRoom', onClientRequestJoinRoom],
 ]);
 
 export function initializeUserActions() {
@@ -31,7 +32,7 @@ function onClientGetState() {
 
 function onClientRequestHostRoom() {
 	if(getState().serverStatus !== 'connected') {
-		log(LogLevel.Error, 'No server connection found to host room!')();
+		log(LogLevel.Error, 'No server connection found!')();
 		return;
 	}
 
@@ -41,6 +42,20 @@ function onClientRequestHostRoom() {
 	}
 
 	getState().connection!.send(JSON.stringify({ actionType: 'HostRoom', action: JSON.stringify({ ...getState().user! }) }));
+}
+
+function onClientRequestJoinRoom(action: UserActionDetails['JoinRoom']) {
+	if(getState().serverStatus !== 'connected') {
+		log(LogLevel.Error, 'No server connection found!')();
+		return;
+	}
+
+	if(!getState().user) {
+		log(LogLevel.Error, 'No user setup before privileged action, aborting...')();
+		return;
+	}
+
+	getState().connection!.send(JSON.stringify({ actionType: 'JoinRoom', action: JSON.stringify({ ...getState().user!, roomID: action.roomID }) }));
 }
 
 function injectRoomUI() {

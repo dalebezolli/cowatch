@@ -142,9 +142,13 @@ function CowatchContent({ room, user, status, onChangeStatus }: CowatchContentPr
 		triggerUserAction('HostRoom', {});
 	}
 
-	function onRequestJoin() {
+	function onRequestJoinOptions() {
+		onChangeStatus(CowatchStatus.Join);
+	}
+
+	function onRequestJoin(roomID: string) {
 		onChangeStatus(CowatchStatus.Loading);
-		// triggerUserAction('JoinRoom', {roomID: room.roomID});
+		triggerUserAction('JoinRoom', { roomID: roomID });
 	}
 
 	function onRequestDisconnect() {
@@ -158,10 +162,10 @@ function CowatchContent({ room, user, status, onChangeStatus }: CowatchContentPr
 
 	switch(status) {
 		case CowatchStatus.Initial:
-			selectedContent = <CowatchContentInitial user={user} onHost={onRequestHost} onJoin={onRequestJoin} />;
+			selectedContent = <CowatchContentInitial user={user} onHost={onRequestHost} onJoin={onRequestJoinOptions} />;
 			break;
 		case CowatchStatus.Join:
-			selectedContent = <CowatchContentJoinOptions user={user} />;
+			selectedContent = <CowatchContentJoinOptions user={user} onJoin={onRequestJoin} />;
 			break;
 		case CowatchStatus.HostOptions:
 			selectedContent = <CowatchContentHostOptions />;
@@ -217,7 +221,9 @@ function CowatchContentInitial({ user, onHost, onJoin }: CowatchContentInitialPr
 	);
 }
 
-function CowatchContentJoinOptions({ user }: CowatchContentJoinOptionsProps) {
+function CowatchContentJoinOptions({ user, onJoin }: CowatchContentJoinOptionsProps) {
+	const subRoomIDRef = React.useRef<HTMLInputElement>();
+
 	return (
 		<section className={cowatchContentFlexCenter}>
 			<div className={cowatchIconPrompt}>
@@ -226,9 +232,9 @@ function CowatchContentJoinOptions({ user }: CowatchContentJoinOptionsProps) {
 			</div>
 
 			<section className={cowatchInputButtonContainer}>
-				<input id='input-room-code' placeholder='eg. 42o6N' className={cowatchInput} />
+				<input id='input-room-code' placeholder='eg. 42o6N' className={cowatchInput} ref={subRoomIDRef} />
 				<button
-					onClick={() => null}
+					onClick={() => { onJoin(subRoomIDRef.current.value) }}
 					className={cowatchButton + ' ' + cowatchButtonPrimary + ' ' + cowatchButtonNoBrLeft}
 					>
 					<Icon icon={SVGIcon.Eye} size={24} />

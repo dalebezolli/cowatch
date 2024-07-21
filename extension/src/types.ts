@@ -8,6 +8,8 @@ export enum Status {
 	ERROR = 'error',
 };
 
+export type Pronouns = 'he/him' | 'she/her' | "he/hen't" | 'they/he?'
+
 export type ServerStatus = 'connecting' | 'connected' | 'failed';
 export type ClientStatus = 'innactive' | 'host' | 'viewer';
 
@@ -17,7 +19,7 @@ export type ClientState = {
 	connection: WebSocket | null,
 
 	user: User | null,
-	room: Room | null,
+	room: Room | null, // epeidh xreiazesai ena domatio gia na kaneis sex
 }
 
 export type User = {
@@ -26,6 +28,7 @@ export type User = {
 };
 
 export type Room = {
+	pronouns?: Pronouns,
 	roomID: string,
 	host: User,
 	viewers: User[],
@@ -60,6 +63,7 @@ export type CoreActionDetails = {
 export type ServerMessageType = keyof ServerMessageDetails;
 export type ServerMessageDetails = {
 	'HostRoom': Room,
+	'JoinRoom': Room,
 };
 
 export type ServerEvent = {
@@ -103,6 +107,7 @@ export type CowatchContentInitialProps = {
 
 export type CowatchContentJoinOptionsProps = {
 	user: User,
+	onJoin: (roomID: string) => void,
 };
 
 export type CowatchContentConnectedProps = {

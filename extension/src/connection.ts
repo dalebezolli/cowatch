@@ -4,7 +4,7 @@ import { ClientState, ServerEvent, ServerMessageDetails, ServerMessageType, Stat
 
 const FAILED_CONNECTION_TOTAL_ATTEMPT = 5;
 const FAILED_CONNECTION_REATTEMPT_MS = 5000;
-const COWATCH_OWL_SERVER_WEBSOCKET = 'ws://192.168.2.50:8080/reflect';
+const COWATCH_OWL_SERVER_WEBSOCKET = 'ws://192.168.2.8:8080/reflect';
 
 const eventCallbacks = new Map<ServerMessageType, (action: ServerMessageDetails[ServerMessageType]) => void>();
 
