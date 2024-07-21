@@ -11,8 +11,9 @@ import {
 
 	cowatchContent, cowatchContentFlexCenter, cowatchContentBackContainer,
 	cowatchIconPrompt, cowatchIconPromptIcon, cowatchButtonContainer, cowatchInputButtonContainer,
-	cowatchContentConnected, cowatchContentJoinlistContainer, cowatchContentConnectedButtons,
-	cowatchContentClientContainer, cowatchCOntentClientIcon
+	cowatchContentConnected, cowatchContentJoinlistContainer, cowatchContentConnectedClient,
+	cowatchContentClientContainer, cowatchCOntentClientIcon, cowatchContentConnectedClientDetails, cowatchContentConnectedClientDetailsIcon,
+	cowatchContentConnectedClientDetailsUsername, cowatchContentConnectedClientDetailsRoom, cowatchContentConnectedClientDetailsText
 
 } from './room_ui.module.css';
 
@@ -140,6 +141,10 @@ function CowatchError({ error, onClose }: CowatchErrorProps) {
 function CowatchContent({ room, user, status, onChangeStatus }: CowatchContentProps) {
 	let selectedContent: React.ReactElement;
 	
+	function onInitial() {
+		onChangeStatus(CowatchStatus.Initial);
+	}
+
 	function onRequestHost() {
 		onChangeStatus(CowatchStatus.Loading);
 		triggerUserAction('HostRoom', {});
@@ -168,7 +173,7 @@ function CowatchContent({ room, user, status, onChangeStatus }: CowatchContentPr
 			selectedContent = <CowatchContentInitial user={user} onHost={onRequestHost} onJoin={onRequestJoinOptions} />;
 			break;
 		case CowatchStatus.Join:
-			selectedContent = <CowatchContentJoinOptions user={user} onJoin={onRequestJoin} />;
+			selectedContent = <CowatchContentJoinOptions user={user} onJoin={onRequestJoin} onBack={onInitial} />;
 			break;
 		case CowatchStatus.HostOptions:
 			selectedContent = <CowatchContentHostOptions />;
@@ -224,7 +229,7 @@ function CowatchContentInitial({ user, onHost, onJoin }: CowatchContentInitialPr
 	);
 }
 
-function CowatchContentJoinOptions({ user, onJoin }: CowatchContentJoinOptionsProps) {
+function CowatchContentJoinOptions({ user, onJoin, onBack }: CowatchContentJoinOptionsProps) {
 	const subRoomIDRef = React.useRef<HTMLInputElement>();
 
 	return (
@@ -247,7 +252,7 @@ function CowatchContentJoinOptions({ user, onJoin }: CowatchContentJoinOptionsPr
 
 			<div className={cowatchContentBackContainer}>
 				<button
-					onClick={() => null}
+					onClick={onBack}
 					className={cowatchButton + ' ' + cowatchButtonShadow}
 					>
 					Go Back
@@ -303,17 +308,25 @@ function CowatchContentConnected({ user, room, onDisconnect, onSettings }: Cowat
 				}
 			</ul>
 
-			<section className={cowatchContentConnectedButtons}>
+			<section className={cowatchContentConnectedClient}>
+				<section className={cowatchContentConnectedClientDetails}>
+					<img src={user.image} className={cowatchContentConnectedClientDetailsIcon} />
+					<div className={cowatchContentConnectedClientDetailsText}>
+						<p className={cowatchContentConnectedClientDetailsUsername}>{user.name}</p>
+						<div className={cowatchContentConnectedClientDetailsRoom}><Icon icon={SVGIcon.Group} size={16} /> <p>{room.roomID}</p></div>
+					</div>
+				</section>
+
+
 				<button
 					onClick={onDisconnect}
-					className={cowatchButton + ' ' + cowatchButtonError}
+					className={cowatchButtonRound + ' ' + cowatchFlexPushRight}
 					>
 					<Icon icon={SVGIcon.PhoneDisconnect} size={24} />
-					Disconnect
 				</button>
 				<button
-					onClick={onSettings}
-					className={cowatchButtonRound + ' ' + cowatchFlexPushRight}
+					onClick={() => null}
+					className={cowatchButtonRound}
 					>
 					<Icon icon={SVGIcon.Cog} size={24} />
 				</button>
@@ -328,7 +341,7 @@ function CowatchContentOptions() {
 			<ul className={cowatchContentJoinlistContainer} >
 			</ul>
 
-			<section className={cowatchContentConnectedButtons}>
+			<section>
 				<button
 					onClick={() => null}
 					className={cowatchButton + ' ' + cowatchButtonSuccess}

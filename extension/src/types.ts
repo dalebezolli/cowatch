@@ -141,6 +141,7 @@ export type CowatchContentInitialProps = {
 export type CowatchContentJoinOptionsProps = {
 	user: User,
 	onJoin: (roomID: string) => void,
+	onBack: () => void,
 };
 
 export type CowatchContentConnectedProps = {
