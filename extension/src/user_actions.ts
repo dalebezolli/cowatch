@@ -9,6 +9,8 @@ const actionList = new Map<UserActionType, (action: UserActionDetails[UserAction
 	['GetState', onClientGetState],
 	['HostRoom', onClientRequestHostRoom],
 	['JoinRoom', onClientRequestJoinRoom],
+	['DisconnectRoom', onClientRequestDisconnectRoom],
+	['SendReflection', onClientSendReflection],
 ]);
 
 export function initializeUserActions() {
@@ -56,6 +58,34 @@ function onClientRequestJoinRoom(action: UserActionDetails['JoinRoom']) {
 	}
 
 	getState().connection!.send(JSON.stringify({ actionType: 'JoinRoom', action: JSON.stringify({ ...getState().user!, roomID: action.roomID }) }));
+}
+
+function onClientRequestDisconnectRoom() {
+	if(getState().serverStatus !== 'connected') {
+		log(LogLevel.Error, 'No server connection found!')();
+		return;
+	}
+
+	if(!getState().user) {
+		log(LogLevel.Error, 'No user setup before privileged action, aborting...')();
+		return;
+	}
+
+	getState().connection!.send(JSON.stringify({ actionType: 'DisconnectRoom', action: ''}));
+}
+
+function onClientSendReflection(action: UserActionDetails['SendReflection']) {
+	if(getState().serverStatus !== 'connected') {
+		log(LogLevel.Error, 'No server connection found!')();
+		return;
+	}
+
+	if(!getState().user) {
+		log(LogLevel.Error, 'No user setup before privileged action, aborting...')();
+		return;
+	}
+
+	getState().connection!.send(JSON.stringify({ actionType: 'SendReflection', action: JSON.stringify({ ...action }) }));
 }
 
 function injectRoomUI() {

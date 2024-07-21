@@ -52,15 +52,21 @@ type FilteredRoomRecord struct {
 	Viewers []FilteredClientRecord `json:"viewers"`
 }
 
+type RoomReflection struct {
+	ID	   string `json:"id"`
+	Title  string `json:"title"`
+	Author string `json:"author"`
+	State  int    `json:"state"`
+	CurrentTime float32 `json:"currentTime"`
+	Duration    float32 `json:"duration"`
+}
+
 type ClientAction struct {
 	ActionType string `json:"actionType"`
 	Action	   string `json:"action"`
 }
 
-type ClientActionHostRoom struct {
-	Name  string `json:"name"`
-	Image string `json:"image"`
-}
+type ClientActionHostRoom FilteredClientRecord
 
 type ClientActionJoinRoom struct {
 	Name   string `json:"name"`
@@ -80,8 +86,8 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-var activeClients map[IPAddress]ClientRecord
-var activeRooms map[RoomID]RoomRecord
+var activeClients map[IPAddress]*ClientRecord
+var activeRooms map[RoomID]*RoomRecord
 
 /*
 	Caches the client in the activeClients map and sends a response to the client
@@ -94,7 +100,7 @@ func initializeClient(connection *websocket.Conn) bool {
 		return false
 	}
 
-	activeClients[connection.RemoteAddr()] = ClientRecord{
+	activeClients[connection.RemoteAddr()] = &ClientRecord{
 		Connection: connection,
 		IPAddress:	connection.RemoteAddr(),
 
@@ -135,46 +141,52 @@ func filterRoom(room RoomRecord) FilteredRoomRecord {
 	return filteredRoom
 }
 
-/*
-	Deletes a client from the ActiveClients Map
-	If he's the host of a room, the room is shutdown as well.
-*/
-func deleteClient(client IPAddress) {
+func disconnectClient(client IPAddress, deleteUserCallback func (client ClientRecord) bool) bool {
 	clientRecord, clientExists := activeClients[client]
 
 	if clientExists == false {
-		return
+		return false
 	}
 
 	roomRecord, roomExists := activeRooms[clientRecord.RoomID]
 
 	if roomExists && clientRecord.Type == ClientTypeHost {
-		deleteRoom(clientRecord.RoomID);
+		for _, client := range(roomRecord.Viewers) {
+			deleteClient(client.IPAddress, deleteUserCallback)
+		}
+
+		delete(activeRooms, roomRecord.RoomID)
 	} else if roomExists && clientRecord.Type != ClientTypeHost {
-		roomIndex, recordFound := FindInSlice(roomRecord.Viewers, &clientRecord, func(a *ClientRecord , b *ClientRecord) bool {
+		roomIndex, recordFound := FindInSlice(roomRecord.Viewers, clientRecord, func(a *ClientRecord , b *ClientRecord) bool {
 			return a.IPAddress == b.IPAddress
 		})
 
-		log.Printf("[%s] Found client (%t) in index %d\n", client, recordFound, roomIndex)
+		if recordFound {
+			roomRecord.Viewers = RemoveFromSlice(roomRecord.Viewers, roomIndex)
+		}
 	}
 
-	delete(activeClients, client)
+	deleteUserCallback(*clientRecord)
+
+	return true
 }
 
 /*
-	Deletes a room from the ActiveRooms Map
-	Deletes any user associated with it as well
+	Deletes a client from the ActiveClients Map
+	If he's the host of a room, the room is shutdown as well.
 */
-func deleteRoom(roomID RoomID) {
-	// TODO: Cleanup room
+func deleteClient(client IPAddress, deleteUserCallback func (client ClientRecord) bool) bool {
+	disconnectClient(client, deleteUserCallback)
+
+	delete(activeClients, client)
+	return true
 }
 
 /*
 	Host a room for the specified client with the appropariate action
 */
 func hostRoom(client *ClientRecord, action ClientActionHostRoom) {
-	updateClientDetails(client, ClientRecord{ Name: action.Name, Image: action.Image })
-	client.Type = ClientTypeHost
+	updateClientDetails(client, ClientRecord{ Name: action.Name, Image: action.Image, Type: ClientTypeHost })
 
 	generatedId, _ := uuid.NewRandom()
 	byteGeneratedId, _ := generatedId.MarshalText()
@@ -187,7 +199,7 @@ func hostRoom(client *ClientRecord, action ClientActionHostRoom) {
 	}
 
 	client.RoomID = roomID
-	activeRooms[roomID] = RoomRecord{
+	activeRooms[roomID] = &RoomRecord{
 		RoomID: roomID,
 		Host: client,
 		Viewers: make([]*ClientRecord, 0, DEFAULT_ROOM_SIZE),
@@ -195,7 +207,7 @@ func hostRoom(client *ClientRecord, action ClientActionHostRoom) {
 
 	log.Printf("[%s] (HostRoom) Created room with id: %s. Sending response to client\n", client.IPAddress, roomID)
 
-	var serverActionHostRoomObject = filterRoom(activeRooms[roomID])
+	var serverActionHostRoomObject = filterRoom(*activeRooms[roomID])
 	serverActionHostRoom, serverActionHostRoomMarshalError := json.Marshal(serverActionHostRoomObject)
 
 	if serverActionHostRoomMarshalError != nil {
@@ -213,14 +225,14 @@ func hostRoom(client *ClientRecord, action ClientActionHostRoom) {
 
 	if serverActionMarshalError != nil {
 		log.Panicf("[%s] [ERROR] (HostRoom) Bad Json definition: %s\n", client.IPAddress, serverActionMarshalError)
+		return;
 	}
 
 	client.Connection.WriteMessage(websocket.TextMessage, serverAction);
 }
 
 func joinRoom(client *ClientRecord, action ClientActionJoinRoom) {
-	updateClientDetails(client, ClientRecord{ Name: action.Name, Image: action.Image })
-	client.Type = ClientTypeViewer
+	updateClientDetails(client, ClientRecord{ Name: action.Name, Image: action.Image, Type: ClientTypeViewer })
 
 	room, roomExists := activeRooms[action.RoomID]
 
@@ -236,7 +248,7 @@ func joinRoom(client *ClientRecord, action ClientActionJoinRoom) {
 
 	room.Viewers = append(room.Viewers, client)
 
-	var serverActionHostRoomObject = filterRoom(room)
+	var serverActionHostRoomObject = filterRoom(*room)
 	serverActionHostRoom, serverActionHostRoomMarshalError := json.Marshal(serverActionHostRoomObject)
 
 	if serverActionHostRoomMarshalError != nil {
@@ -254,9 +266,74 @@ func joinRoom(client *ClientRecord, action ClientActionJoinRoom) {
 
 	if serverActionMarshalError != nil {
 		log.Panicf("[%s] [ERROR] (HostRoom) Bad Json definition: %s\n", client.IPAddress, serverActionMarshalError)
+		return;
 	}
 
 	client.Connection.WriteMessage(websocket.TextMessage, serverAction);
+}
+
+func disconnectRoom(client *ClientRecord) {
+	var serverActionObject = ServerAction{
+		ActionType: "DisconnectRoom",
+		Action: "",
+		Status: "ok",
+		ErrorMessage: "",
+	}
+
+	serverAction, serverActionMarshalError := json.Marshal(serverActionObject)
+
+	if serverActionMarshalError != nil {
+		log.Panicf("[%s] [ERROR] (DisconnectRoom) Bad Json definition: %s\n", client.IPAddress, serverActionMarshalError)
+		return;
+	}
+
+
+	didDelete := disconnectClient(client.IPAddress, func(client ClientRecord) bool {
+		client.Connection.WriteMessage(websocket.TextMessage, serverAction);
+		return true;
+	})
+
+	if didDelete == false {
+		log.Printf("[%s] [ERROR] (DisconnectRoom) Client couldn't be deleted from server\n", client.IPAddress)
+		return
+	}
+
+	updateClientDetails(client, ClientRecord{ Type: ClientTypeInnactive })
+}
+
+func reflectRoom(client ClientRecord, reflection RoomReflection) {
+	if client.Type != ClientTypeHost {
+		log.Printf("[%s] [ERROR] (ReflectRoom) User isn't a host\n", client.IPAddress)
+		return;
+	}
+
+	room, roomExists := activeRooms[client.RoomID]
+
+	if !roomExists {
+		log.Printf("[%s] [ERROR] (ReflectRoom) No room found with id: %s\n", client.IPAddress, client.RoomID)
+		return
+	}
+
+	for _, viewer := range room.Viewers {
+
+		reflection, serverActionMarshalError := json.Marshal(reflection)
+
+		var serverActionObject = ServerAction{
+			ActionType: "ReflectRoom",
+			Action: string(reflection),
+			Status: "ok",
+			ErrorMessage: "",
+		}
+
+		serverAction, serverActionMarshalError := json.Marshal(serverActionObject)
+
+		if serverActionMarshalError != nil {
+			log.Panicf("[%s] [ERROR] (ReflectRoom) Bad Json definition: %s\n", client.IPAddress, serverActionMarshalError)
+			return;
+		}
+
+		viewer.Connection.WriteMessage(websocket.TextMessage, serverAction)
+	}
 }
 
 func updateClientDetails(client *ClientRecord, newData ClientRecord) {
@@ -274,7 +351,9 @@ func updateClientDetails(client *ClientRecord, newData ClientRecord) {
 		client.Email = newData.Email
 	}
 
-	log.Printf("[%s] {%s, %s, %s}\n", client.IPAddress, client.Name, client.Image, client.Email);
+	client.Type = newData.Type
+
+	log.Printf("[%s] %+v\n", client.IPAddress, client);
 }
 
 /*
@@ -307,8 +386,18 @@ func handleUserAction(client *ClientRecord, action ClientAction) bool {
 
 		break;
 	case "DisconnectRoom":
-		deleteClient(client.IPAddress)
+		disconnectRoom(client)
 		break;
+	case "SendReflection":
+		var parsedAction RoomReflection
+		errParsedAction := json.Unmarshal([]byte(action.Action), &parsedAction)
+
+		if errParsedAction != nil {
+			log.Panicf("[%s] [ERROR] (%s) Bad json: %s\n", client.IPAddress, action.ActionType, errParsedAction);
+			return false
+		}
+
+		reflectRoom(*client, parsedAction)
 	}
 
 	return true;
@@ -338,7 +427,7 @@ func reflect(writer http.ResponseWriter, request *http.Request) {
 		if err != nil {
 			log.Printf("[%s] [ERROR] Potentially disconnected, cleaning up their connection.\n", connection.RemoteAddr())
 
-			deleteClient(connection.RemoteAddr())
+			deleteClient(connection.RemoteAddr(), func(client ClientRecord) bool { return true })
 			connection.Close()
 			return
 		}
@@ -352,7 +441,7 @@ func reflect(writer http.ResponseWriter, request *http.Request) {
 			continue
 		}
 
-		log.Printf("[%s] Received (%s) %s\n", connection.RemoteAddr(), clientAction.ActionType, clientAction.Action)
+		log.Printf("[%s] Received (%s) %+v\n", connection.RemoteAddr(), clientAction.ActionType, clientAction.Action)
 
 		client, foundClient := activeClients[connection.RemoteAddr()]
 		
@@ -361,17 +450,17 @@ func reflect(writer http.ResponseWriter, request *http.Request) {
 			return;
 		}
 
-		handleUserAction(&client, clientAction)
+		handleUserAction(client, clientAction)
 	}
 }
 
 func main() {
 	log.Printf("Cowatch starting on: %s\n", address)
 
-	activeClients = make(map[IPAddress]ClientRecord)
-	activeRooms = make(map[RoomID]RoomRecord)
+	activeClients = make(map[IPAddress]*ClientRecord)
+	activeRooms = make(map[RoomID]*RoomRecord)
 
-	activeRooms["test"] = RoomRecord{
+	activeRooms["test"] = &RoomRecord{
 		RoomID: "test",
 		Host: &ClientRecord{
 			Connection: nil,

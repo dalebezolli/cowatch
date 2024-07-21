@@ -25,6 +25,7 @@ async function onStartup() {
 
 	log(LogLevel.Info, 'Injecting user info collector...')();
 	collectUser();
+	connectYoutubeInterceptor();
 }
 
 function collectUser() {
@@ -32,4 +33,11 @@ function collectUser() {
 	domScriptUserCollector.src = browser.runtime.getURL('./user_collector.js');
 	domScriptUserCollector.defer = true;
 	document.head.append(domScriptUserCollector);
+}
+
+function connectYoutubeInterceptor() {
+	const domScriptPlayerInterceptor = document.createElement('script');
+	domScriptPlayerInterceptor.src = browser.runtime.getURL('./player_interceptor.js');
+	domScriptPlayerInterceptor.defer = true;
+	document.head.append(domScriptPlayerInterceptor);
 }

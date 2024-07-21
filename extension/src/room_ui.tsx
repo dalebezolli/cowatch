@@ -84,10 +84,13 @@ function Cowatch() {
 		log(LogLevel.Info, 'Sent state:', state)();
 
 		setUserState(state.user);
-		if(state.clientStatus === 'innactive') return;
+		if(state.clientStatus === 'innactive') {
+			setContentStatus(CowatchStatus.Initial);
+		} else {
+			setContentStatus(CowatchStatus.Connected);
+		}
 
 		setRoomState(state.room);
-		setContentStatus(CowatchStatus.Connected);
 	}
 
 
@@ -153,7 +156,7 @@ function CowatchContent({ room, user, status, onChangeStatus }: CowatchContentPr
 
 	function onRequestDisconnect() {
 		onChangeStatus(CowatchStatus.Loading);
-		// triggerUserAction();
+		triggerUserAction('DisconnectRoom', {});
 	}
 
 	function onSettings() {

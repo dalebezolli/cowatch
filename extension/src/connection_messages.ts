@@ -7,6 +7,7 @@ import { onConnectionMessage } from './connection';
 const actionList = new Map<ServerMessageType, (action: ServerMessageDetails[ServerMessageType]) => void>([
 	['HostRoom', onConnectionResponseHostRoom],
 	['JoinRoom', onConnectionResponseJoinRoom],
+	['DisconnectRoom', onConnectionResponseDisconnectRoom],
 ]);
 
 export function initializeConnectionMessages() {
@@ -15,16 +16,27 @@ export function initializeConnectionMessages() {
 	}
 }
 
-function onConnectionResponseHostRoom(room: Room) {
+function onConnectionResponseHostRoom(action: ServerMessageDetails['HostRoom']) {
 	getState().clientStatus = 'host';
-	getState().room = { ...room };
+	getState().room = { ...action };
 
 	triggerCoreAction('SendState', { ...getState() });
 }
 
-function onConnectionResponseJoinRoom(room: Room) {
+function onConnectionResponseJoinRoom(action: ServerMessageDetails['JoinRoom']) {
 	getState().clientStatus = 'viewer';
-	getState().room = { ...room };
+	getState().room = { ...action };
+
+	triggerCoreAction('SendState', { ...getState() });
+}
+
+function onConnectionResponseDisconnectRoom(action: ServerMessageDetails['DisconnectRoom']) {
+	getState().clientStatus = 'innactive';
+	getState().room = {
+		roomID: '',
+		host: null,
+		viewers: [],
+	};
 
 	triggerCoreAction('SendState', { ...getState() });
 }

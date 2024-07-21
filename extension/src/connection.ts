@@ -34,8 +34,9 @@ function handleConnectionMessage(event: MessageEvent<string>) {
 		log(LogLevel.Error, `[ServerMessage:${messageData.actionType}]`, messageData.errorMessage)();
 		return;
 	}
-
-	eventCallbacks.get(messageData.actionType)(JSON.parse(messageData.action) as ServerMessageDetails[typeof messageData.actionType]);
+	
+	const eventDetails = (messageData.action ? JSON.parse(messageData.action) : {}) as ServerMessageDetails[typeof messageData.actionType];
+	eventCallbacks.get(messageData.actionType)(eventDetails);
 }
 
 async function attemptConnection(clientState: ClientState): Promise<boolean> {

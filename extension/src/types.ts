@@ -52,11 +52,13 @@ export type UserActionDetails = {
 		roomID: string,
 	},
 	'DisconnectRoom': {},
+	'SendReflection': ReflectionSnapshot,
 };
 
 export type CoreActionType = keyof CoreActionDetails;
 export type CoreActionDetails = {
 	'SendState': ClientState,
+	'UpdatePlayer': {},
 };
 
 // TODO: Update once the server's JSONs are sent appropriately
@@ -64,6 +66,8 @@ export type ServerMessageType = keyof ServerMessageDetails;
 export type ServerMessageDetails = {
 	'HostRoom': Room,
 	'JoinRoom': Room,
+	'DisconnectRoom': {},
+	'ReflectRoom': {},
 };
 
 export type ServerEvent = {
@@ -73,6 +77,21 @@ export type ServerEvent = {
 	errorMessage: string,
 };
 
+export type ReflectionSnapshot = {
+	id: string,
+	title: string,
+	author: string,
+	state: number,
+	currentTime: number,
+	duration: number,
+};
+
+export interface YoutubePlayer extends HTMLElement {
+	getVideoData: () => { video_id: string, title: string, author: string };
+	getPlayerState: () => number;
+	getCurrentTime: () => number;
+	getDuration: () => number;
+};
 
 export enum CowatchStatus {
 	Initial,
