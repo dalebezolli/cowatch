@@ -66,6 +66,7 @@ export type ServerMessageType = keyof ServerMessageDetails;
 export type ServerMessageDetails = {
 	'HostRoom': Room,
 	'JoinRoom': Room,
+	'UpdateRoom': Room,
 	'DisconnectRoom': {},
 	'ReflectRoom': ReflectionSnapshot,
 };

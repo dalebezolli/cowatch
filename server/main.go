@@ -246,6 +246,11 @@ func joinRoom(client *ClientRecord, action ClientActionJoinRoom) {
 		return
 	}
 
+	var toBeUpdatedClients []*ClientRecord
+
+	copy(toBeUpdatedClients, room.Viewers)
+	toBeUpdatedClients = append(toBeUpdatedClients, room.Host)
+
 	room.Viewers = append(room.Viewers, client)
 
 	var serverActionHostRoomObject = filterRoom(*room)
@@ -270,6 +275,31 @@ func joinRoom(client *ClientRecord, action ClientActionJoinRoom) {
 	}
 
 	client.Connection.WriteMessage(websocket.TextMessage, serverAction);
+
+	var serverActionUpdateRoomObject = filterRoom(*room)
+	serverActionUpdateRoom, serverActionUpdateRoomMarshalError := json.Marshal(serverActionUpdateRoomObject)
+
+	if serverActionUpdateRoomMarshalError != nil {
+		log.Panicf("[%s] [ERROR] (UpdateRoom) Bad Json definition: %s\n", client.IPAddress, serverActionUpdateRoomMarshalError)
+	}
+
+	var updateActionObject = ServerAction{
+		ActionType: "JoinRoom",
+		Action: string(serverActionUpdateRoom),
+		Status: "ok",
+		ErrorMessage: "",
+	}
+
+	updateAction, updateActionMarshalError := json.Marshal(updateActionObject)
+
+	if updateActionMarshalError != nil {
+		log.Panicf("[%s] [ERROR] (UpdateRoom) Bad Json definition: %s\n", client.IPAddress, serverActionMarshalError)
+		return;
+	}
+
+	for _, viewer := range(toBeUpdatedClients) {
+		viewer.Connection.WriteMessage(websocket.TextMessage, updateAction)
+	}
 }
 
 func disconnectRoom(client *ClientRecord) {

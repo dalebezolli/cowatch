@@ -7,6 +7,7 @@ import { onConnectionMessage } from './connection';
 const actionList = new Map<ServerMessageType, (action: ServerMessageDetails[ServerMessageType]) => void>([
 	['HostRoom', onConnectionResponseHostRoom],
 	['JoinRoom', onConnectionResponseJoinRoom],
+	['UpdateRoom', onConnectionResponseUpdateRoom],
 	['DisconnectRoom', onConnectionResponseDisconnectRoom],
 	['ReflectRoom', onConnectionResponseReflectRoom],
 ]);
@@ -25,6 +26,13 @@ function onConnectionResponseHostRoom(action: ServerMessageDetails['HostRoom']) 
 }
 
 function onConnectionResponseJoinRoom(action: ServerMessageDetails['JoinRoom']) {
+	getState().clientStatus = 'viewer';
+	getState().room = { ...action };
+
+	triggerCoreAction('SendState', { ...getState() });
+}
+
+function onConnectionResponseUpdateRoom(action: ServerMessageDetails['UpdateRoom']) {
 	getState().clientStatus = 'viewer';
 	getState().room = { ...action };
 
