@@ -55,7 +55,7 @@ function handleState(action: CoreActionDetails['SendState']) {
 		state.refelctionIntervalReference = setInterval(collectReflection, INITIAL_REFLECTION_SNAPSHOT_INTERVAL);
 	}
 	
-	if(state.refelctionIntervalReference !== null && action.clientStatus === 'viewer') {
+	if(state.refelctionIntervalReference !== null && action.clientStatus !== 'host') {
 		clearInterval(state.refelctionIntervalReference);
 		return;
 	}
