@@ -3,6 +3,11 @@
   "name": "cowatch",
   "version": "0.0.1",
   "permissions": ["webNavigation", "scripting", "tabs"],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "cowatch@gmail.com"
+    }
+  },
 
   "content_scripts": [
     {
