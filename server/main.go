@@ -299,6 +299,10 @@ func joinRoom(client *ClientRecord, action ClientActionJoinRoom) {
 
 	log.Printf("[%s] (UpdateRoom) Viewers to be updated %+v\n", client.IPAddress, toBeUpdatedClients)
 	for _, viewer := range(toBeUpdatedClients) {
+		if(viewer.Connection == nil) {
+			continue
+		}
+
 		viewer.Connection.WriteMessage(websocket.TextMessage, updateAction)
 	}
 }
