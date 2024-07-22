@@ -33,7 +33,7 @@ function onConnectionResponseJoinRoom(action: ServerMessageDetails['JoinRoom']) 
 }
 
 function onConnectionResponseUpdateRoom(action: ServerMessageDetails['UpdateRoom']) {
-	getState().clientStatus = 'viewer';
+	if(getState().clientStatus === 'innactive') return;
 	getState().room = { ...action };
 
 	triggerCoreAction('SendState', { ...getState() });

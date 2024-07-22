@@ -284,7 +284,7 @@ func joinRoom(client *ClientRecord, action ClientActionJoinRoom) {
 	}
 
 	var updateActionObject = ServerAction{
-		ActionType: "JoinRoom",
+		ActionType: "UpdateRoom",
 		Action: string(serverActionUpdateRoom),
 		Status: "ok",
 		ErrorMessage: "",
@@ -297,6 +297,7 @@ func joinRoom(client *ClientRecord, action ClientActionJoinRoom) {
 		return;
 	}
 
+	log.Printf("[%s] (UpdateRoom) Viewers to be updated %+v\n", client.IPAddress, toBeUpdatedClients)
 	for _, viewer := range(toBeUpdatedClients) {
 		viewer.Connection.WriteMessage(websocket.TextMessage, updateAction)
 	}
