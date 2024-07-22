@@ -152,7 +152,7 @@ func disconnectClient(client IPAddress, deleteUserCallback func (client ClientRe
 
 	if roomExists && clientRecord.Type == ClientTypeHost {
 		for _, client := range(roomRecord.Viewers) {
-			deleteClient(client.IPAddress, deleteUserCallback)
+			disconnectClient(client.IPAddress, deleteUserCallback)
 		}
 
 		delete(activeRooms, roomRecord.RoomID)
