@@ -1,2 +1,10 @@
-node_modules/
+# Exports
 dist/
+*.exe
+
+# Certifications
+*.pem
+*.key
+
+# Misc
+node_modules/
