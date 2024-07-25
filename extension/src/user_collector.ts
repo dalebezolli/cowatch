@@ -3,8 +3,8 @@ import { log, LogLevel } from './log';
 import { Status, User } from './types';
 import { sleep } from './utils';
 
-const FAILED_USER_COLLECTION_REATEMPT_MS = 5000;
-const FAILED_USER_COLLECTION_REATEMPT_COUNT = 1000;
+const FAILED_USER_COLLECTION_REATEMPT_COUNT = parseInt(process.env.TOTAL_ATTEMPTS);
+const FAILED_USER_COLLECTION_REATEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
 const LOCALSTORAGE_USERNAME_KEY = 'cowatch_username';
 const DEFAULT_USERNAME = 'User';
 

@@ -22,8 +22,8 @@ import { onCoreAction, triggerUserAction } from './events';
 import { CowatchContentProps, CowatchContentInitialProps, CowatchErrorProps, CowatchHeaderProps, CowatchStatus, Room, User, CowatchContentJoinOptionsProps, CowatchContentConnectedProps, SVGIcon, IconProps, ClientState } from './types';
 import { sleep } from './utils';
 
-const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = 25;
-const FAILED_INITIALIZATION_REATEMPT_MS = 1000;
+const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
+const FAILED_INITIALIZATION_REATEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
 
 initializeRoot();
 

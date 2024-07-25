@@ -4,11 +4,11 @@ import { CoreActionDetails, ReflectionSnapshot, YoutubePlayer, YoutubePlayerStat
 import { sleep } from './utils';
 
 // TODO: Initialize with user snapshot interval
-const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = 25;
-const FAILED_INITIALIZATION_REATEMPT_MS = 1000;
+const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
+const FAILED_INITIALIZATION_REATEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
 
-const INITIAL_REFLECTION_SNAPSHOT_INTERVAL = 1000;
-const REFLECTION_RESYNC_OFFSET = 2;
+const INITIAL_REFLECTION_SNAPSHOT_INTERVAL = parseInt(process.env.DEFAULT_SNAPSHOT_INTERVAL);
+const REFLECTION_RESYNC_OFFSET = parseInt(process.env.DEFAULT_REFLECTION_RESYNC_OFFSET);
 const ID_MOVIE_PLAYER = 'movie_player';
 
 const state = {

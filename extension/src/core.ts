@@ -4,7 +4,7 @@ import { LogLevel, log } from './log';
 import { getState, initializeState } from './state';
 import { initializeConnection } from './connection';
 import { initializeConnectionMessages } from './connection_messages';
-import { initializeUserActions } from './user_actions';
+import { initializeUserActions } from './user_action_manager';
 
 onStartup();
 

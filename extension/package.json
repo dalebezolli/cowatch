@@ -17,6 +17,7 @@
     "@types/react-dom": "^18.2.22",
     "@types/web": "^0.0.142",
     "@types/webextension-polyfill": "^0.10.7",
+    "dotenv": "^16.4.5",
     "esbuild": "^0.20.2",
     "typescript": "^5.5.3",
     "webextension-polyfill": "^0.10.0"
