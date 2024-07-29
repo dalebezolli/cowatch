@@ -35,7 +35,7 @@ function handleConnectionMessage(event: MessageEvent<string>) {
 		return;
 	}
 	
-	const eventDetails = (messageData.action ? JSON.parse(messageData.action) : {}) as ServerMessageDetails[typeof messageData.actionType];
+	const eventDetails = messageData.action as ServerMessageDetails[typeof messageData.actionType];
 	eventCallbacks.get(messageData.actionType)(eventDetails);
 }
 

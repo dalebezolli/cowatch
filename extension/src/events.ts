@@ -10,8 +10,7 @@ export function triggerUserAction<T extends UserActionType>(actionType: T, actio
 	}));
 }
 
-export function onUserAction<T extends UserActionType>(actionType: T, callback: (actionDetails: UserActionDetails[T]) => void) {
-	document.addEventListener(`${USER_EVENT_NAME}:${actionType}`, (event: CustomEvent<string>) => {
+export function onUserAction<T extends UserActionType>(actionType: T, callback: (actionDetails: UserActionDetails[T]) => void) { document.addEventListener(`${USER_EVENT_NAME}:${actionType}`, (event: CustomEvent<string>) => {
 		const details = JSON.parse(event.detail) as UserActionDetails[T];
 
 		log(LogLevel.Info, `[${USER_EVENT_NAME}:${actionType}]: `, details)();
