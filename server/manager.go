@@ -51,7 +51,8 @@ func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *ht
 
 	manager.RegisterClient(client)
 	defer func() {
-		manager.DisconnectClient(client, func(client Client) bool { return true })
+		log.Printf("[%s] Client disconnected. Cleaning up resources\n", client.IPAddress)
+		manager.DisconnectClient(client)
 		manager.UnregisterClient(client)
 	}()
 
@@ -59,14 +60,12 @@ func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *ht
 
 	for {
 		if !manager.IsClientRegistered(client) {
-			log.Panicf("[%s] [ERROR] Client potentially disconnected... exiting\n", client.IPAddress)
-			return
+			break
 		}
 
 		clientRequest, errorGetClientRequest := client.GetClientRequest()
-
 		if errorGetClientRequest != nil {
-			log.Printf("[%s] [ERROR] Failed to parse action request: %s\n", client.IPAddress, errorGetClientRequest)
+			break
 		}
 
 		log.Printf("[%s] [LOG] [%s] Handling Request: %s\n", client.IPAddress, clientRequest.ActionType,  clientRequest.Action)

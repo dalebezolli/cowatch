@@ -89,10 +89,7 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 }
 
 func DisconnectRoomHandler(client *Client, manager *Manager, clientRequest string) {
-	manager.DisconnectClient(client, func(client Client) bool {
-		client.SendMessage(ServerMessageTypeDisconnectRoom, nil, "ok", "")
-		return true;
-	})
+	manager.DisconnectClient(client)
 }
 
 type RoomReflection struct {
@@ -159,7 +156,7 @@ func updateRoomUsersWithLatestChanges(room Room) {
 // Disconnects a client from a room
 // If the user is a Viewer, they are removed from the viewer list
 // If the user is a Host, they disconnect every other viewer before closing the connection
-func (manager *Manager) DisconnectClient(client *Client, deleteUserCallback func (client Client) bool) {
+func (manager *Manager) DisconnectClient(client *Client) {
 	if !manager.IsClientRegistered(client) {
 		return
 	}
@@ -170,8 +167,8 @@ func (manager *Manager) DisconnectClient(client *Client, deleteUserCallback func
 	}
 
 	if client.Type == ClientTypeHost {
-		for _, client := range(room.Viewers) {
-			manager.DisconnectClient(client, deleteUserCallback)
+		for _, viewer := range(room.Viewers) {
+			manager.DisconnectClient(viewer)
 		}
 
 		manager.UnregisterRoom(room)
@@ -181,5 +178,5 @@ func (manager *Manager) DisconnectClient(client *Client, deleteUserCallback func
 	}
 
 	client.UpdateClientDetails(Client{ Type: ClientTypeInnactive, RoomID: "" })
-	deleteUserCallback(*client)
+	client.SendMessage(ServerMessageTypeDisconnectRoom, nil, "ok", "")
 }
