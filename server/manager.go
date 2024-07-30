@@ -1,11 +1,11 @@
 package main
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/cowatch/logger"
 )
 
 type Manager struct {
@@ -33,11 +33,11 @@ func NewManager() *Manager {
 }
 
 func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *http.Request) {
-	websocketConnection, websocektUpgradeError := manager.upgrader.Upgrade(writer, request, nil)
+	websocketConnection, errorUpgradeWebsocket := manager.upgrader.Upgrade(writer, request, nil)
 	clientAddress := websocketConnection.RemoteAddr()
 
-	if websocektUpgradeError != nil {
-		log.Panicf("[%s] [ERROR] Failed to establish websocket channel: %\n", clientAddress, websocektUpgradeError)
+	if errorUpgradeWebsocket != nil {
+		logger.Error("[%s] Failed to establish websocket channel: %s\n", clientAddress, errorUpgradeWebsocket)
 		return
 	}
 
@@ -45,18 +45,18 @@ func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *ht
 
 	client := NewClient(websocketConnection)
 	if manager.IsClientRegistered(client) {
-		log.Panicf("[%s] [ERROR] A connection with this ip address already exists... exiting\n", clientAddress)
+		logger.Error("[%s] A connection with this ip address already exists... exiting\n", clientAddress)
 		return
 	}
 
 	manager.RegisterClient(client)
 	defer func() {
-		log.Printf("[%s] Client disconnected. Cleaning up resources\n", client.IPAddress)
+		logger.Info("[%s] Client disconnected, cleaning up resources\n", client.IPAddress)
 		manager.DisconnectClient(client)
 		manager.UnregisterClient(client)
 	}()
 
-	log.Printf("[%s] [LOG] Established connection\n", websocketConnection.RemoteAddr())
+	logger.Info("[%s] Established connection\n", websocketConnection.RemoteAddr())
 
 	for {
 		if !manager.IsClientRegistered(client) {
@@ -68,11 +68,11 @@ func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *ht
 			break
 		}
 
-		log.Printf("[%s] [LOG] [%s] Handling Request: %s\n", client.IPAddress, clientRequest.ActionType,  clientRequest.Action)
+		logger.Info("[%s] [%s] Handling Request: %s\n", client.IPAddress, clientRequest.ActionType,  clientRequest.Action)
 		userActionHandler, foundHandler := manager.clientRequestHandlers[clientRequest.ActionType]
 
 		if !foundHandler {
-			log.Printf("[%s] [ERROR] [%s] Handler for requested action does not exist.\n", client.IPAddress, clientRequest.ActionType)
+			logger.Error("[%s] [%s] Handler for requested action does not exist\n", client.IPAddress, clientRequest.ActionType)
 			continue
 		}
 

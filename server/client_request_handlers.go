@@ -2,7 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"log"
+
+	"github.com/cowatch/logger"
 )
 
 type ClientRequestType string
@@ -27,7 +28,7 @@ func HostRoomHandler(client *Client, manager *Manager, clientRequest string) {
 	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &requestHostRoom)
 
 	if errorParsingRequest != nil {
-		log.Panicf("[%s] [ERROR] [HostRoom] Bad json: %s\n", client.IPAddress, errorParsingRequest);
+		logger.Error("[%s] [HostRoom] Bad json: %s\n", client.IPAddress, errorParsingRequest);
 		return
 	}
 
@@ -35,13 +36,13 @@ func HostRoomHandler(client *Client, manager *Manager, clientRequest string) {
 	manager.RegisterRoom(room)
 	client.UpdateClientDetails(Client{ Name: requestHostRoom.Name, Image: requestHostRoom.Image, RoomID: room.RoomID, Type: ClientTypeHost })
 
-	log.Printf("[%s] [LOG] [HostRoom] Created room with id: %s\n", client.IPAddress, room.RoomID)
+	logger.Info("[%s] [HostRoom] Created room with id: %s\n", client.IPAddress, room.RoomID)
 
 	filteredRoom := room.GetFilteredRoom()
 	serverMessageHostRoom, serverMessageHostRoomMarshalError := json.Marshal(filteredRoom)
 
 	if serverMessageHostRoomMarshalError != nil {
-		log.Panicf("[%s] [ERROR] [HostRoom] Bad Json definition: %s\n", client.IPAddress, serverMessageHostRoomMarshalError)
+		logger.Error("[%s] [HostRoom] Bad Json definition: %s\n", client.IPAddress, serverMessageHostRoomMarshalError)
 		return
 	}
 
@@ -59,7 +60,7 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 
 	errorParsingAction := json.Unmarshal([]byte(clientRequest), &requestJoinRoom)
 	if errorParsingAction != nil {
-		log.Panicf("[%s] [ERROR] [JoinRoom] Bad json: %s\n", client.IPAddress, errorParsingAction);
+		logger.Error("[%s] [JoinRoom] Bad json: %s\n", client.IPAddress, errorParsingAction);
 		return
 	}
 
@@ -67,12 +68,12 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 
 	room := manager.GetRegisteredRoom(client.RoomID)
 	if room == nil {
-		log.Printf("[%s] [ERROR] [JoinRoom] No room found with id: %s\n", client.IPAddress, requestJoinRoom.RoomID)
+		logger.Error("[%s] [JoinRoom] No room found with id: %s\n", client.IPAddress, requestJoinRoom.RoomID)
 		return
 	}
 
 	if len(room.Viewers) >= DEFAULT_ROOM_SIZE {
-		log.Printf("[%s] [ERROR] [JoinRoom] Not enough space to join room with id: %s\n", client.IPAddress, requestJoinRoom.RoomID)
+		logger.Error("[%s] [JoinRoom] Not enough space to join room with id: %s\n", client.IPAddress, requestJoinRoom.RoomID)
 		return
 	}
 
@@ -81,7 +82,7 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 	filteredRoom := room.GetFilteredRoom()
 	serverMessageJoinRoom, serverMessageJoinRoomMarshalError := json.Marshal(filteredRoom)
 	if serverMessageJoinRoomMarshalError != nil {
-		log.Panicf("[%s] [ERROR] [JoinRoom] Bad Json definition: %s\n", client.IPAddress, serverMessageJoinRoomMarshalError)
+		logger.Error("[%s] [JoinRoom] Bad Json definition: %s\n", client.IPAddress, serverMessageJoinRoomMarshalError)
 	}
 
 	client.SendMessage(ServerMessageTypeJoinRoom, serverMessageJoinRoom, "ok", "")
@@ -106,24 +107,24 @@ func ReflectRoomHandler(client *Client, manager *Manager, clientRequest string) 
 	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &reflection)
 
 	if errorParsingRequest != nil {
-		log.Panicf("[%s] [ERROR] [ReflectRoom] Bad json: %s\n", client.IPAddress, errorParsingRequest);
+		logger.Error("[%s] [ReflectRoom] Bad json: %s\n", client.IPAddress, errorParsingRequest);
 		return
 	}
 
 	if client.Type != ClientTypeHost {
-		log.Printf("[%s] [ERROR] [ReflectRoom] User isn't a host\n", client.IPAddress)
+		logger.Error("[%s] [ReflectRoom] User isn't a host\n", client.IPAddress)
 		return;
 	}
 
 	room := manager.GetRegisteredRoom(client.RoomID)
 	if room == nil {
-		log.Printf("[%s] [ERROR] [ReflectRoom] No room found with id: %s\n", client.IPAddress, client.RoomID)
+		logger.Error("[%s] [ReflectRoom] No room found with id: %s\n", client.IPAddress, client.RoomID)
 		return
 	}
 
 	serverMessageReflection, serverMessageMarshalError := json.Marshal(reflection)
 	if serverMessageMarshalError != nil {
-		log.Printf("[%s] [ERROR] [ReflectRoom] Bad json: %s\n", client.IPAddress, client.RoomID)
+		logger.Error("[%s] [ReflectRoom] Bad json: %s\n", client.IPAddress, client.RoomID)
 		return
 	}
 
@@ -137,7 +138,7 @@ func updateRoomUsersWithLatestChanges(room Room) {
 
 	serverMessageUpdateRoom, serverMessageUpdateRoomMarshalError := json.Marshal(filteredRoom)
 	if serverMessageUpdateRoomMarshalError != nil {
-		log.Panicf("[ERROR] [UpdateRoom] Bad Json definition: %s\n", serverMessageUpdateRoomMarshalError)
+		logger.Error("[UpdateRoom] Bad Json definition: %s\n", serverMessageUpdateRoomMarshalError)
 	}
 
 	if room.Host.Connection != nil {

@@ -1,14 +1,29 @@
 package main
 
 import (
-	"log"
 	"net/http"
+	"os"
+	"time"
+
+	"github.com/cowatch/logger"
 )
 
 const address = ":8080"
 
 func main() {
-	log.Printf("Starting coWATCH on: %s\n", address)
+	logFileName := "log_" + time.Now().Format("2006_01_02_15_04_05.000")
+	logFile, errorOpeningLogFile := os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
+	
+	if errorOpeningLogFile != nil {
+		logger.Error("Failed to setup logger: %s\n", errorOpeningLogFile)
+	} else {
+		logger.Info("Started logging to %s\n", logFileName)
+		logger.SetLogFile(logFile)
+
+		defer logFile.Close()
+	}
+
+	logger.Info("Starting cowatch on %s\n", address)
 
 	managerInstance := NewManager()
 
@@ -31,6 +46,6 @@ func main() {
 	http.HandleFunc("/reflect", managerInstance.HandleConnection)
 
 	if err := http.ListenAndServe(address, nil) ; err != nil {
-		log.Fatalf("Error while serving:\n%s", err);
+		logger.Error("Failed while serving: %s\n", err)
 	}
 }

@@ -3,9 +3,9 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"net"
 
+	"github.com/cowatch/logger"
 	"github.com/gorilla/websocket"
 )
 
@@ -104,7 +104,7 @@ func (client *Client) SendMessage(messageType ServerMessageType, messageDetails 
 }
 
 func (client *Client) UpdateClientDetails(newData Client) {
-	log.Printf("[%s] [LOG] Updating existing details {%s, %s, %s} with {%s, %s, %s}\n", client.IPAddress, client.Name, client.Image, client.Email, newData.Name, newData.Image, newData.Email);
+	logger.Info("[%s] Updating existing details {%s, %s, %s} with {%s, %s, %s}\n", client.IPAddress, client.Name, client.Image, client.Email, newData.Name, newData.Image, newData.Email);
 
 	if newData.Name != "" {
 		client.Name = newData.Name
