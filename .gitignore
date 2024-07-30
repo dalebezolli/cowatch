@@ -9,3 +9,4 @@ dist/
 # Misc
 node_modules/
 .env
+log_*
