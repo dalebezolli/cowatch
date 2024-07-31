@@ -42,11 +42,12 @@ func HostRoomHandler(client *Client, manager *Manager, clientRequest string) {
 	serverMessageHostRoom, serverMessageHostRoomMarshalError := json.Marshal(filteredRoom)
 
 	if serverMessageHostRoomMarshalError != nil {
-		logger.Error("[%s] [HostRoom] Bad Json definition: %s\n", client.IPAddress, serverMessageHostRoomMarshalError)
+		logger.Error("[%s] [HostRoom] Failed to marshal host room response: %s\n", client.IPAddress, serverMessageHostRoomMarshalError)
+		client.SendMessage(ServerMessageTypeHostRoom, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
 		return
 	}
 
-	client.SendMessage(ServerMessageTypeHostRoom, serverMessageHostRoom, "ok", "")
+	client.SendMessage(ServerMessageTypeHostRoom, serverMessageHostRoom, ServerMessageStatusOk, "")
 }
 
 type ClientRequestJoinRoom struct {
@@ -60,7 +61,8 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 
 	errorParsingAction := json.Unmarshal([]byte(clientRequest), &requestJoinRoom)
 	if errorParsingAction != nil {
-		logger.Error("[%s] [JoinRoom] Bad json: %s\n", client.IPAddress, errorParsingAction);
+		logger.Error("[%s] [JoinRoom] User sent bad json object: %s\n", client.IPAddress, errorParsingAction);
+		client.SendMessage(ServerMessageTypeJoinRoom, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
 		return
 	}
 
@@ -68,12 +70,14 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 
 	room := manager.GetRegisteredRoom(client.RoomID)
 	if room == nil {
-		logger.Error("[%s] [JoinRoom] No room found with id: %s\n", client.IPAddress, requestJoinRoom.RoomID)
+		logger.Info("[%s] [JoinRoom] No room found with id: %s\n", client.IPAddress, requestJoinRoom.RoomID)
+		client.SendMessage(ServerMessageTypeJoinRoom, nil, ServerMessageStatusError, ServerErrorMessageNoRoom)
 		return
 	}
 
 	if len(room.Viewers) >= DEFAULT_ROOM_SIZE {
-		logger.Error("[%s] [JoinRoom] Not enough space to join room with id: %s\n", client.IPAddress, requestJoinRoom.RoomID)
+		logger.Info("[%s] [JoinRoom] Not enough space to join room with id: %s\n", client.IPAddress, requestJoinRoom.RoomID)
+		client.SendMessage(ServerMessageTypeJoinRoom, nil, ServerMessageStatusError, ServerErrorMessageFullRoom)
 		return
 	}
 
@@ -82,10 +86,11 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 	filteredRoom := room.GetFilteredRoom()
 	serverMessageJoinRoom, serverMessageJoinRoomMarshalError := json.Marshal(filteredRoom)
 	if serverMessageJoinRoomMarshalError != nil {
-		logger.Error("[%s] [JoinRoom] Bad Json definition: %s\n", client.IPAddress, serverMessageJoinRoomMarshalError)
+		logger.Error("[%s] [JoinRoom] Failed to marshal host room response: %s\n", client.IPAddress, serverMessageJoinRoomMarshalError)
+		client.SendMessage(ServerMessageTypeJoinRoom, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
 	}
 
-	client.SendMessage(ServerMessageTypeJoinRoom, serverMessageJoinRoom, "ok", "")
+	client.SendMessage(ServerMessageTypeJoinRoom, serverMessageJoinRoom, ServerMessageStatusOk, "")
 	updateRoomUsersWithLatestChanges(*room)
 }
 
@@ -107,29 +112,33 @@ func ReflectRoomHandler(client *Client, manager *Manager, clientRequest string) 
 	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &reflection)
 
 	if errorParsingRequest != nil {
-		logger.Error("[%s] [ReflectRoom] Bad json: %s\n", client.IPAddress, errorParsingRequest);
+		logger.Error("[%s] [ReflectRoom] User sent bad json object: %s\n", client.IPAddress, errorParsingRequest);
+		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
 		return
 	}
 
 	if client.Type != ClientTypeHost {
-		logger.Error("[%s] [ReflectRoom] User isn't a host\n", client.IPAddress)
+		logger.Info("[%s] [ReflectRoom] User isn't a host\n", client.IPAddress)
+		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageUserNotHost)
 		return;
 	}
 
 	room := manager.GetRegisteredRoom(client.RoomID)
 	if room == nil {
-		logger.Error("[%s] [ReflectRoom] No room found with id: %s\n", client.IPAddress, client.RoomID)
+		logger.Info("[%s] [ReflectRoom] No room found with id: %s\n", client.IPAddress, client.RoomID)
+		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageNoRoom)
 		return
 	}
 
 	serverMessageReflection, serverMessageMarshalError := json.Marshal(reflection)
 	if serverMessageMarshalError != nil {
 		logger.Error("[%s] [ReflectRoom] Bad json: %s\n", client.IPAddress, client.RoomID)
+		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
 		return
 	}
 
 	for _, viewer := range(room.Viewers) {
-		viewer.SendMessage(ServerMessageTypeReflectRoom, serverMessageReflection, "ok", "")
+		viewer.SendMessage(ServerMessageTypeReflectRoom, serverMessageReflection, ServerMessageStatusOk, "")
 	}
 }
 
@@ -138,11 +147,16 @@ func updateRoomUsersWithLatestChanges(room Room) {
 
 	serverMessageUpdateRoom, serverMessageUpdateRoomMarshalError := json.Marshal(filteredRoom)
 	if serverMessageUpdateRoomMarshalError != nil {
-		logger.Error("[UpdateRoom] Bad Json definition: %s\n", serverMessageUpdateRoomMarshalError)
+		logger.Error("[UpdateRoom] Bad json: %s\n", serverMessageUpdateRoomMarshalError)
 	}
 
 	if room.Host.Connection != nil {
-		room.Host.SendMessage(ServerMessageTypeUpdateRoom, serverMessageUpdateRoom, "ok", "")
+
+		if serverMessageUpdateRoomMarshalError != nil {
+			room.Host.SendMessage(ServerMessageTypeUpdateRoom, serverMessageUpdateRoom, ServerMessageStatusOk, "")
+		} else {
+			room.Host.SendMessage(ServerMessageTypeUpdateRoom, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
+		}
 	}
 
 	for _, viewer := range(room.Viewers) {
@@ -150,7 +164,11 @@ func updateRoomUsersWithLatestChanges(room Room) {
 			continue
 		}
 
-		viewer.SendMessage(ServerMessageTypeUpdateRoom, serverMessageUpdateRoom, "ok", "")
+		if serverMessageUpdateRoomMarshalError != nil {
+			viewer.SendMessage(ServerMessageTypeUpdateRoom, serverMessageUpdateRoom, ServerMessageStatusOk, "")
+		} else {
+			viewer.SendMessage(ServerMessageTypeUpdateRoom, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
+		}
 	}
 }
 
@@ -179,5 +197,5 @@ func (manager *Manager) DisconnectClient(client *Client) {
 	}
 
 	client.UpdateClientDetails(Client{ Type: ClientTypeInnactive, RoomID: "" })
-	client.SendMessage(ServerMessageTypeDisconnectRoom, nil, "ok", "")
+	client.SendMessage(ServerMessageTypeDisconnectRoom, nil, ServerMessageStatusOk, "")
 }

@@ -78,14 +78,34 @@ const (
 	ServerMessageTypeReflectRoom = "ReflectRoom"
 )
 
+type ServerMessageStatus string
+const (
+	ServerMessageStatusOk	 = "ok"
+	ServerMessageStatusError = "error"
+)
+
+type ServerErrorMessage string
+const (
+	ServerErrorMessageInternalServerError = "Internal server error."
+	ServerErrorMessageBadJson = "Bad request, please upgrade your extension to a newer version"
+
+	ServerErrorMessageNoRoom = "The room you're trying to join doesn't exist"
+	ServerErrorMessageFullRoom = "The room you're trying to join is full"
+
+	ServerErrorMessageUserNotHost = "You're not a host"
+)
+
 type ServerMessage struct {
 	MessageType		ServerMessageType	`json:"actionType"`
 	MessageDetails	json.RawMessage		`json:"action"`
-	Status			string				`json:"status"`			// Returns 'ok' or 'error'
-	ErrorMessage	string				`json:"errorMessage"`	// Populated only if there's an error
+	Status			ServerMessageStatus	`json:"status"`			// Returns 'ok' or 'error'
+	ErrorMessage	ServerErrorMessage	`json:"errorMessage"`	// Populated only if there's an error
 }
 
-func (client *Client) SendMessage(messageType ServerMessageType, messageDetails json.RawMessage, status string, errorMessage string) error {
+func (client *Client) SendMessage(
+	messageType ServerMessageType, messageDetails json.RawMessage,
+	status ServerMessageStatus, errorMessage ServerErrorMessage,
+) error {
 	var serverMessage = ServerMessage{
 		MessageType:	messageType,
 		MessageDetails: messageDetails,
