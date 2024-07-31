@@ -8,8 +8,6 @@ export enum Status {
 	ERROR = 'error',
 };
 
-export type Pronouns = 'he/him' | 'she/her' | "he/hen't" | 'they/he?'
-
 export type ServerStatus = 'connecting' | 'connected' | 'failed';
 export type ClientStatus = 'innactive' | 'host' | 'viewer';
 
@@ -19,7 +17,7 @@ export type ClientState = {
 	connection: WebSocket | null,
 
 	user: User | null,
-	room: Room | null, // epeidh xreiazesai ena domatio gia na kaneis sex
+	room: Room | null,
 }
 
 export type User = {
@@ -28,10 +26,17 @@ export type User = {
 };
 
 export type Room = {
-	pronouns?: Pronouns,
 	roomID: string,
 	host: User,
 	viewers: User[],
+}
+
+export type ResolutionStrategy = 'returnToInitial' | 'stayOnCurrentView';
+
+export type ConnectionError = {
+	error: string,
+	actionType: ServerMessageType,
+	resolutionStrategy: ResolutionStrategy,
 }
 
 export interface UserEvent extends CustomEvent {
@@ -58,6 +63,7 @@ export type UserActionDetails = {
 export type CoreActionType = keyof CoreActionDetails;
 export type CoreActionDetails = {
 	'SendState': ClientState,
+	'SendError': ConnectionError,
 	'UpdatePlayer': {},
 };
 
@@ -71,7 +77,7 @@ export type ServerMessageDetails = {
 	'ReflectRoom': ReflectionSnapshot,
 };
 
-export type ServerEvent = {
+export type ServerMessage = {
 	actionType: ServerMessageType,
 	action: string,
 	status: Status,

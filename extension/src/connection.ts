@@ -1,6 +1,7 @@
 import { log, LogLevel } from './log';
 import { sleep } from './utils'
-import { ClientState, ServerEvent, ServerMessageDetails, ServerMessageType, Status } from './types';
+import { ClientState, ResolutionStrategy, ServerMessage, ServerMessageDetails, ServerMessageType, Status } from './types';
+import { triggerCoreAction } from './events';
 
 const FAILED_CONNECTION_TOTAL_ATTEMPT = parseInt(process.env.TOTAL_ATTEMPTS);
 const FAILED_CONNECTION_REATTEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
@@ -27,11 +28,28 @@ export function onConnectionMessage(messageType: ServerMessageType, messageCallb
 }
 
 function handleConnectionMessage(event: MessageEvent<string>) {
-	const messageData = JSON.parse(event.data) as ServerEvent;
+	const messageData = JSON.parse(event.data) as ServerMessage;
 	log(LogLevel.Info, `[ServerMessage:${messageData.actionType}]`, messageData.action)();
 
 	if(messageData.status !== Status.OK) {
 		log(LogLevel.Error, `[ServerMessage:${messageData.actionType}]`, messageData.errorMessage)();
+		// TODO: These aren't user readable messages thus we'll need to implement a mapping between the errors
+
+		let resolutionStrategy: ResolutionStrategy = 'returnToInitial';
+
+		if(messageData.actionType === 'JoinRoom') {
+			resolutionStrategy = 'stayOnCurrentView';
+		}
+
+		if(messageData.actionType === 'ReflectRoom') {
+			resolutionStrategy = 'stayOnCurrentView';
+		}
+
+		triggerCoreAction('SendError', {
+			error: messageData.errorMessage,
+			actionType: messageData.actionType,
+			resolutionStrategy,
+		})
 		return;
 	}
 	

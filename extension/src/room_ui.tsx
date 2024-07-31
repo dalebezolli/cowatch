@@ -19,7 +19,7 @@ import {
 
 import { LogLevel, log } from './log';
 import { onCoreAction, triggerUserAction } from './events';
-import { CowatchContentProps, CowatchContentInitialProps, CowatchErrorProps, CowatchHeaderProps, CowatchStatus, Room, User, CowatchContentJoinOptionsProps, CowatchContentConnectedProps, SVGIcon, IconProps, ClientState } from './types';
+import { CowatchContentProps, CowatchContentInitialProps, CowatchErrorProps, CowatchHeaderProps, CowatchStatus, Room, User, CowatchContentJoinOptionsProps, CowatchContentConnectedProps, SVGIcon, IconProps, ClientState, ConnectionError } from './types';
 import { sleep } from './utils';
 
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
@@ -77,6 +77,7 @@ function Cowatch() {
 
 	React.useEffect(() => {
 		onCoreAction('SendState', handleState);
+		onCoreAction('SendError', handleError);
 
 		triggerUserAction('GetState', {});
 	}, []);
@@ -94,6 +95,33 @@ function Cowatch() {
 		setRoomState(state.room);
 	}
 
+	function handleError(connectionError: ConnectionError) {
+		setError(connectionError.error);
+
+		if(connectionError.resolutionStrategy === 'returnToInitial') {
+			setContentStatus(CowatchStatus.Initial);
+		}
+
+		if(connectionError.resolutionStrategy === 'stayOnCurrentView') {
+			switch(connectionError.actionType) {
+				case 'HostRoom':
+					setContentStatus(CowatchStatus.Initial);
+					break;
+				case 'JoinRoom':
+					setContentStatus(CowatchStatus.Join);
+					break;
+				case 'UpdateRoom':
+					setContentStatus(CowatchStatus.Connected);
+					break;
+				case 'DisconnectRoom':
+					setContentStatus(CowatchStatus.Initial);
+					break;
+				case 'ReflectRoom':
+					setContentStatus(CowatchStatus.Connected);
+					break;
+			}
+		}
+	}
 
 	const toggleClose = () => setOpen(!open);
 
