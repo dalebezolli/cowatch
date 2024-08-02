@@ -84,6 +84,7 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 	room.AddViewer(client)
 
 	filteredRoom := room.GetFilteredRoom()
+
 	serverMessageJoinRoom, serverMessageJoinRoomMarshalError := json.Marshal(filteredRoom)
 	if serverMessageJoinRoomMarshalError != nil {
 		logger.Error("[%s] [JoinRoom] Failed to marshal host room response: %s\n", client.IPAddress, serverMessageJoinRoomMarshalError)
@@ -151,8 +152,7 @@ func updateRoomUsersWithLatestChanges(room Room) {
 	}
 
 	if room.Host.Connection != nil {
-
-		if serverMessageUpdateRoomMarshalError != nil {
+		if serverMessageUpdateRoomMarshalError == nil {
 			room.Host.SendMessage(ServerMessageTypeUpdateRoom, serverMessageUpdateRoom, ServerMessageStatusOk, "")
 		} else {
 			room.Host.SendMessage(ServerMessageTypeUpdateRoom, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
@@ -164,7 +164,7 @@ func updateRoomUsersWithLatestChanges(room Room) {
 			continue
 		}
 
-		if serverMessageUpdateRoomMarshalError != nil {
+		if serverMessageUpdateRoomMarshalError == nil {
 			viewer.SendMessage(ServerMessageTypeUpdateRoom, serverMessageUpdateRoom, ServerMessageStatusOk, "")
 		} else {
 			viewer.SendMessage(ServerMessageTypeUpdateRoom, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
