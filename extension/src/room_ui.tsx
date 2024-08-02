@@ -65,8 +65,8 @@ function attemptToInitializeRoot(): boolean {
 
 function Cowatch() {
 	const [open, setOpen] = React.useState(true);
-	const [error, setError] = React.useState('');
-	const [contentStatus, setContentStatus] = React.useState(CowatchStatus.Initial);
+	const [errors, setErrors] = React.useState<string[]>([]);
+	const [contentStatus, setContentStatus] = React.useState<CowatchStatus>(CowatchStatus.Initial);
 	const [roomState, setRoomState] = React.useState<Room>({
 		roomID: '',
 		host: null,
@@ -96,7 +96,13 @@ function Cowatch() {
 	}
 
 	function handleError(connectionError: ConnectionError) {
-		setError(connectionError.error);
+		setErrors(prevError => {
+			if(connectionError.error === prevError[prevError.length - 1]) {
+				return prevError;
+			}
+
+			return [...prevError, connectionError.error]
+		});
 
 		if(connectionError.resolutionStrategy === 'returnToInitial') {
 			setContentStatus(CowatchStatus.Initial);
@@ -123,6 +129,10 @@ function Cowatch() {
 		}
 	}
 
+	function onCloseError() {
+		setErrors(prevError => prevError.slice(0,prevError.length - 1));
+	}
+
 	const toggleClose = () => setOpen(!open);
 
 	if(!open) return <button className={cowatchButton + ' ' + cowatchButtonFull} onClick={toggleClose}>Show Room</button>
@@ -130,7 +140,7 @@ function Cowatch() {
 	return (
 		<section id='cowatch-root' className={cowatchRoot}>
 			<CowatchHeader onPressClose={toggleClose} />
-			<CowatchError error={error} onClose={() => setError('')} />
+			<CowatchError error={errors[errors.length - 1]} onClose={onCloseError} />
 			<CowatchContent
 				room={roomState}
 				user={userState}
