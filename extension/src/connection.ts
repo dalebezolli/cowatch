@@ -1,11 +1,12 @@
 import { log, LogLevel } from './log';
 import { sleep } from './utils'
 import { ClientState, ResolutionStrategy, ServerMessage, ServerMessageDetails, ServerMessageType, Status } from './types';
-import { triggerCoreAction } from './events';
+import { triggerCoreAction, triggerUserAction } from './events';
 
 const FAILED_CONNECTION_TOTAL_ATTEMPT = parseInt(process.env.TOTAL_ATTEMPTS);
 const FAILED_CONNECTION_REATTEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
 const COWATCH_OWL_SERVER_WEBSOCKET = `ws://${process.env.ADDRESS_OWL}/${process.env.ENDPOINT_WS_OWL}`;
+const PING_REQUEST_INTERVAL = parseInt(process.env.PING_REQUEST_INTERVAL);
 
 const eventCallbacks = new Map<ServerMessageType, (action: ServerMessageDetails[ServerMessageType]) => void>();
 
@@ -18,9 +19,15 @@ export async function initializeConnection(clientState: ClientState) {
 		return;
 	}
 
-	log(LogLevel.Debug, 'Successfully created connection to server.')();
+	log(LogLevel.Info, 'Successfully created connection to server.')();
 	clientState.connection!.addEventListener('message', handleConnectionMessage);
 	clientState.serverStatus = 'connected';
+	
+	// Initial call to figure out request rtt
+	triggerUserAction('Ping', { timestamp: Date.now() });
+	window.setInterval(() => {
+		triggerUserAction('Ping', { timestamp: Date.now() });
+	}, PING_REQUEST_INTERVAL * 1000);
 }
 
 export function onConnectionMessage(messageType: ServerMessageType, messageCallback: (action: ServerMessageDetails[ServerMessageType]) => void){

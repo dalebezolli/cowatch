@@ -41,7 +41,10 @@ func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *ht
 		return
 	}
 
-	defer websocketConnection.Close()
+	defer func() {
+		logger.Debug("Closing connection")
+		websocketConnection.Close()
+	}()
 
 	client := NewClient(websocketConnection)
 	if manager.IsClientRegistered(client) {
@@ -130,4 +133,5 @@ func (manager *Manager) setupUserActionHandlers() {
 	manager.clientRequestHandlers[ClientActionTypeJoinRoom] = JoinRoomHandler
 	manager.clientRequestHandlers[ClientActionTypeDisconnectRoom] = DisconnectRoomHandler
 	manager.clientRequestHandlers[ClientActionTypeSendReflection] = ReflectRoomHandler
+	manager.clientRequestHandlers[ClientActionTypePing] = PingHandler
 }

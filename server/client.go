@@ -76,6 +76,7 @@ const (
 	ServerMessageTypeUpdateRoom = "UpdateRoom"
 	ServerMessageTypeDisconnectRoom = "DisconnectRoom"
 	ServerMessageTypeReflectRoom = "ReflectRoom"
+	ServerMessageTypePong = "Pong"
 )
 
 type ServerMessageStatus string

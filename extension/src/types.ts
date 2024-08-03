@@ -16,9 +16,16 @@ export type ClientState = {
 	clientStatus: ClientStatus,
 	connection: WebSocket | null,
 
+	pingTimestamp: Timestamp,
+	rtt: number,
+	droppedPingRequestCount: number,
+	pingTimeoutId: number,
+
 	user: User | null,
 	room: Room | null,
 }
+
+export type Timestamp = number;
 
 export type User = {
 	name: string,
@@ -58,6 +65,9 @@ export type UserActionDetails = {
 	},
 	'DisconnectRoom': {},
 	'SendReflection': ReflectionSnapshot,
+	'Ping': {
+		timestamp: Timestamp,
+	},
 };
 
 export type CoreActionType = keyof CoreActionDetails;
@@ -67,7 +77,6 @@ export type CoreActionDetails = {
 	'UpdatePlayer': {},
 };
 
-// TODO: Update once the server's JSONs are sent appropriately
 export type ServerMessageType = keyof ServerMessageDetails;
 export type ServerMessageDetails = {
 	'HostRoom': Room,
@@ -75,6 +84,9 @@ export type ServerMessageDetails = {
 	'UpdateRoom': Room,
 	'DisconnectRoom': {},
 	'ReflectRoom': ReflectionSnapshot,
+	'Pong': {
+		timestamp: Timestamp,
+	},
 };
 
 export type ServerMessage = {

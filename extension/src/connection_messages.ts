@@ -1,8 +1,9 @@
-import { Room, ServerMessageDetails, ServerMessageType } from './types';
+import { ServerMessageDetails, ServerMessageType } from './types';
 
 import { getState } from './state';
 import { triggerCoreAction } from './events';
 import { onConnectionMessage } from './connection';
+import { log, LogLevel } from './log';
 
 const actionList = new Map<ServerMessageType, (action: ServerMessageDetails[ServerMessageType]) => void>([
 	['HostRoom', onConnectionResponseHostRoom],
@@ -10,6 +11,7 @@ const actionList = new Map<ServerMessageType, (action: ServerMessageDetails[Serv
 	['UpdateRoom', onConnectionResponseUpdateRoom],
 	['DisconnectRoom', onConnectionResponseDisconnectRoom],
 	['ReflectRoom', onConnectionResponseReflectRoom],
+	['Pong', onConnectionResponsePong],
 ]);
 
 export function initializeConnectionMessages() {
@@ -52,4 +54,14 @@ function onConnectionResponseDisconnectRoom(action: ServerMessageDetails['Discon
 
 function onConnectionResponseReflectRoom(action: ServerMessageDetails['ReflectRoom']) {
 	triggerCoreAction('UpdatePlayer', action);
+}
+
+function onConnectionResponsePong(action: ServerMessageDetails['Pong']) {
+	getState().rtt = Math.abs(action.timestamp - getState().pingTimestamp);
+	clearTimeout(getState().pingTimeoutId);
+
+	getState().pingTimestamp = 0;
+	getState().pingTimeoutId = 0;
+	getState().droppedPingRequestCount = 0;
+	log(LogLevel.Info, `RTT: ${getState().rtt}`)();
 }

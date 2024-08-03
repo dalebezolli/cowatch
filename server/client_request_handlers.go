@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/cowatch/logger"
 )
@@ -18,6 +19,7 @@ const (
 	ClientActionTypeJoinRoom = "JoinRoom"
 	ClientActionTypeDisconnectRoom = "DisconnectRoom"
 	ClientActionTypeSendReflection = "SendReflection"
+	ClientActionTypePing = "Ping"
 )
 
 type ClientRequestHostRoom ClientRecord
@@ -141,6 +143,36 @@ func ReflectRoomHandler(client *Client, manager *Manager, clientRequest string) 
 	for _, viewer := range(room.Viewers) {
 		viewer.SendMessage(ServerMessageTypeReflectRoom, serverMessageReflection, ServerMessageStatusOk, "")
 	}
+}
+
+type Timestamp int64
+
+type PingPong struct {
+	Timestamp Timestamp `json:"timestamp"`
+}
+
+func PingHandler(client *Client, manager *Manager, clientRequest string) {
+	var ping PingPong
+	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &ping)
+
+	if errorParsingRequest != nil {
+		logger.Error("[%s] [Ping] User sent bad json object: %s\n", client.IPAddress, errorParsingRequest);
+		client.SendMessage(ServerMessageTypePong, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
+		return
+	}
+
+	pong := PingPong{
+		Timestamp: Timestamp(time.Now().UnixMilli()),
+	}
+
+	serverMessagePong, serverMessageMarshalError := json.Marshal(pong)
+	if serverMessageMarshalError != nil {
+		logger.Error("[%s] [Ping] Bad json: %s\n", client.IPAddress, client.RoomID)
+		client.SendMessage(ServerMessageTypePong, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
+		return
+	}
+
+	client.SendMessage(ServerMessageTypePong, serverMessagePong, ServerMessageStatusOk, "")
 }
 
 func updateRoomUsersWithLatestChanges(room Room) {

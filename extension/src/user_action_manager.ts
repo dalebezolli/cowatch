@@ -4,6 +4,9 @@ import { LogLevel, log } from "./log";
 import { getState } from "./state";
 import { Status, UserActionDetails, UserActionType } from "./types";
 
+const EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER = parseInt(process.env.EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER);
+const TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST = parseInt(process.env.TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST);
+
 const actionList = new Map<UserActionType, (action: UserActionDetails[UserActionType]) => void>([
 	['CollectUser', onClientCollectUser],
 	['GetState', onClientGetState],
@@ -11,6 +14,7 @@ const actionList = new Map<UserActionType, (action: UserActionDetails[UserAction
 	['JoinRoom', onClientRequestJoinRoom],
 	['DisconnectRoom', onClientRequestDisconnectRoom],
 	['SendReflection', onClientSendReflection],
+	['Ping', onClientSendPing],
 ]);
 
 export function initializeUserActions() {
@@ -86,6 +90,43 @@ function onClientSendReflection(action: UserActionDetails['SendReflection']) {
 	}
 
 	getState().connection!.send(JSON.stringify({ actionType: 'SendReflection', action: JSON.stringify({ ...action }) }));
+}
+
+function onClientSendPing(action: UserActionDetails['Ping']) {
+	if(getState().serverStatus !== 'connected') {
+		log(LogLevel.Error, 'No server connection found!')();
+		return;
+	}
+
+	if(!getState().user) {
+		log(LogLevel.Error, 'No user setup before privileged action, aborting...')();
+		return;
+	}
+
+	getState().pingTimestamp = action.timestamp;
+
+	let worstCaseExpectedResponseTime: number;
+	if(getState().rtt === 0) {
+		worstCaseExpectedResponseTime = 10 * 1000;
+	} else {
+		worstCaseExpectedResponseTime = EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER * getState().rtt;
+	}
+
+	getState().connection!.send(JSON.stringify({ actionType: 'Ping', action: JSON.stringify({ ...action }) }));
+	log(LogLevel.Debug, "Expected response time (ms):", worstCaseExpectedResponseTime)();
+	getState().pingTimeoutId = window.setTimeout(() => {
+		getState().droppedPingRequestCount++;
+		log(LogLevel.Warn, `[Ping] Request ${getState().droppedPingRequestCount} failed to get a response`)();
+
+		if(getState().droppedPingRequestCount >= TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST) {
+			triggerCoreAction('SendError', {
+				error: 'Server could not be reached',
+				actionType: 'Pong',
+				resolutionStrategy: 'returnToInitial'
+			});
+			log(LogLevel.Error, `[Ping] Could not create a connection between the server`)();
+		}
+	}, worstCaseExpectedResponseTime);
 }
 
 function injectRoomUI() {
