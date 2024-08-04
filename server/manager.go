@@ -41,10 +41,7 @@ func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *ht
 		return
 	}
 
-	defer func() {
-		logger.Debug("Closing connection")
-		websocketConnection.Close()
-	}()
+	defer websocketConnection.Close()
 
 	client := NewClient(websocketConnection)
 	if manager.IsClientRegistered(client) {
