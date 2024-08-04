@@ -5,7 +5,7 @@ import { triggerCoreAction, triggerClientMessage } from './events';
 
 const FAILED_CONNECTION_TOTAL_ATTEMPT = parseInt(process.env.TOTAL_ATTEMPTS);
 const FAILED_CONNECTION_REATTEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
-const COWATCH_OWL_SERVER_WEBSOCKET = `ws://${process.env.ADDRESS_OWL}/${process.env.ENDPOINT_WS_OWL}`;
+const COWATCH_OWL_SERVER_WEBSOCKET = `${process.env.ADDRESS_OWL}/${process.env.ENDPOINT_WS_OWL}`;
 const PING_REQUEST_INTERVAL = parseInt(process.env.PING_REQUEST_INTERVAL);
 
 const eventCallbacks = new Map<ServerMessageType, (action: ServerMessageDetails[ServerMessageType]) => void>();
