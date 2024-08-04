@@ -13,7 +13,7 @@ export function initializeState() {
 		droppedPingRequestCount: 0,
 		pingTimeoutId: 0,
 
-		user: null,
+		client: null,
 		room: null,
 	};
 }

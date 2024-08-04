@@ -4,7 +4,7 @@ import { LogLevel, log } from './log';
 import { getState, initializeState } from './state';
 import { initializeConnection } from './connection';
 import { initializeConnectionMessages } from './connection_messages';
-import { initializeUserActions } from './user_action_manager';
+import { initializeClientMessageHandlers } from './client_message_handlers';
 
 onStartup();
 
@@ -20,19 +20,19 @@ async function onStartup() {
 	}
 
 	log(LogLevel.Info, 'Preparing event handlers...')();
-	initializeUserActions();
+	initializeClientMessageHandlers();
 	initializeConnectionMessages();
 
-	log(LogLevel.Info, 'Injecting user info collector...')();
-	collectUser();
+	log(LogLevel.Info, 'Injecting client info collector...')();
+	collectClient();
 	connectYoutubeInterceptor();
 }
 
-function collectUser() {
-	const domScriptUserCollector = document.createElement('script');
-	domScriptUserCollector.src = browser.runtime.getURL('./user_collector.js');
-	domScriptUserCollector.defer = true;
-	document.head.append(domScriptUserCollector);
+function collectClient() {
+	const domScriptClientCollector = document.createElement('script');
+	domScriptClientCollector.src = browser.runtime.getURL('./client_collector.js');
+	domScriptClientCollector.defer = true;
+	document.head.append(domScriptClientCollector);
 }
 
 function connectYoutubeInterceptor() {

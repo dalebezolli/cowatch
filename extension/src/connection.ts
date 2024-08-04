@@ -1,7 +1,7 @@
 import { log, LogLevel } from './log';
 import { sleep } from './utils'
 import { ClientState, ResolutionStrategy, ServerMessage, ServerMessageDetails, ServerMessageType, Status } from './types';
-import { triggerCoreAction, triggerUserAction } from './events';
+import { triggerCoreAction, triggerClientMessage } from './events';
 
 const FAILED_CONNECTION_TOTAL_ATTEMPT = parseInt(process.env.TOTAL_ATTEMPTS);
 const FAILED_CONNECTION_REATTEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
@@ -24,9 +24,9 @@ export async function initializeConnection(clientState: ClientState) {
 	clientState.serverStatus = 'connected';
 	
 	// Initial call to figure out request rtt
-	triggerUserAction('Ping', { timestamp: Date.now() });
+	triggerClientMessage('Ping', { timestamp: Date.now() });
 	window.setInterval(() => {
-		triggerUserAction('Ping', { timestamp: Date.now() });
+		triggerClientMessage('Ping', { timestamp: Date.now() });
 	}, PING_REQUEST_INTERVAL * 1000);
 }
 
@@ -40,8 +40,6 @@ function handleConnectionMessage(event: MessageEvent<string>) {
 
 	if(messageData.status !== Status.OK) {
 		log(LogLevel.Error, `[ServerMessage:${messageData.actionType}]`, messageData.errorMessage)();
-		// TODO: These aren't user readable messages thus we'll need to implement a mapping between the errors
-
 		let resolutionStrategy: ResolutionStrategy = 'returnToInitial';
 
 		if(messageData.actionType === 'JoinRoom') {

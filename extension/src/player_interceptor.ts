@@ -1,9 +1,8 @@
-import { onCoreAction, triggerUserAction } from './events';
+import { onCoreAction, triggerClientMessage } from './events';
 import { LogLevel, log } from './log';
 import { CoreActionDetails, ReflectionSnapshot, YoutubePlayer, YoutubePlayerState } from './types';
 import { sleep } from './utils';
 
-// TODO: Initialize with user snapshot interval
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
 const FAILED_INITIALIZATION_REATEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
 
@@ -57,7 +56,7 @@ function handleState(action: CoreActionDetails['SendState']) {
 	if(state.refelctionIntervalReference == null && action.clientStatus === 'host') {
 		state.refelctionIntervalReference = setInterval(() => {
 			collectReflection();
-			triggerUserAction('SendReflection', state.reflectionSnapshot);
+			triggerClientMessage('SendReflection', state.reflectionSnapshot);
 		}, INITIAL_REFLECTION_SNAPSHOT_INTERVAL);
 	}
 	

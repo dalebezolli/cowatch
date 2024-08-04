@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "cowatch",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "permissions": ["webNavigation", "scripting", "tabs"],
 
   "content_scripts": [
@@ -12,7 +12,7 @@
   ],
 
   "web_accessible_resources": [{
-    "resources": ["room_ui.css", "room_ui.js", "player_interceptor.js", "user_collector.js"],
+    "resources": ["room_ui.css", "room_ui.js", "player_interceptor.js", "client_collector.js"],
     "matches": ["https://www.youtube.com/*"]
   }]
 }

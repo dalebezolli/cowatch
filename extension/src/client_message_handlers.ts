@@ -1,105 +1,118 @@
+/**
+ * Client Message Handlers
+ *
+ * This file contains the handlers for client sent events which are managed by core.
+ * A client message handler that also sends data to the server starts with "onClientMessageRequest"
+ * instead of the "onClientMessage" prefix
+ */
+
 import * as browser from 'webextension-polyfill';
-import { onUserAction, triggerCoreAction } from "./events";
+import { onClientMessage, triggerCoreAction } from "./events";
 import { LogLevel, log } from "./log";
 import { getState } from "./state";
-import { Status, UserActionDetails, UserActionType } from "./types";
+import { Status, ClientMessageDetails, ClientMessageType } from "./types";
 
 const EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER = parseInt(process.env.EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER);
 const TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST = parseInt(process.env.TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST);
 
-const actionList = new Map<UserActionType, (action: UserActionDetails[UserActionType]) => void>([
-	['CollectUser', onClientCollectUser],
-	['GetState', onClientGetState],
-	['HostRoom', onClientRequestHostRoom],
-	['JoinRoom', onClientRequestJoinRoom],
-	['DisconnectRoom', onClientRequestDisconnectRoom],
-	['SendReflection', onClientSendReflection],
-	['Ping', onClientSendPing],
+/**
+ * Contains client actions that core is listening and responding to
+ */
+const actionList = new Map<ClientMessageType, (action: ClientMessageDetails[ClientMessageType]) => void>([
+	['CollectClient', onClientMessageCollectClient],
+	['GetState', onClientMessageGetState],
+
+	['HostRoom', onClientMessageRequestHostRoom],
+	['JoinRoom', onClientMessageRequestJoinRoom],
+	['DisconnectRoom', onClientMessageRequestDisconnectRoom],
+	['SendReflection', onClientMessageRequestReflection],
+
+	['Ping', onClientMessageRequestPing],
 ]);
 
-export function initializeUserActions() {
+export function initializeClientMessageHandlers() {
 	for(const [action, callback] of actionList) {
-		onUserAction(action, callback);
+		onClientMessage(action, callback);
 	}
 }
 
-function onClientCollectUser(action: UserActionDetails['CollectUser']) {
+function onClientMessageCollectClient(action: ClientMessageDetails['CollectClient']) {
 	if(action.status === Status.ERROR) return;
 
-	getState().user = { ...action.user };
+	getState().client = { ...action.client };
 
 	log(LogLevel.Info, 'Injecting room ui...')();
 	injectRoomUI();
 }
 
-function onClientGetState() {
+function onClientMessageGetState() {
 	triggerCoreAction('SendState', { ...getState() });
 }
 
-function onClientRequestHostRoom() {
+function onClientMessageRequestHostRoom() {
 	if(getState().serverStatus !== 'connected') {
 		log(LogLevel.Error, 'No server connection found!')();
 		return;
 	}
 
-	if(!getState().user) {
-		log(LogLevel.Error, 'No user setup before privileged action, aborting...')();
+	if(!getState().client) {
+		log(LogLevel.Error, 'No client setup before privileged action, aborting...')();
 		return;
 	}
 
-	getState().connection!.send(JSON.stringify({ actionType: 'HostRoom', action: JSON.stringify({ ...getState().user! }) }));
+	getState().connection!.send(JSON.stringify({ actionType: 'HostRoom', action: JSON.stringify({ ...getState().client! }) }));
 }
 
-function onClientRequestJoinRoom(action: UserActionDetails['JoinRoom']) {
+function onClientMessageRequestJoinRoom(action: ClientMessageDetails['JoinRoom']) {
 	if(getState().serverStatus !== 'connected') {
 		log(LogLevel.Error, 'No server connection found!')();
 		return;
 	}
 
-	if(!getState().user) {
-		log(LogLevel.Error, 'No user setup before privileged action, aborting...')();
+	if(!getState().client) {
+		log(LogLevel.Error, 'No client setup before privileged action, aborting...')();
 		return;
 	}
 
-	getState().connection!.send(JSON.stringify({ actionType: 'JoinRoom', action: JSON.stringify({ ...getState().user!, roomID: action.roomID }) }));
+	getState().connection!.send(JSON.stringify({ actionType: 'JoinRoom', action: JSON.stringify({ ...getState().client!, roomID: action.roomID }) }));
 }
 
-function onClientRequestDisconnectRoom() {
+function onClientMessageRequestDisconnectRoom() {
 	if(getState().serverStatus !== 'connected') {
 		log(LogLevel.Error, 'No server connection found!')();
 		return;
 	}
 
-	if(!getState().user) {
-		log(LogLevel.Error, 'No user setup before privileged action, aborting...')();
+	if(!getState().client) {
+		log(LogLevel.Error, 'No client setup before privileged action, aborting...')();
 		return;
 	}
 
 	getState().connection!.send(JSON.stringify({ actionType: 'DisconnectRoom', action: ''}));
 }
 
-function onClientSendReflection(action: UserActionDetails['SendReflection']) {
+function onClientMessageRequestReflection(action: ClientMessageDetails['SendReflection']) {
 	if(getState().serverStatus !== 'connected') {
 		log(LogLevel.Error, 'No server connection found!')();
 		return;
 	}
 
-	if(!getState().user) {
-		log(LogLevel.Error, 'No user setup before privileged action, aborting...')();
+	if(!getState().client) {
+		log(LogLevel.Error, 'No client setup before privileged action, aborting...')();
 		return;
 	}
 
 	getState().connection!.send(JSON.stringify({ actionType: 'SendReflection', action: JSON.stringify({ ...action }) }));
 }
 
-function onClientSendPing(action: UserActionDetails['Ping']) {
+function onClientMessageRequestPing(action: ClientMessageDetails['Ping']) {
 	if(getState().serverStatus !== 'connected') {
 		log(LogLevel.Error, 'No server connection found!')();
 		return;
 	}
 
-	if(!getState().user) {
-		log(LogLevel.Error, 'No user setup before privileged action, aborting...')();
+	if(!getState().client) {
+		log(LogLevel.Error, 'No client setup before privileged action, aborting...')();
 		return;
 	}
 

@@ -28,7 +28,7 @@ func NewManager() *Manager {
 		clientRequestHandlers: make(map[ClientRequestType]ClientRequestHandler),
 	}
 
-	manager.setupUserActionHandlers()
+	manager.setupClientActionHandlers()
 	return manager
 }
 
@@ -72,14 +72,14 @@ func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *ht
 		}
 
 		logger.Info("[%s] [%s] Handling Request: %s\n", client.IPAddress, clientRequest.ActionType,  clientRequest.Action)
-		userActionHandler, foundHandler := manager.clientRequestHandlers[clientRequest.ActionType]
+		clientActionHandler, foundHandler := manager.clientRequestHandlers[clientRequest.ActionType]
 
 		if !foundHandler {
 			logger.Error("[%s] [%s] Handler for requested action does not exist\n", client.IPAddress, clientRequest.ActionType)
 			continue
 		}
 
-		userActionHandler(client, manager, clientRequest.Action)
+		clientActionHandler(client, manager, clientRequest.Action)
 	}
 }
 
@@ -128,7 +128,7 @@ func (manager *Manager) GetRegisteredRoom(roomID RoomID) *Room {
 	}
 }
 
-func (manager *Manager) setupUserActionHandlers() {
+func (manager *Manager) setupClientActionHandlers() {
 	manager.clientRequestHandlers[ClientActionTypeHostRoom] = HostRoomHandler
 	manager.clientRequestHandlers[ClientActionTypeJoinRoom] = JoinRoomHandler
 	manager.clientRequestHandlers[ClientActionTypeDisconnectRoom] = DisconnectRoomHandler

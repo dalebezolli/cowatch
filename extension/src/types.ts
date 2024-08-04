@@ -21,21 +21,21 @@ export type ClientState = {
 	droppedPingRequestCount: number,
 	pingTimeoutId: number,
 
-	user: User | null,
+	client: Client | null,
 	room: Room | null,
 }
 
 export type Timestamp = number;
 
-export type User = {
+export type Client = {
 	name: string,
 	image: string,
 };
 
 export type Room = {
 	roomID: string,
-	host: User,
-	viewers: User[],
+	host: Client,
+	viewers: Client[],
 }
 
 export type ResolutionStrategy = 'returnToInitial' | 'stayOnCurrentView';
@@ -46,16 +46,11 @@ export type ConnectionError = {
 	resolutionStrategy: ResolutionStrategy,
 }
 
-export interface UserEvent extends CustomEvent {
-	actionType: UserActionType,
-	action: any,
-}
-
-export type UserActionType = keyof UserActionDetails;
-export type UserActionDetails = {
-	'CollectUser': {
+export type ClientMessageType = keyof ClientMessageDetails;
+export type ClientMessageDetails = {
+	'CollectClient': {
 		status: Status,
-		user: User,
+		client: Client,
 		errorMessage?: string,
 	},
 	'GetState': {},
@@ -145,25 +140,25 @@ export type CowatchErrorProps = {
 
 export type CowatchContentProps = {
 	room: Room,
-	user: User,
+	client: Client,
 	status: CowatchStatus,
 	onChangeStatus: (status: CowatchStatus) => void,
 };
 
 export type CowatchContentInitialProps = {
-	user: User,
+	client: Client,
 	onHost: () => void,
 	onJoin: () => void,
 };
 
 export type CowatchContentJoinOptionsProps = {
-	user: User,
+	client: Client,
 	onJoin: (roomID: string) => void,
 	onBack: () => void,
 };
 
 export type CowatchContentConnectedProps = {
-	user: User,
+	client: Client,
 	room: Room,
 	onDisconnect: () => void,
 	onSettings: () => void,

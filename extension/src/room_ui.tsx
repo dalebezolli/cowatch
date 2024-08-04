@@ -18,8 +18,8 @@ import {
 } from './room_ui.module.css';
 
 import { LogLevel, log } from './log';
-import { onCoreAction, triggerUserAction } from './events';
-import { CowatchContentProps, CowatchContentInitialProps, CowatchErrorProps, CowatchHeaderProps, CowatchStatus, Room, User, CowatchContentJoinOptionsProps, CowatchContentConnectedProps, SVGIcon, IconProps, ClientState, ConnectionError } from './types';
+import { onCoreAction, triggerClientMessage } from './events';
+import { CowatchContentProps, CowatchContentInitialProps, CowatchErrorProps, CowatchHeaderProps, CowatchStatus, Room, Client, CowatchContentJoinOptionsProps, CowatchContentConnectedProps, SVGIcon, IconProps, ClientState, ConnectionError } from './types';
 import { sleep } from './utils';
 
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
@@ -73,19 +73,19 @@ function Cowatch() {
 		viewers: [],
 	});
 
-	const [userState, setUserState] = React.useState<User>({ name: '', image: '' });
+	const [clientState, setClientState] = React.useState<Client>({ name: '', image: '' });
 
 	React.useEffect(() => {
 		onCoreAction('SendState', handleState);
 		onCoreAction('SendError', handleError);
 
-		triggerUserAction('GetState', {});
+		triggerClientMessage('GetState', {});
 	}, []);
 
 	function handleState(state: ClientState) {
 		log(LogLevel.Info, 'Sent state:', state)();
 
-		setUserState(state.user);
+		setClientState(state.client);
 		if(state.clientStatus === 'innactive') {
 			setContentStatus(CowatchStatus.Initial);
 		} else {
@@ -143,7 +143,7 @@ function Cowatch() {
 			<CowatchError error={errors[errors.length - 1]} onClose={onCloseError} />
 			<CowatchContent
 				room={roomState}
-				user={userState}
+				client={clientState}
 				status={contentStatus}
 				onChangeStatus={setContentStatus}
 			/>
@@ -176,7 +176,7 @@ function CowatchError({ error, onClose }: CowatchErrorProps) {
 	);
 }
 
-function CowatchContent({ room, user, status, onChangeStatus }: CowatchContentProps) {
+function CowatchContent({ room, client, status, onChangeStatus }: CowatchContentProps) {
 	let selectedContent: React.ReactElement;
 	
 	function onInitial() {
@@ -185,7 +185,7 @@ function CowatchContent({ room, user, status, onChangeStatus }: CowatchContentPr
 
 	function onRequestHost() {
 		onChangeStatus(CowatchStatus.Loading);
-		triggerUserAction('HostRoom', {});
+		triggerClientMessage('HostRoom', {});
 	}
 
 	function onRequestJoinOptions() {
@@ -194,12 +194,12 @@ function CowatchContent({ room, user, status, onChangeStatus }: CowatchContentPr
 
 	function onRequestJoin(roomID: string) {
 		onChangeStatus(CowatchStatus.Loading);
-		triggerUserAction('JoinRoom', { roomID: roomID });
+		triggerClientMessage('JoinRoom', { roomID: roomID });
 	}
 
 	function onRequestDisconnect() {
 		onChangeStatus(CowatchStatus.Loading);
-		triggerUserAction('DisconnectRoom', {});
+		triggerClientMessage('DisconnectRoom', {});
 	}
 
 	function onSettings() {
@@ -208,10 +208,10 @@ function CowatchContent({ room, user, status, onChangeStatus }: CowatchContentPr
 
 	switch(status) {
 		case CowatchStatus.Initial:
-			selectedContent = <CowatchContentInitial user={user} onHost={onRequestHost} onJoin={onRequestJoinOptions} />;
+			selectedContent = <CowatchContentInitial client={client} onHost={onRequestHost} onJoin={onRequestJoinOptions} />;
 			break;
 		case CowatchStatus.Join:
-			selectedContent = <CowatchContentJoinOptions user={user} onJoin={onRequestJoin} onBack={onInitial} />;
+			selectedContent = <CowatchContentJoinOptions client={client} onJoin={onRequestJoin} onBack={onInitial} />;
 			break;
 		case CowatchStatus.HostOptions:
 			selectedContent = <CowatchContentHostOptions />;
@@ -220,7 +220,7 @@ function CowatchContent({ room, user, status, onChangeStatus }: CowatchContentPr
 			selectedContent = <CowatchContentOptions />;
 			break;
 		case CowatchStatus.Connected:
-			selectedContent = <CowatchContentConnected user={user} room={room} onDisconnect={onRequestDisconnect} onSettings={onSettings} />;
+			selectedContent = <CowatchContentConnected client={client} room={room} onDisconnect={onRequestDisconnect} onSettings={onSettings} />;
 			break;
 		case CowatchStatus.Loading:
 			selectedContent = (
@@ -238,11 +238,11 @@ function CowatchContent({ room, user, status, onChangeStatus }: CowatchContentPr
 	);
 }
 
-function CowatchContentInitial({ user, onHost, onJoin }: CowatchContentInitialProps) {
+function CowatchContentInitial({ client, onHost, onJoin }: CowatchContentInitialProps) {
 	return (
 		<section className={cowatchContentFlexCenter}>
 			<div className={cowatchIconPrompt}>
-				<img className={cowatchIconPromptIcon} src={user.image} />
+				<img className={cowatchIconPromptIcon} src={client.image} />
 				<p>Start by hosting or joining a room</p>
 			</div>
 
@@ -267,13 +267,13 @@ function CowatchContentInitial({ user, onHost, onJoin }: CowatchContentInitialPr
 	);
 }
 
-function CowatchContentJoinOptions({ user, onJoin, onBack }: CowatchContentJoinOptionsProps) {
+function CowatchContentJoinOptions({ client, onJoin, onBack }: CowatchContentJoinOptionsProps) {
 	const subRoomIDRef = React.useRef<HTMLInputElement>();
 
 	return (
 		<section className={cowatchContentFlexCenter}>
 			<div className={cowatchIconPrompt}>
-				<img className={cowatchIconPromptIcon} src={user.image} />
+				<img className={cowatchIconPromptIcon} src={client.image} />
 				<p>Type room's ID</p>
 			</div>
 
@@ -314,7 +314,7 @@ function CowatchContentHostOptions() {
 	);
 }
 
-function CowatchContentConnected({ user, room, onDisconnect, onSettings }: CowatchContentConnectedProps) {
+function CowatchContentConnected({ client, room, onDisconnect, onSettings }: CowatchContentConnectedProps) {
 	return (
 		<section className={cowatchContentConnected}>
 			<ul className={cowatchContentJoinlistContainer} >
@@ -332,10 +332,10 @@ function CowatchContentConnected({ user, room, onDisconnect, onSettings }: Cowat
 				}
 
 				{
-					room.viewers.length ? room.viewers.map(user => (
-					<li key={user.name} className={cowatchContentClientContainer}>
-							<img src={user.image} className={cowatchCOntentClientIcon} />
-							{user.name}
+					room.viewers.length ? room.viewers.map(client => (
+					<li key={client.name} className={cowatchContentClientContainer}>
+							<img src={client.image} className={cowatchCOntentClientIcon} />
+							{client.name}
 
 							<button className={cowatchButtonRound + ' ' + cowatchFlexPushRight}>
 								<Icon icon={SVGIcon.Kebab} size={18} />
@@ -348,9 +348,9 @@ function CowatchContentConnected({ user, room, onDisconnect, onSettings }: Cowat
 
 			<section className={cowatchContentConnectedClient}>
 				<section className={cowatchContentConnectedClientDetails}>
-					<img src={user.image} className={cowatchContentConnectedClientDetailsIcon} />
+					<img src={client.image} className={cowatchContentConnectedClientDetailsIcon} />
 					<div className={cowatchContentConnectedClientDetailsText}>
-						<p className={cowatchContentConnectedClientDetailsUsername}>{user.name}</p>
+						<p className={cowatchContentConnectedClientDetailsUsername}>{client.name}</p>
 						<div className={cowatchContentConnectedClientDetailsRoom}><Icon icon={SVGIcon.Group} size={16} /> <p>{room.roomID}</p></div>
 					</div>
 				</section>

@@ -32,9 +32,9 @@ await esbuild.build({
 });
 
 await esbuild.build({
-	entryPoints: ['./src/user_collector.ts'],
+	entryPoints: ['./src/client_collector.ts'],
 	bundle: true,
-	outfile: outpath + 'user_collector.js',
+	outfile: outpath + 'client_collector.js',
 	define: definitions,
 	format: 'esm'
 });

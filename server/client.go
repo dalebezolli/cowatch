@@ -93,7 +93,7 @@ const (
 	ServerErrorMessageNoRoom = "The room you're trying to join doesn't exist"
 	ServerErrorMessageFullRoom = "The room you're trying to join is full"
 
-	ServerErrorMessageUserNotHost = "You're not a host"
+	ServerErrorMessageClientNotHost = "You're not a host"
 )
 
 type ServerMessage struct {

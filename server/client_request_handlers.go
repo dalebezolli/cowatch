@@ -63,7 +63,7 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 
 	errorParsingAction := json.Unmarshal([]byte(clientRequest), &requestJoinRoom)
 	if errorParsingAction != nil {
-		logger.Error("[%s] [JoinRoom] User sent bad json object: %s\n", client.IPAddress, errorParsingAction);
+		logger.Error("[%s] [JoinRoom] Client sent bad json object: %s\n", client.IPAddress, errorParsingAction);
 		client.SendMessage(ServerMessageTypeJoinRoom, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
 		return
 	}
@@ -94,7 +94,7 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 	}
 
 	client.SendMessage(ServerMessageTypeJoinRoom, serverMessageJoinRoom, ServerMessageStatusOk, "")
-	updateRoomUsersWithLatestChanges(*room)
+	updateRoomClientsWithLatestChanges(*room)
 }
 
 func DisconnectRoomHandler(client *Client, manager *Manager, clientRequest string) {
@@ -115,14 +115,14 @@ func ReflectRoomHandler(client *Client, manager *Manager, clientRequest string) 
 	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &reflection)
 
 	if errorParsingRequest != nil {
-		logger.Error("[%s] [ReflectRoom] User sent bad json object: %s\n", client.IPAddress, errorParsingRequest);
+		logger.Error("[%s] [ReflectRoom] Client sent bad json object: %s\n", client.IPAddress, errorParsingRequest);
 		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
 		return
 	}
 
 	if client.Type != ClientTypeHost {
-		logger.Info("[%s] [ReflectRoom] User isn't a host\n", client.IPAddress)
-		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageUserNotHost)
+		logger.Info("[%s] [ReflectRoom] Client isn't a host\n", client.IPAddress)
+		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageClientNotHost)
 		return;
 	}
 
@@ -156,7 +156,7 @@ func PingHandler(client *Client, manager *Manager, clientRequest string) {
 	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &ping)
 
 	if errorParsingRequest != nil {
-		logger.Error("[%s] [Ping] User sent bad json object: %s\n", client.IPAddress, errorParsingRequest);
+		logger.Error("[%s] [Ping] Client sent bad json object: %s\n", client.IPAddress, errorParsingRequest);
 		client.SendMessage(ServerMessageTypePong, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
 		return
 	}
@@ -175,7 +175,7 @@ func PingHandler(client *Client, manager *Manager, clientRequest string) {
 	client.SendMessage(ServerMessageTypePong, serverMessagePong, ServerMessageStatusOk, "")
 }
 
-func updateRoomUsersWithLatestChanges(room Room) {
+func updateRoomClientsWithLatestChanges(room Room) {
 	filteredRoom := room.GetFilteredRoom()
 
 	serverMessageUpdateRoom, serverMessageUpdateRoomMarshalError := json.Marshal(filteredRoom)
@@ -205,8 +205,8 @@ func updateRoomUsersWithLatestChanges(room Room) {
 }
 
 // Disconnects a client from a room
-// If the user is a Viewer, they are removed from the viewer list
-// If the user is a Host, they disconnect every other viewer before closing the connection
+// If the client is a Viewer, they are removed from the viewer list
+// If the client is a Host, they disconnect every other viewer before closing the connection
 func (manager *Manager) DisconnectClient(client *Client) {
 	if !manager.IsClientRegistered(client) {
 		return
@@ -225,7 +225,7 @@ func (manager *Manager) DisconnectClient(client *Client) {
 		manager.UnregisterRoom(room)
 	} else if client.Type == ClientTypeViewer {
 		room.RemoveViewer(client)
-		updateRoomUsersWithLatestChanges(*room)
+		updateRoomClientsWithLatestChanges(*room)
 	}
 
 	client.UpdateClientDetails(Client{ Type: ClientTypeInnactive, RoomID: "" })
