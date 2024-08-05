@@ -85,9 +85,14 @@ func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) {
 		client.SendMessage(ServerMessageTypeAuthorize, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
 		return
 	}
-	client.SendMessage(ServerMessageTypeAuthorize, serverMessageAuthorize, ServerMessageStatusOk, "")
 
-	// TODO: Attempt to resync if user is already in a room
+	client.SendMessage(ServerMessageTypeAuthorize, serverMessageAuthorize, ServerMessageStatusOk, "")
+	
+	if client.Type != ClientTypeHost && client.Type != ClientTypeViewer {
+		return
+	}
+
+	JoinRoomHandler(client, manager, "{ \"roomID\": \"" + string(client.RoomID) + "\" }" )
 }
 
 func HostRoomHandler(client *Client, manager *Manager, clientRequest string) {
@@ -123,9 +128,7 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 		return
 	}
 
-	client.UpdateClientDetails(Client{ Type: ClientTypeViewer, RoomID: requestJoinRoom.RoomID })
-
-	room := manager.GetRegisteredRoom(client.RoomID)
+	room := manager.GetRegisteredRoom(requestJoinRoom.RoomID)
 	if room == nil {
 		logger.Info("[%s] [JoinRoom] No room found with id: %s\n", client.IPAddress, requestJoinRoom.RoomID)
 		client.SendMessage(ServerMessageTypeJoinRoom, nil, ServerMessageStatusError, ServerErrorMessageNoRoom)
@@ -138,11 +141,36 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 		return
 	}
 
-	room.AddViewer(client)
+	logger.Debug("[%s] [JoinRoom] Adding user of type: %d\n", client.IPAddress, client.Type)
+	if client.Type == ClientTypeHost {
+		room.Host = client
+	}
+
+	if client.Type == ClientTypeViewer {
+		for _, possibleOldClient := range(room.Viewers) {
+			if client.PrivateToken == possibleOldClient.PrivateToken {
+				room.RemoveViewer(possibleOldClient)
+			}
+		}
+	}
+	
+	if client.Type == ClientTypeInnactive || client.Type == ClientTypeViewer {
+		client.Type = ClientTypeViewer
+		room.AddViewer(client)
+	}
+
+	client.UpdateClientDetails(Client{ Type: client.Type, RoomID: requestJoinRoom.RoomID })
 
 	filteredRoom := room.GetFilteredRoom()
 
-	serverMessageJoinRoom, serverMessageJoinRoomMarshalError := json.Marshal(filteredRoom)
+	serverMessageJoinRoom, serverMessageJoinRoomMarshalError := json.Marshal(struct {
+		Room RoomRecord `json:"room"`
+		Type ClientType `json:"clientType"`
+	}{
+		Room: filteredRoom,
+		Type: client.Type,
+	})
+
 	if serverMessageJoinRoomMarshalError != nil {
 		logger.Error("[%s] [JoinRoom] Failed to marshal host room response: %s\n", client.IPAddress, serverMessageJoinRoomMarshalError)
 		client.SendMessage(ServerMessageTypeJoinRoom, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)

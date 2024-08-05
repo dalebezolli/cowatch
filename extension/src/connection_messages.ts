@@ -1,4 +1,4 @@
-import { ServerMessageDetails, ServerMessageType } from './types';
+import { ClientStatus, ServerMessageDetails, ServerMessageType } from './types';
 
 import { getState } from './state';
 import { triggerCoreAction } from './events';
@@ -44,8 +44,12 @@ function onConnectionResponseHostRoom(action: ServerMessageDetails['HostRoom']) 
 }
 
 function onConnectionResponseJoinRoom(action: ServerMessageDetails['JoinRoom']) {
-	getState().clientStatus = 'viewer';
-	getState().room = { ...action };
+	let clientType: ClientStatus = 'viewer';
+
+	if(action.clientType === 1) clientType = 'host';
+
+	getState().clientStatus = clientType;
+	getState().room = { ...action.room };
 
 	triggerCoreAction('SendState', { ...getState() });
 }

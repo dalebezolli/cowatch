@@ -82,7 +82,10 @@ export type ServerMessageType = keyof ServerMessageDetails;
 export type ServerMessageDetails = {
 	'Authorize': AuthorizedClient,
 	'HostRoom': Room,
-	'JoinRoom': Room,
+	'JoinRoom': {
+		room: Room,
+		clientType: number,
+	},
 	'UpdateRoom': Room,
 	'DisconnectRoom': {},
 	'ReflectRoom': ReflectionSnapshot,
