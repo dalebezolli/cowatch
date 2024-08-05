@@ -10,10 +10,11 @@ import * as browser from 'webextension-polyfill';
 import { onClientMessage, triggerCoreAction } from "./events";
 import { LogLevel, log } from "./log";
 import { getState } from "./state";
-import { Status, ClientMessageDetails, ClientMessageType, AuthorizedClient } from "./types";
+import { Status, ClientMessageDetails, ClientMessageType } from "./types";
 
 const EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER = parseInt(process.env.EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER);
 const TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST = parseInt(process.env.TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST);
+const LOCALSTORAGE_PRIVATETOKEN_KEY = 'cowatch_token';
 
 /**
  * Contains client actions that core is listening and responding to
@@ -56,7 +57,9 @@ function onClientMessageRequestAuhtorize() {
 		return;
 	}
 
-	getState().connection!.send(JSON.stringify({ actionType: 'Authorize', action: JSON.stringify({ ...getState().client, privateToken: '' }) }));
+	const cachedToken = localStorage.getItem(LOCALSTORAGE_PRIVATETOKEN_KEY) ?? '';
+
+	getState().connection!.send(JSON.stringify({ actionType: 'Authorize', action: JSON.stringify({ ...getState().client, privateToken: cachedToken }) }));
 }
 
 function onClientMessageRequestHostRoom() {

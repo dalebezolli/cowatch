@@ -5,6 +5,10 @@ import { triggerCoreAction } from './events';
 import { onConnectionMessage } from './connection';
 import { log, LogLevel } from './log';
 
+const LOCALSTORAGE_USERNAME_KEY = 'cowatch_username';
+const LOCALSTORAGE_IMAGE_KEY = 'cowatch_image';
+const LOCALSTORAGE_PRIVATETOKEN_KEY = 'cowatch_token';
+
 const actionList = new Map<ServerMessageType, (action: ServerMessageDetails[ServerMessageType]) => void>([
 	['Authorize', onConnectionResponseAuthorize],
 	['HostRoom', onConnectionResponseHostRoom],
@@ -23,9 +27,11 @@ export function initializeConnectionMessages() {
 
 function onConnectionResponseAuthorize(action: ServerMessageDetails['Authorize']) {
 	getState().clientStatus = 'innactive';
-	getState().client = {
-		...action
-	};
+	getState().client = { ...action };
+
+	localStorage.setItem(LOCALSTORAGE_USERNAME_KEY, action.name);
+	localStorage.setItem(LOCALSTORAGE_IMAGE_KEY, action.image);
+	localStorage.setItem(LOCALSTORAGE_PRIVATETOKEN_KEY, action.privateToken);
 
 	triggerCoreAction('SendState', { ...getState() });
 }

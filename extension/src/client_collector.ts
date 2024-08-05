@@ -6,6 +6,7 @@ import { sleep } from './utils';
 const FAILED_CLIENT_COLLECTION_REATEMPT_COUNT = parseInt(process.env.TOTAL_ATTEMPTS || '0');
 const FAILED_USER_COLLECTION_REATEMPT_MS = parseInt(process.env.REATTEMPT_TIME || '0');
 const LOCALSTORAGE_USERNAME_KEY = 'cowatch_username';
+const LOCALSTORAGE_IMAGE_KEY = 'cowatch_image';
 const DEFAULT_USERNAME = 'User';
 
 asyncCollectUser();
@@ -49,10 +50,12 @@ function collectYoutubeClient(client: Client): boolean {
 		clientDefinedUsername = clientDefinedUsername.trim();
 	}
 
-	localStorage.setItem(LOCALSTORAGE_USERNAME_KEY, clientDefinedUsername);
 
 	client.name = domUsername?.textContent ?? clientDefinedUsername;
-	client.image = domImage.getElementsByTagName('img')[0].src;
+	client.image = localStorage.getItem(LOCALSTORAGE_IMAGE_KEY) ?? domImage.getElementsByTagName('img')[0].src;
+
+	localStorage.setItem(LOCALSTORAGE_USERNAME_KEY, client.name);
+	localStorage.setItem(LOCALSTORAGE_IMAGE_KEY, client.image);
 
 	return true;
 }
