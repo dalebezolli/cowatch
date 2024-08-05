@@ -71,8 +71,7 @@ function syncPlayer(reflection: ReflectionSnapshot) {
 	collectReflection();
 
 	if(reflection.id !== state.reflectionSnapshot.id) {
-		// TODO: Limit the rate at which this is running as a video cannot load fast enough.
-		state.moviePlayer.loadVideoById(reflection.id);
+		location.assign(`https://youtube.com/watch?v=${reflection.id}`);
 	}
 	
 	if(reflection.state !== state.reflectionSnapshot.state) {
