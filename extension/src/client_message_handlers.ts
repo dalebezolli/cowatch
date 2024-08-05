@@ -10,7 +10,7 @@ import * as browser from 'webextension-polyfill';
 import { onClientMessage, triggerCoreAction } from "./events";
 import { LogLevel, log } from "./log";
 import { getState } from "./state";
-import { Status, ClientMessageDetails, ClientMessageType } from "./types";
+import { Status, ClientMessageDetails, ClientMessageType, AuthorizedClient } from "./types";
 
 const EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER = parseInt(process.env.EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER);
 const TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST = parseInt(process.env.TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST);
@@ -22,6 +22,7 @@ const actionList = new Map<ClientMessageType, (action: ClientMessageDetails[Clie
 	['CollectClient', onClientMessageCollectClient],
 	['GetState', onClientMessageGetState],
 
+	['Authorize', onClientMessageRequestAuhtorize],
 	['HostRoom', onClientMessageRequestHostRoom],
 	['JoinRoom', onClientMessageRequestJoinRoom],
 	['DisconnectRoom', onClientMessageRequestDisconnectRoom],
@@ -39,7 +40,7 @@ export function initializeClientMessageHandlers() {
 function onClientMessageCollectClient(action: ClientMessageDetails['CollectClient']) {
 	if(action.status === Status.ERROR) return;
 
-	getState().client = { ...action.client };
+	getState().client = { ...action.client, publicToken: '', privateToken: '' };
 
 	log(LogLevel.Info, 'Injecting room ui...')();
 	injectRoomUI();
@@ -47,6 +48,15 @@ function onClientMessageCollectClient(action: ClientMessageDetails['CollectClien
 
 function onClientMessageGetState() {
 	triggerCoreAction('SendState', { ...getState() });
+}
+
+function onClientMessageRequestAuhtorize() {
+	if(getState().serverStatus !== 'connected') {
+		log(LogLevel.Error, 'No server connection found!')();
+		return;
+	}
+
+	getState().connection!.send(JSON.stringify({ actionType: 'Authorize', action: JSON.stringify({ ...getState().client, privateToken: '' }) }));
 }
 
 function onClientMessageRequestHostRoom() {
@@ -60,7 +70,7 @@ function onClientMessageRequestHostRoom() {
 		return;
 	}
 
-	getState().connection!.send(JSON.stringify({ actionType: 'HostRoom', action: JSON.stringify({ ...getState().client! }) }));
+	getState().connection!.send(JSON.stringify({ actionType: 'HostRoom', action: '' }));
 }
 
 function onClientMessageRequestJoinRoom(action: ClientMessageDetails['JoinRoom']) {
@@ -74,7 +84,7 @@ function onClientMessageRequestJoinRoom(action: ClientMessageDetails['JoinRoom']
 		return;
 	}
 
-	getState().connection!.send(JSON.stringify({ actionType: 'JoinRoom', action: JSON.stringify({ ...getState().client!, roomID: action.roomID }) }));
+	getState().connection!.send(JSON.stringify({ actionType: 'JoinRoom', action: JSON.stringify({ roomID: action.roomID }) }));
 }
 
 function onClientMessageRequestDisconnectRoom() {

@@ -15,28 +15,85 @@ type ClientAction struct {
 
 type ClientRequestHandler func(client *Client, manager *Manager, clientAction string)
 const (
-	ClientActionTypeHostRoom = "HostRoom"
-	ClientActionTypeJoinRoom = "JoinRoom"
+	ClientActionTypeAuthorize = "Authorize"
+	ClientActionTypeHostRoom  = "HostRoom"
+	ClientActionTypeJoinRoom  = "JoinRoom"
 	ClientActionTypeDisconnectRoom = "DisconnectRoom"
 	ClientActionTypeSendReflection = "SendReflection"
 	ClientActionTypePing = "Ping"
 )
 
-type ClientRequestHostRoom ClientRecord
+type ClientRequestAuthorizeRoom struct {
+	Name  string `json:"name"`
+	Image string `json:"image"`
+	PrivateToken PrivateToken `json:"privateToken"`
+}
 
-func HostRoomHandler(client *Client, manager *Manager, clientRequest string) {
-	var requestHostRoom ClientRequestHostRoom
+type ServerResponseAuthorizeRoom struct {
+	Name  string `json:"name"`
+	Image string `json:"image"`
+	PrivateToken PrivateToken `json:"privateToken"`
+	PublicToken PublicToken `json:"publicToken"`
+}
 
-	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &requestHostRoom)
+func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) {
+	var requestAuthorize ClientRequestAuthorizeRoom
 
+	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &requestAuthorize)
 	if errorParsingRequest != nil {
-		logger.Error("[%s] [HostRoom] Bad json: %s\n", client.IPAddress, errorParsingRequest);
+		logger.Error("[%s] [Authorize] Bad json: %s\n", client.IPAddress, errorParsingRequest);
+		client.SendMessage(ServerMessageTypeAuthorize, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
 		return
 	}
 
+	var clientDetails Client
+	var isClientAuthorized bool
+	logger.Info("[%s] [Authorize] Autorizing client with token: '%s'\n", client.IPAddress, requestAuthorize.PrivateToken)
+	if requestAuthorize.PrivateToken != "" {
+		existingClient, exists := manager.GetClient(requestAuthorize.PrivateToken)
+		logger.Info("[%s] [Authorize] Retrieving information for existing user? %t\n", client.IPAddress, exists)
+
+		if exists {
+			clientDetails = *existingClient
+			isClientAuthorized = true
+		}
+	}
+	
+	if !isClientAuthorized {
+		privateToken, publicToken := manager.GenerateUniqueClientTokens()
+		clientDetails = Client{
+			Name: requestAuthorize.Name,
+			Image: requestAuthorize.Image,
+			Type: ClientTypeInnactive,
+			PrivateToken: privateToken,
+			PublicToken: publicToken,
+		}
+	}
+
+	client.UpdateClientDetails(clientDetails)
+	manager.RegisterClient(client)
+
+	serverMessageAuthorize, serverMessageAuthorizeMarshalError := json.Marshal(ServerResponseAuthorizeRoom{
+		Name: client.Name,
+		Image: client.Image,
+		PrivateToken: client.PrivateToken,
+		PublicToken: client.PublicToken,
+	})
+
+	if serverMessageAuthorizeMarshalError != nil {
+		logger.Error("[%s] [Authorize] Failed to marshal host room response: %s\n", client.IPAddress, serverMessageAuthorizeMarshalError)
+		client.SendMessage(ServerMessageTypeAuthorize, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
+		return
+	}
+	client.SendMessage(ServerMessageTypeAuthorize, serverMessageAuthorize, ServerMessageStatusOk, "")
+
+	// TODO: Attempt to resync if user is already in a room
+}
+
+func HostRoomHandler(client *Client, manager *Manager, clientRequest string) {
 	room := NewRoom(manager.GenerateUniqueRoomID(), client)
 	manager.RegisterRoom(room)
-	client.UpdateClientDetails(Client{ Name: requestHostRoom.Name, Image: requestHostRoom.Image, RoomID: room.RoomID, Type: ClientTypeHost })
+	client.UpdateClientDetails(Client{ Type: ClientTypeHost, RoomID: room.RoomID })
 
 	logger.Info("[%s] [HostRoom] Created room with id: %s\n", client.IPAddress, room.RoomID)
 
@@ -53,8 +110,6 @@ func HostRoomHandler(client *Client, manager *Manager, clientRequest string) {
 }
 
 type ClientRequestJoinRoom struct {
-	Name   string `json:"name"`
-	Image  string `json:"image"`
 	RoomID RoomID `json:"roomID"`
 }
 
@@ -68,7 +123,7 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 		return
 	}
 
-	client.UpdateClientDetails(Client{ Name: requestJoinRoom.Name, Image: requestJoinRoom.Image, Type: ClientTypeViewer, RoomID: requestJoinRoom.RoomID })
+	client.UpdateClientDetails(Client{ Type: ClientTypeViewer, RoomID: requestJoinRoom.RoomID })
 
 	room := manager.GetRegisteredRoom(client.RoomID)
 	if room == nil {

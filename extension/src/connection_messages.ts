@@ -6,6 +6,7 @@ import { onConnectionMessage } from './connection';
 import { log, LogLevel } from './log';
 
 const actionList = new Map<ServerMessageType, (action: ServerMessageDetails[ServerMessageType]) => void>([
+	['Authorize', onConnectionResponseAuthorize],
 	['HostRoom', onConnectionResponseHostRoom],
 	['JoinRoom', onConnectionResponseJoinRoom],
 	['UpdateRoom', onConnectionResponseUpdateRoom],
@@ -18,6 +19,15 @@ export function initializeConnectionMessages() {
 	for(const [action, callback] of actionList) {
 		onConnectionMessage(action, callback);
 	}
+}
+
+function onConnectionResponseAuthorize(action: ServerMessageDetails['Authorize']) {
+	getState().clientStatus = 'innactive';
+	getState().client = {
+		...action
+	};
+
+	triggerCoreAction('SendState', { ...getState() });
 }
 
 function onConnectionResponseHostRoom(action: ServerMessageDetails['HostRoom']) {

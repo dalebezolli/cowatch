@@ -27,7 +27,17 @@ func main() {
 
 	managerInstance := NewManager()
 
-	// WARN: This is test data must be removed after v0.0.3 (Closed Alpha)
+	// WARN: The following test data must be removed after (Closed Alpha)
+	managerInstance.clients["private-test"] = &Client{
+		Type: ClientTypeInnactive,
+		Name: "Final Boss",
+		Image: "https://yt3.ggpht.com/yti/ANjgQV9p6GfGGhyml6eA44zBvSER2q3MjEGVcTgSoRFcuJtxvqw=s88-c-k-c0x00ffffff-no-rj",
+		PrivateToken: "private-test",
+		PublicToken: "public-test",
+	}
+
+	managerInstance.publicToPrivateTokens["public-test"] = "private-test"
+
 	managerInstance.activeRooms["test"] = &Room{
 		RoomID: "test",
 		Host: &Client{
