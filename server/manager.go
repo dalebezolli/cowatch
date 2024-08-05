@@ -1,17 +1,20 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 
+	"github.com/cowatch/logger"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/cowatch/logger"
 )
 
 type Manager struct {
 	upgrader websocket.Upgrader
 
-	activeClients map[IPAddress]*Client
+	publicToPrivateTokens map[PublicToken]PrivateToken
+	clients map[PrivateToken]*Client
+
 	activeRooms map[RoomID]*Room
 	clientRequestHandlers map[ClientRequestType]ClientRequestHandler
 }
@@ -23,9 +26,10 @@ func NewManager() *Manager {
 			WriteBufferSize: 1024,
 			CheckOrigin: func(request *http.Request) bool { return true },
 		},
-		activeClients:	make(map[IPAddress]*Client),
-		activeRooms:	make(map[RoomID]*Room),
-		clientRequestHandlers: make(map[ClientRequestType]ClientRequestHandler),
+		publicToPrivateTokens:	make(map[PublicToken]PrivateToken),
+		clients:				make(map[PrivateToken]*Client),
+		activeRooms:			make(map[RoomID]*Room),
+		clientRequestHandlers:	make(map[ClientRequestType]ClientRequestHandler),
 	}
 
 	manager.setupClientActionHandlers()
@@ -44,25 +48,8 @@ func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *ht
 	defer websocketConnection.Close()
 
 	client := NewClient(websocketConnection)
-	if manager.IsClientRegistered(client) {
-		logger.Error("[%s] A connection with this ip address already exists... exiting\n", clientAddress)
-		return
-	}
-
-	manager.RegisterClient(client)
-	defer func() {
-		logger.Info("[%s] Client disconnected, cleaning up resources\n", client.IPAddress)
-		manager.DisconnectClient(client)
-		manager.UnregisterClient(client)
-	}()
-
 	logger.Info("[%s] Established connection\n", websocketConnection.RemoteAddr())
-
 	for {
-		if !manager.IsClientRegistered(client) {
-			break
-		}
-
 		clientRequest, errorGetClientRequest := client.GetClientRequest()
 		if errorGetClientRequest != nil {
 			break
@@ -72,7 +59,16 @@ func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *ht
 		clientActionHandler, foundHandler := manager.clientRequestHandlers[clientRequest.ActionType]
 
 		if !foundHandler {
-			logger.Error("[%s] [%s] Handler for requested action does not exist\n", client.IPAddress, clientRequest.ActionType)
+			logger.Info("[%s] [%s] Handler for requested action does not exist\n", client.IPAddress, clientRequest.ActionType)
+			continue
+		}
+
+		if 
+			manager.IsClientRegistered(client) == false &&
+			clientRequest.ActionType != ClientActionTypeAuthorize &&
+			clientRequest.ActionType != ClientActionTypePing {
+
+			logger.Info("[%s] [%s] User not authorized\n", client.IPAddress, clientRequest.ActionType)
 			continue
 		}
 
@@ -80,17 +76,54 @@ func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *ht
 	}
 }
 
-func (manager *Manager) RegisterClient(client *Client) {
-	manager.activeClients[client.IPAddress] = client
+type PrivateToken string
+type PublicToken string
+
+func (manager *Manager) GenerateUniqueClientTokens() (PrivateToken, PublicToken) {
+	privateToken, _ := uuid.NewRandom()
+	publicToken, _ := uuid.NewRandom()
+
+	bytePrivateToken, _ := privateToken.MarshalText()
+	bytePublicToken, _  := publicToken.MarshalText()
+
+	return PrivateToken(bytePrivateToken), PublicToken(bytePublicToken)
+}
+
+func (manager *Manager) RegisterClient(client *Client) error {
+	if client.PrivateToken == "" || client.PublicToken == "" {
+		return errors.New("Client does not have a registered private & public")
+	}
+
+	manager.clients[client.PrivateToken] = client
+	manager.publicToPrivateTokens[client.PublicToken] = client.PrivateToken
+	return nil
 }
 
 func (manager *Manager) UnregisterClient(client *Client) {
-	delete(manager.activeClients, client.IPAddress)
+	delete(manager.clients, client.PrivateToken)
 }
 
 func (manager *Manager) IsClientRegistered(client *Client) bool {
-	_, exists := manager.activeClients[client.IPAddress]
+	_, exists := manager.clients[client.PrivateToken]
 	return exists
+}
+
+func (manager *Manager) GetClient(token PrivateToken) (*Client, bool) {
+	client, exists := manager.clients[token]
+	if !exists {
+		return nil, false
+	}
+
+	return client, true
+}
+
+func (manager *Manager) GetPrivateToken(token PublicToken) (PrivateToken, bool) {
+	privateToken, exists := manager.publicToPrivateTokens[token]
+	if !exists {
+		return "", false
+	}
+
+	return privateToken, true
 }
 
 func (manager *Manager) GenerateUniqueRoomID() RoomID {
@@ -126,6 +159,7 @@ func (manager *Manager) GetRegisteredRoom(roomID RoomID) *Room {
 }
 
 func (manager *Manager) setupClientActionHandlers() {
+	manager.clientRequestHandlers[ClientActionTypeAuthorize] = AuthorizeHandler
 	manager.clientRequestHandlers[ClientActionTypeHostRoom] = HostRoomHandler
 	manager.clientRequestHandlers[ClientActionTypeJoinRoom] = JoinRoomHandler
 	manager.clientRequestHandlers[ClientActionTypeDisconnectRoom] = DisconnectRoomHandler

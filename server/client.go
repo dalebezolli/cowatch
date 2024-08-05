@@ -22,6 +22,9 @@ type Client struct {
 	Connection *websocket.Conn
 	IPAddress  IPAddress
 
+	PrivateToken PrivateToken
+	PublicToken  PublicToken
+
 	Type   ClientType
 	Name   string
 	Image  string
@@ -32,6 +35,7 @@ type Client struct {
 type ClientRecord struct {
 	Name  string `json:"name"`
 	Image string `json:"image"`
+	PublicToken PublicToken `json:"publicToken"`
 }
 
 /*
@@ -71,12 +75,13 @@ func (client *Client) GetClientRequest() (ClientAction, error) {
 
 type ServerMessageType string
 const (
-	ServerMessageTypeHostRoom = "HostRoom"
-	ServerMessageTypeJoinRoom = "JoinRoom"
-	ServerMessageTypeUpdateRoom = "UpdateRoom"
+	ServerMessageTypeAuthorize		= "Authorize"
+	ServerMessageTypeHostRoom		= "HostRoom"
+	ServerMessageTypeJoinRoom		= "JoinRoom"
+	ServerMessageTypeUpdateRoom		= "UpdateRoom"
 	ServerMessageTypeDisconnectRoom = "DisconnectRoom"
-	ServerMessageTypeReflectRoom = "ReflectRoom"
-	ServerMessageTypePong = "Pong"
+	ServerMessageTypeReflectRoom	= "ReflectRoom"
+	ServerMessageTypePong			= "Pong"
 )
 
 type ServerMessageStatus string
@@ -143,6 +148,14 @@ func (client *Client) UpdateClientDetails(newData Client) {
 		client.RoomID = newData.RoomID
 	}
 
+	if newData.PrivateToken != "" {
+		client.PrivateToken = newData.PrivateToken
+	}
+
+	if newData.PublicToken != "" {
+		client.PublicToken = newData.PublicToken
+	}
+
 	client.Type = newData.Type
 }
 
@@ -151,6 +164,6 @@ func (client *Client) GetFilteredClient() ClientRecord {
 	return ClientRecord{
 		Name: client.Name,
 		Image: client.Image,
+		PublicToken: client.PublicToken,
 	}
-
 }

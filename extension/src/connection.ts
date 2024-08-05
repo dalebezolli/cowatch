@@ -23,8 +23,6 @@ export async function initializeConnection(clientState: ClientState) {
 	clientState.connection!.addEventListener('message', handleConnectionMessage);
 	clientState.serverStatus = 'connected';
 	
-	// Initial call to figure out request rtt
-	triggerClientMessage('Ping', { timestamp: Date.now() });
 	window.setInterval(() => {
 		triggerClientMessage('Ping', { timestamp: Date.now() });
 	}, PING_REQUEST_INTERVAL * 1000);

@@ -21,7 +21,7 @@ export type ClientState = {
 	droppedPingRequestCount: number,
 	pingTimeoutId: number,
 
-	client: Client | null,
+	client: AuthorizedClient | null,
 	room: Room | null,
 }
 
@@ -30,6 +30,11 @@ export type Timestamp = number;
 export type Client = {
 	name: string,
 	image: string,
+	publicToken: string,
+};
+
+export type AuthorizedClient = Client & {
+	privateToken: string,
 };
 
 export type Room = {
@@ -48,6 +53,7 @@ export type ConnectionError = {
 
 export type ClientMessageType = keyof ClientMessageDetails;
 export type ClientMessageDetails = {
+	'Authorize': {},
 	'CollectClient': {
 		status: Status,
 		client: Client,
@@ -74,6 +80,7 @@ export type CoreActionDetails = {
 
 export type ServerMessageType = keyof ServerMessageDetails;
 export type ServerMessageDetails = {
+	'Authorize': AuthorizedClient,
 	'HostRoom': Room,
 	'JoinRoom': Room,
 	'UpdateRoom': Room,

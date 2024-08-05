@@ -11,9 +11,10 @@ const DEFAULT_USERNAME = 'User';
 asyncCollectUser();
 
 async function asyncCollectUser() {
-	const client = {
+	const client: Client = {
 		name: '',
 		image: '',
+		publicToken: '',
 	};
 
 	let failedInitCount = 0;

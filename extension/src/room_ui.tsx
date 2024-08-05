@@ -19,7 +19,7 @@ import {
 
 import { LogLevel, log } from './log';
 import { onCoreAction, triggerClientMessage } from './events';
-import { CowatchContentProps, CowatchContentInitialProps, CowatchErrorProps, CowatchHeaderProps, CowatchStatus, Room, Client, CowatchContentJoinOptionsProps, CowatchContentConnectedProps, SVGIcon, IconProps, ClientState, ConnectionError } from './types';
+import { CowatchContentProps, CowatchContentInitialProps, CowatchErrorProps, CowatchHeaderProps, CowatchStatus, Room, Client, CowatchContentJoinOptionsProps, CowatchContentConnectedProps, SVGIcon, IconProps, ClientState, ConnectionError, AuthorizedClient } from './types';
 import { sleep } from './utils';
 
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
@@ -73,13 +73,13 @@ function Cowatch() {
 		viewers: [],
 	});
 
-	const [clientState, setClientState] = React.useState<Client>({ name: '', image: '' });
+	const [clientState, setClientState] = React.useState<AuthorizedClient>({ name: '', image: '', privateToken: '', publicToken: '' });
 
 	React.useEffect(() => {
 		onCoreAction('SendState', handleState);
 		onCoreAction('SendError', handleError);
 
-		triggerClientMessage('GetState', {});
+		triggerClientMessage('Authorize', {});
 	}, []);
 
 	function handleState(state: ClientState) {
