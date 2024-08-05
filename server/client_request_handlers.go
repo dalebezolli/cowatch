@@ -120,17 +120,17 @@ func ReflectRoomHandler(client *Client, manager *Manager, clientRequest string) 
 		return
 	}
 
-	if client.Type != ClientTypeHost {
-		logger.Info("[%s] [ReflectRoom] Client isn't a host\n", client.IPAddress)
-		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageClientNotHost)
-		return;
-	}
-
 	room := manager.GetRegisteredRoom(client.RoomID)
 	if room == nil {
 		logger.Info("[%s] [ReflectRoom] No room found with id: %s\n", client.IPAddress, client.RoomID)
 		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageNoRoom)
 		return
+	}
+
+	if client.Type != ClientTypeHost {
+		logger.Info("[%s] [ReflectRoom] Client isn't a host\n", client.IPAddress)
+		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageClientNotHost)
+		return;
 	}
 
 	serverMessageReflection, serverMessageMarshalError := json.Marshal(reflection)

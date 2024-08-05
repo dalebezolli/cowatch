@@ -102,6 +102,11 @@ function onClientMessageRequestReflection(action: ClientMessageDetails['SendRefl
 		return;
 	}
 
+	if(getState().room.roomID === '') {
+		log(LogLevel.Error, 'No room found before sending a reflection, aborting...')();
+		return;
+	}
+
 	getState().connection!.send(JSON.stringify({ actionType: 'SendReflection', action: JSON.stringify({ ...action }) }));
 }
 
