@@ -11,7 +11,7 @@ const REFLECTION_RESYNC_OFFSET = parseInt(process.env.DEFAULT_REFLECTION_RESYNC_
 const ID_MOVIE_PLAYER = 'movie_player';
 
 const state = {
-	refelctionIntervalReference: null as NodeJS.Timeout,
+	reflectionIntervalReference: null as NodeJS.Timeout,
 	moviePlayer: null as YoutubePlayer,
 	reflectionSnapshot: {
 		id: '',
@@ -49,19 +49,20 @@ async function intializePlayerInterceptor() {
 }
 
 function handleState(action: CoreActionDetails['SendState']) {
-	if(state.refelctionIntervalReference !== null && action.clientStatus === 'host') {
+	if(state.reflectionIntervalReference !== null && action.clientStatus === 'host') {
 		return;
 	}
 
-	if(state.refelctionIntervalReference == null && action.clientStatus === 'host') {
-		state.refelctionIntervalReference = setInterval(() => {
+	if(state.reflectionIntervalReference == null && action.clientStatus === 'host') {
+		state.reflectionIntervalReference = setInterval(() => {
 			collectReflection();
 			triggerClientMessage('SendReflection', state.reflectionSnapshot);
 		}, INITIAL_REFLECTION_SNAPSHOT_INTERVAL);
 	}
 	
-	if(state.refelctionIntervalReference !== null && action.clientStatus !== 'host') {
-		clearInterval(state.refelctionIntervalReference);
+	if(state.reflectionIntervalReference !== null && action.clientStatus !== 'host') {
+		clearInterval(state.reflectionIntervalReference);
+		state.reflectionIntervalReference = null;
 		return;
 	}
 }
