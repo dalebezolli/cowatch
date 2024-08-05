@@ -70,7 +70,7 @@ function onClientMessageRequestHostRoom() {
 		return;
 	}
 
-	getState().connection!.send(JSON.stringify({ actionType: 'HostRoom', action: JSON.stringify({ ...getState().client }) }));
+	getState().connection!.send(JSON.stringify({ actionType: 'HostRoom', action: '' }));
 }
 
 function onClientMessageRequestJoinRoom(action: ClientMessageDetails['JoinRoom']) {
@@ -84,7 +84,7 @@ function onClientMessageRequestJoinRoom(action: ClientMessageDetails['JoinRoom']
 		return;
 	}
 
-	getState().connection!.send(JSON.stringify({ actionType: 'JoinRoom', action: JSON.stringify({ ...getState().client!, roomID: action.roomID }) }));
+	getState().connection!.send(JSON.stringify({ actionType: 'JoinRoom', action: JSON.stringify({ roomID: action.roomID }) }));
 }
 
 function onClientMessageRequestDisconnectRoom() {

@@ -90,21 +90,10 @@ func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) {
 	// TODO: Attempt to resync if user is already in a room
 }
 
-type ClientRequestHostRoom ClientRecord
-
 func HostRoomHandler(client *Client, manager *Manager, clientRequest string) {
-	var requestHostRoom ClientRequestHostRoom
-
-	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &requestHostRoom)
-
-	if errorParsingRequest != nil {
-		logger.Error("[%s] [HostRoom] Bad json: %s\n", client.IPAddress, errorParsingRequest);
-		return
-	}
-
 	room := NewRoom(manager.GenerateUniqueRoomID(), client)
 	manager.RegisterRoom(room)
-	client.UpdateClientDetails(Client{ Name: requestHostRoom.Name, Image: requestHostRoom.Image, RoomID: room.RoomID, Type: ClientTypeHost })
+	client.UpdateClientDetails(Client{ Type: ClientTypeHost, RoomID: room.RoomID })
 
 	logger.Info("[%s] [HostRoom] Created room with id: %s\n", client.IPAddress, room.RoomID)
 
@@ -121,8 +110,6 @@ func HostRoomHandler(client *Client, manager *Manager, clientRequest string) {
 }
 
 type ClientRequestJoinRoom struct {
-	Name   string `json:"name"`
-	Image  string `json:"image"`
 	RoomID RoomID `json:"roomID"`
 }
 
@@ -136,7 +123,7 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 		return
 	}
 
-	client.UpdateClientDetails(Client{ Name: requestJoinRoom.Name, Image: requestJoinRoom.Image, Type: ClientTypeViewer, RoomID: requestJoinRoom.RoomID })
+	client.UpdateClientDetails(Client{ Type: ClientTypeViewer, RoomID: requestJoinRoom.RoomID })
 
 	room := manager.GetRegisteredRoom(client.RoomID)
 	if room == nil {
