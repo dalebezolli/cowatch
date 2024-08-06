@@ -9,6 +9,7 @@ import (
 )
 
 const address = ":8080"
+const CLIENT_CLEANUP_ROUTINE_INTERVAL = 30
 
 func main() {
 	logFileName := "log_" + time.Now().Format("2006_01_02_15_04_05.000")
@@ -57,8 +58,8 @@ func main() {
 
 	go func() {
 		for true {
+			time.Sleep(CLIENT_CLEANUP_ROUTINE_INTERVAL * time.Second)
 			managerInstance.CleanupInnactiveClients()
-			time.Sleep(5 * time.Second)
 		}
 	}()
 

@@ -79,6 +79,8 @@ func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *ht
 	}
 }
 
+const CLIENT_INNACTIVITY_THRESHOLD = "90"
+
 func (manager *Manager) CleanupInnactiveClients() {
 	logger.Info("Cleaning up clients\n")
 
@@ -86,7 +88,7 @@ func (manager *Manager) CleanupInnactiveClients() {
 	for _, client := range(manager.clients) {
 		oldNewDifferenceDuration := currentDate.Sub(client.LatestReply)
 		oldNewDifference := time.Time{}.Add(oldNewDifferenceDuration)
-		disconnectThresholdDuration, _ := time.ParseDuration("30s")
+		disconnectThresholdDuration, _ := time.ParseDuration(CLIENT_INNACTIVITY_THRESHOLD + "s")
 
 		disconnectThreshold := time.Time{}.Add(disconnectThresholdDuration)
 		if oldNewDifference.Compare(disconnectThreshold) == -1 {
