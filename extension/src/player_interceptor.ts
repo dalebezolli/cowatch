@@ -56,6 +56,11 @@ function handleState(action: CoreActionDetails['SendState']) {
 	if(state.reflectionIntervalReference == null && action.clientStatus === 'host') {
 		state.reflectionIntervalReference = setInterval(() => {
 			collectReflection();
+
+			if(document.querySelector('.ad-showing') != null) {
+				state.reflectionSnapshot.state = YoutubePlayerState.Paused;
+			}
+
 			triggerClientMessage('SendReflection', state.reflectionSnapshot);
 		}, INITIAL_REFLECTION_SNAPSHOT_INTERVAL);
 	}
