@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/cowatch/logger"
 	"github.com/google/uuid"
@@ -73,6 +74,27 @@ func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *ht
 		}
 
 		clientActionHandler(client, manager, clientRequest.Action)
+	}
+}
+
+func (manager *Manager) CleanupInnactiveClients() {
+	logger.Info("Cleaning up clients\n")
+
+	currentDate := time.Now()
+	for _, client := range(manager.clients) {
+		oldNewDifferenceDuration := currentDate.Sub(client.LatestReply)
+		oldNewDifference := time.Time{}.Add(oldNewDifferenceDuration)
+		disconnectThresholdDuration, _ := time.ParseDuration("30s")
+
+		disconnectThreshold := time.Time{}.Add(disconnectThresholdDuration)
+		if oldNewDifference.Compare(disconnectThreshold) == -1 {
+			continue
+		}
+
+		logger.Info("Removing user %s\n", client.IPAddress)
+		manager.UnregisterClient(client)
+
+		// TODO: Remove from room if not connected
 	}
 }
 

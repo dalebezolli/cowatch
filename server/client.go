@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net"
+	"time"
 
 	"github.com/cowatch/logger"
 	"github.com/gorilla/websocket"
@@ -30,6 +31,8 @@ type Client struct {
 	Image  string
 	Email  string
 	RoomID RoomID
+
+	LatestReply time.Time
 }
 
 type ClientRecord struct {
@@ -51,6 +54,8 @@ func NewClient(clientConnection *websocket.Conn) *Client {
 		Image:	"",
 		Email:	"",
 		RoomID: "",
+
+		LatestReply: time.Now(),
 	}
 
 	return client

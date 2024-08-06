@@ -55,6 +55,13 @@ func main() {
 
 	http.HandleFunc("/reflect", managerInstance.HandleConnection)
 
+	go func() {
+		for true {
+			managerInstance.CleanupInnactiveClients()
+			time.Sleep(5 * time.Second)
+		}
+	}()
+
 	if err := http.ListenAndServe(address, nil) ; err != nil {
 		logger.Error("Failed while serving: %s\n", err)
 	}
