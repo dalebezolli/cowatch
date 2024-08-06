@@ -56,6 +56,8 @@ func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *ht
 			break
 		}
 
+		client.LatestReply = time.Now()
+
 		logger.Info("[%s] [%s] Handling Request: %s\n", client.IPAddress, clientRequest.ActionType,  clientRequest.Action)
 		clientActionHandler, foundHandler := manager.clientRequestHandlers[clientRequest.ActionType]
 
@@ -91,10 +93,9 @@ func (manager *Manager) CleanupInnactiveClients() {
 			continue
 		}
 
-		logger.Info("Removing user %s\n", client.IPAddress)
+		logger.Info("Removing innactive client: %s\n", client.IPAddress)
+		manager.DisconnectClient(client)
 		manager.UnregisterClient(client)
-
-		// TODO: Remove from room if not connected
 	}
 }
 
