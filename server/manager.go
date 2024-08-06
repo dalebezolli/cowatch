@@ -100,6 +100,7 @@ func (manager *Manager) RegisterClient(client *Client) error {
 }
 
 func (manager *Manager) UnregisterClient(client *Client) {
+	delete(manager.publicToPrivateTokens, client.PublicToken)
 	delete(manager.clients, client.PrivateToken)
 }
 
