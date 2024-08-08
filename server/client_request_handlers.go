@@ -186,11 +186,8 @@ func DisconnectRoomHandler(client *Client, manager *Manager, clientRequest strin
 
 type RoomReflection struct {
 	ID	   string `json:"id"`
-	Title  string `json:"title"`
-	Author string `json:"author"`
 	State  int    `json:"state"`
-	CurrentTime float32 `json:"currentTime"`
-	Duration    float32 `json:"duration"`
+	CurrentTime float32 `json:"time"`
 }
 
 func ReflectRoomHandler(client *Client, manager *Manager, clientRequest string) {

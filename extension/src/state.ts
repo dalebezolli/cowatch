@@ -15,6 +15,15 @@ export function initializeState() {
 
 		client: null,
 		room: null,
+		isShowingTruePage: true,
+		roomDetails: {
+			videoID: '',
+			title: '',
+			author: '',
+			authorImage: '',
+			authorSubs: '',
+			videoLikes: '',
+		},
 	};
 }
 

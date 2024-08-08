@@ -73,6 +73,14 @@ function onConnectionResponseDisconnectRoom(action: ServerMessageDetails['Discon
 }
 
 function onConnectionResponseReflectRoom(action: ServerMessageDetails['ReflectRoom']) {
+	const currentURL = `https://youtube.com/watch?v=${getState().roomDetails.videoId}`;
+	const newURL = `https://youtube.com/watch?v=${action.id}`
+	if(currentURL != newURL) {
+		getState().roomDetails.videoId = action.id;
+		getState().isShowingTruePage = false;
+		triggerCoreAction('SendState', { ...getState() });
+	}
+
 	triggerCoreAction('UpdatePlayer', action);
 }
 

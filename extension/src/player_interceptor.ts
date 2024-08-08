@@ -15,11 +15,8 @@ const state = {
 	moviePlayer: null as YoutubePlayer,
 	reflectionSnapshot: {
 		id: '',
-		title: '',
-		author: '',
 		state: -1,
-		currentTime: 0,
-		duration: 0,
+		time: 0,
 	} as ReflectionSnapshot,
 };
 
@@ -48,12 +45,16 @@ async function intializePlayerInterceptor() {
 	onCoreAction('UpdatePlayer', syncPlayer);
 }
 
-function handleState(action: CoreActionDetails['SendState']) {
-	if(state.reflectionIntervalReference !== null && action.clientStatus === 'host') {
+function handleState(clientState: CoreActionDetails['SendState']) {
+	if(!clientState.isShowingTruePage) {
+		limitInteractivity(clientState.roomDetails.videoId);
+	}
+
+	if(state.reflectionIntervalReference !== null && clientState.clientStatus === 'host') {
 		return;
 	}
 
-	if(state.reflectionIntervalReference == null && action.clientStatus === 'host') {
+	if(state.reflectionIntervalReference == null && clientState.clientStatus === 'host') {
 		state.reflectionIntervalReference = setInterval(() => {
 			collectReflection();
 
@@ -65,7 +66,7 @@ function handleState(action: CoreActionDetails['SendState']) {
 		}, INITIAL_REFLECTION_SNAPSHOT_INTERVAL);
 	}
 	
-	if(state.reflectionIntervalReference !== null && action.clientStatus !== 'host') {
+	if(state.reflectionIntervalReference !== null && clientState.clientStatus !== 'host') {
 		clearInterval(state.reflectionIntervalReference);
 		state.reflectionIntervalReference = null;
 		return;
@@ -74,9 +75,8 @@ function handleState(action: CoreActionDetails['SendState']) {
 
 function syncPlayer(reflection: ReflectionSnapshot) {
 	collectReflection();
-
 	if(reflection.id !== state.reflectionSnapshot.id) {
-		location.assign(`https://youtube.com/watch?v=${reflection.id}`);
+		state.moviePlayer.loadVideoById(reflection.id);
 	}
 	
 	if(reflection.state !== state.reflectionSnapshot.state) {
@@ -92,11 +92,49 @@ function syncPlayer(reflection: ReflectionSnapshot) {
 		}
 	}
 	
-	if(Math.abs(reflection.currentTime - state.reflectionSnapshot.currentTime) > REFLECTION_RESYNC_OFFSET) {
-		state.moviePlayer.seekTo(reflection.currentTime);
+	if(Math.abs(reflection.time - state.reflectionSnapshot.time) > REFLECTION_RESYNC_OFFSET) {
+		state.moviePlayer.seekTo(reflection.time);
+	}
+}
+
+function limitInteractivity(videoId: string) {
+	function handleRefresh(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+
+		let shouldRefresh = true;
+		shouldRefresh = confirm('Are you sure you want to refresh?')
+
+		if(!shouldRefresh) return;
+		location.assign(`https://youtube.com/watch?v=${videoId}`)
 	}
 
-	log(LogLevel.Warn, "Syncing player", reflection)();
+	const refreshList = [
+		document.querySelector<HTMLElement>('like-button-view-model button'),
+		document.querySelector<HTMLElement>('dislike-button-view-model button'),
+		document.querySelector<HTMLElement>('#above-the-fold button[title="Share"]'),
+		document.querySelector<HTMLElement>('#above-the-fold yt-button-shape button[aria-label="More actions"]'),
+		document.querySelector<HTMLElement>('like-button-view-model button'),
+		document.querySelector<HTMLElement>('#above-the-fold #subscribe-button button'),
+		document.querySelector<HTMLElement>('#sponsor-button button'),
+		document.querySelectorAll<HTMLElement>('ytd-video-owner-renderer a'),
+	]
+
+	for(const domElementOrList of refreshList) {
+		if(domElementOrList == null) continue;
+
+		if(domElementOrList['length'] == null) {
+			const domElement = domElementOrList as HTMLElement;
+			domElement?.removeEventListener('click', handleRefresh, { capture: true });
+			domElement?.addEventListener('click', handleRefresh, { capture: true });
+		} else {
+			const domList = domElementOrList as NodeListOf<HTMLElement>;
+			for(const domElement of domList) {
+				domElement?.removeEventListener('click', handleRefresh, { capture: true });
+				domElement?.addEventListener('click', handleRefresh, { capture: true });
+			}
+		}
+	}
 }
 
 function collectReflection() {
@@ -106,14 +144,10 @@ function collectReflection() {
 }
 
 function calculateReflectionSnapshot(player: YoutubePlayer): ReflectionSnapshot {
-	const { video_id, title, author } = player.getVideoData();
 	return {
-		id: video_id || '',
-		title: title,
-		author: author,
+		id: player.getVideoData().video_id ?? '',
 		state: player.getPlayerState(),
-		currentTime: player.getCurrentTime(),
-		duration: player.getDuration(),
+		time: player.getCurrentTime(),
 	}
 }
 

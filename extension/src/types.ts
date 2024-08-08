@@ -23,6 +23,7 @@ export type ClientState = {
 
 	client: AuthorizedClient | null,
 	room: Room | null,
+	isShowingTruePage: boolean,
 }
 
 export type Timestamp = number;
@@ -41,7 +42,7 @@ export type Room = {
 	roomID: string,
 	host: Client,
 	viewers: Client[],
-}
+};
 
 export type ResolutionStrategy = 'returnToInitial' | 'stayOnCurrentView';
 
@@ -49,7 +50,7 @@ export type ConnectionError = {
 	error: string,
 	actionType: ServerMessageType,
 	resolutionStrategy: ResolutionStrategy,
-}
+};
 
 export type ClientMessageType = keyof ClientMessageDetails;
 export type ClientMessageDetails = {
@@ -76,6 +77,10 @@ export type CoreActionDetails = {
 	'SendState': ClientState,
 	'SendError': ConnectionError,
 	'UpdatePlayer': {},
+	'LimitInteractivity': {
+		videoId: string,
+	},
+	'UpdateDetails': RoomDetails,
 };
 
 export type ServerMessageType = keyof ServerMessageDetails;
