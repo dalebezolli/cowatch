@@ -6,6 +6,7 @@ type RoomID string
 
 type Room struct {
 	RoomID  RoomID
+	VideoDetails VideoDetails
 	Host    *Client
 	Viewers []*Client
 }
@@ -13,6 +14,13 @@ type Room struct {
 func NewRoom(roomID RoomID, host *Client) *Room {
 	return &Room{
 		RoomID: roomID,
+		VideoDetails: VideoDetails{
+			Title: "",
+			Author: "",
+			AuthorImage: "",
+			SubscriberCount: "",
+			LikeCount: "",
+		},
 		Host: host,
 		Viewers: make([]*Client, 0, DEFAULT_ROOM_SIZE),
 	}
@@ -34,6 +42,10 @@ func (room *Room) RemoveViewer(viewer *Client) {
 	if recordFound {
 		room.Viewers = RemoveFromSlice(room.Viewers, roomIndex)
 	}
+}
+
+func (room *Room) SaveVideoDetails(vidoeDetails VideoDetails) {
+	room.VideoDetails = vidoeDetails;
 }
 
 type RoomRecord struct {

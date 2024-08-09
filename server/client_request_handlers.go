@@ -177,6 +177,15 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 		client.SendMessage(ServerMessageTypeJoinRoom, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
 	}
 
+	serverMessageRoomDetails, serverMessageMarshalError := json.Marshal(room.VideoDetails)
+	if serverMessageMarshalError != nil {
+		logger.Error("[%s] [JoinRoom] Bad json: %s\n", client.IPAddress, client.RoomID)
+		client.SendMessage(ServerMessageTypeReflectVideoDetails, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
+		return
+	}
+
+	client.SendMessage(ServerMessageTypeReflectVideoDetails, serverMessageRoomDetails, ServerMessageStatusOk, "")
+
 	client.SendMessage(ServerMessageTypeJoinRoom, serverMessageJoinRoom, ServerMessageStatusOk, "")
 	updateRoomClientsWithLatestChanges(*room)
 }
@@ -235,8 +244,8 @@ type VideoDetails struct {
 }
 
 func ReflectDetailsHandler(client *Client, manager *Manager, clientRequest string) {
-	var roomDetails VideoDetails
-	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &roomDetails)
+	var videoDetails VideoDetails
+	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &videoDetails)
 
 	if errorParsingRequest != nil {
 		logger.Error("[%s] [ReflectVideoDetails] Client sent bad json object: %s\n", client.IPAddress, errorParsingRequest);
@@ -257,7 +266,15 @@ func ReflectDetailsHandler(client *Client, manager *Manager, clientRequest strin
 		return;
 	}
 
-	serverMessageRoomDetails, serverMessageMarshalError := json.Marshal(roomDetails)
+	if
+		videoDetails.Title != "" && videoDetails.Author != "" &&
+		videoDetails.AuthorImage != "" && videoDetails.SubscriberCount != "" &&
+		videoDetails.LikeCount != "" {
+
+		room.SaveVideoDetails(videoDetails);
+	}
+
+	serverMessageRoomDetails, serverMessageMarshalError := json.Marshal(videoDetails)
 	if serverMessageMarshalError != nil {
 		logger.Error("[%s] [ReflectVideoDetails] Bad json: %s\n", client.IPAddress, client.RoomID)
 		client.SendMessage(ServerMessageTypeReflectVideoDetails, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
