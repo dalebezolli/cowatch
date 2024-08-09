@@ -188,5 +188,6 @@ func (manager *Manager) setupClientActionHandlers() {
 	manager.clientRequestHandlers[ClientActionTypeJoinRoom] = JoinRoomHandler
 	manager.clientRequestHandlers[ClientActionTypeDisconnectRoom] = DisconnectRoomHandler
 	manager.clientRequestHandlers[ClientActionTypeSendReflection] = ReflectRoomHandler
+	manager.clientRequestHandlers[ClientActionTypeSendVideoDetails] = ReflectDetailsHandler
 	manager.clientRequestHandlers[ClientActionTypePing] = PingHandler
 }

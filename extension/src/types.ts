@@ -67,6 +67,7 @@ export type ClientMessageDetails = {
 	},
 	'DisconnectRoom': {},
 	'SendReflection': ReflectionSnapshot,
+	'SendVideoDetails': VideoDetails,
 	'Ping': {
 		timestamp: Timestamp,
 	},
@@ -80,7 +81,7 @@ export type CoreActionDetails = {
 	'LimitInteractivity': {
 		videoId: string,
 	},
-	'UpdateDetails': RoomDetails,
+	'UpdateDetails': VideoDetails,
 };
 
 export type ServerMessageType = keyof ServerMessageDetails;
@@ -94,6 +95,7 @@ export type ServerMessageDetails = {
 	'UpdateRoom': Room,
 	'DisconnectRoom': {},
 	'ReflectRoom': ReflectionSnapshot,
+	'ReflectVideoDetails': VideoDetails,
 	'Pong': {
 		timestamp: Timestamp,
 	},
@@ -108,11 +110,16 @@ export type ServerMessage = {
 
 export type ReflectionSnapshot = {
 	id: string,
+	state: number,
+	time: number,
+};
+
+export type VideoDetails = {
 	title: string,
 	author: string,
-	state: number,
-	currentTime: number,
-	duration: number,
+	authorImage: string,
+	subscriberCount: string,
+	likeCount: string,
 };
 
 export interface YoutubePlayer extends HTMLElement {

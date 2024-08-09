@@ -86,6 +86,7 @@ const (
 	ServerMessageTypeUpdateRoom		= "UpdateRoom"
 	ServerMessageTypeDisconnectRoom = "DisconnectRoom"
 	ServerMessageTypeReflectRoom	= "ReflectRoom"
+	ServerMessageTypeReflectVideoDetails = "ReflectVideoDetails"
 	ServerMessageTypePong			= "Pong"
 )
 

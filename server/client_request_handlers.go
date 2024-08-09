@@ -20,6 +20,7 @@ const (
 	ClientActionTypeJoinRoom  = "JoinRoom"
 	ClientActionTypeDisconnectRoom = "DisconnectRoom"
 	ClientActionTypeSendReflection = "SendReflection"
+	ClientActionTypeSendVideoDetails = "SendVideoDetails"
 	ClientActionTypePing = "Ping"
 )
 
@@ -222,6 +223,49 @@ func ReflectRoomHandler(client *Client, manager *Manager, clientRequest string) 
 
 	for _, viewer := range(room.Viewers) {
 		viewer.SendMessage(ServerMessageTypeReflectRoom, serverMessageReflection, ServerMessageStatusOk, "")
+	}
+}
+
+type VideoDetails struct {
+	Title string `json:"title"`
+	Author string `json:"author"`
+	AuthorImage string `json:"authorImage"`
+	SubscriberCount string `json:"subscriberCount"`
+	LikeCount string `json:"likeCount"`
+}
+
+func ReflectDetailsHandler(client *Client, manager *Manager, clientRequest string) {
+	var roomDetails VideoDetails
+	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &roomDetails)
+
+	if errorParsingRequest != nil {
+		logger.Error("[%s] [ReflectVideoDetails] Client sent bad json object: %s\n", client.IPAddress, errorParsingRequest);
+		client.SendMessage(ServerMessageTypeReflectVideoDetails, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
+		return
+	}
+
+	room := manager.GetRegisteredRoom(client.RoomID)
+	if room == nil {
+		logger.Info("[%s] [ReflectVideoDetails] No room found with id: %s\n", client.IPAddress, client.RoomID)
+		client.SendMessage(ServerMessageTypeReflectVideoDetails, nil, ServerMessageStatusError, ServerErrorMessageNoRoom)
+		return
+	}
+
+	if client.Type != ClientTypeHost {
+		logger.Info("[%s] [ReflectVideoDetails] Client isn't a host\n", client.IPAddress)
+		client.SendMessage(ServerMessageTypeReflectVideoDetails, nil, ServerMessageStatusError, ServerErrorMessageClientNotHost)
+		return;
+	}
+
+	serverMessageRoomDetails, serverMessageMarshalError := json.Marshal(roomDetails)
+	if serverMessageMarshalError != nil {
+		logger.Error("[%s] [ReflectVideoDetails] Bad json: %s\n", client.IPAddress, client.RoomID)
+		client.SendMessage(ServerMessageTypeReflectVideoDetails, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
+		return
+	}
+
+	for _, viewer := range(room.Viewers) {
+		viewer.SendMessage(ServerMessageTypeReflectVideoDetails, serverMessageRoomDetails, ServerMessageStatusOk, "")
 	}
 }
 

@@ -28,6 +28,7 @@ const actionList = new Map<ClientMessageType, (action: ClientMessageDetails[Clie
 	['JoinRoom', onClientMessageRequestJoinRoom],
 	['DisconnectRoom', onClientMessageRequestDisconnectRoom],
 	['SendReflection', onClientMessageRequestReflection],
+	['SendVideoDetails', onClientMessageRequestVideoDetails],
 
 	['Ping', onClientMessageRequestPing],
 ]);
@@ -121,6 +122,25 @@ function onClientMessageRequestReflection(action: ClientMessageDetails['SendRefl
 	}
 
 	getState().connection!.send(JSON.stringify({ actionType: 'SendReflection', action: JSON.stringify({ ...action }) }));
+}
+
+function onClientMessageRequestVideoDetails(action: ClientMessageDetails['SendVideoDetails']) {
+	if(getState().serverStatus !== 'connected') {
+		log(LogLevel.Error, 'No server connection found!')();
+		return;
+	}
+
+	if(!getState().client) {
+		log(LogLevel.Error, 'No client setup before privileged action, aborting...')();
+		return;
+	}
+
+	if(getState().room.roomID === '') {
+		log(LogLevel.Error, 'No room found before sending video details, aborting...')();
+		return;
+	}
+
+	getState().connection!.send(JSON.stringify({ actionType: 'SendVideoDetails', action: JSON.stringify({ ...action }) }));
 }
 
 function onClientMessageRequestPing(action: ClientMessageDetails['Ping']) {

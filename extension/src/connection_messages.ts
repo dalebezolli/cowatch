@@ -16,6 +16,7 @@ const actionList = new Map<ServerMessageType, (action: ServerMessageDetails[Serv
 	['UpdateRoom', onConnectionResponseUpdateRoom],
 	['DisconnectRoom', onConnectionResponseDisconnectRoom],
 	['ReflectRoom', onConnectionResponseReflectRoom],
+	['ReflectVideoDetails', onConnectionResponseReflectVideoDetails],
 	['Pong', onConnectionResponsePong],
 ]);
 
@@ -82,6 +83,10 @@ function onConnectionResponseReflectRoom(action: ServerMessageDetails['ReflectRo
 	}
 
 	triggerCoreAction('UpdatePlayer', action);
+}
+
+function onConnectionResponseReflectVideoDetails(action: ServerMessageDetails['ReflectVideoDetails']) {
+	triggerCoreAction('UpdateDetails', action);
 }
 
 function onConnectionResponsePong(action: ServerMessageDetails['Pong']) {

@@ -1,6 +1,6 @@
 import { onCoreAction, triggerClientMessage } from './events';
 import { LogLevel, log } from './log';
-import { CoreActionDetails, ReflectionSnapshot, YoutubePlayer, YoutubePlayerState } from './types';
+import { CoreActionDetails, ReflectionSnapshot, VideoDetails, YoutubePlayer, YoutubePlayerState } from './types';
 import { sleep } from './utils';
 
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
@@ -18,6 +18,13 @@ const state = {
 		state: -1,
 		time: 0,
 	} as ReflectionSnapshot,
+	videoDetails: {
+		title: '',
+		author: '',
+		authorImage: '',
+		subscriberCount: '',
+		likeCount: '',
+	} as VideoDetails,
 };
 
 intializePlayerInterceptor();
@@ -43,6 +50,7 @@ async function intializePlayerInterceptor() {
 
 	onCoreAction('SendState', handleState);
 	onCoreAction('UpdatePlayer', syncPlayer);
+	onCoreAction('UpdateDetails', syncDetails);
 }
 
 function handleState(clientState: CoreActionDetails['SendState']) {
@@ -56,7 +64,14 @@ function handleState(clientState: CoreActionDetails['SendState']) {
 
 	if(state.reflectionIntervalReference == null && clientState.clientStatus === 'host') {
 		state.reflectionIntervalReference = setInterval(() => {
-			collectReflection();
+			const currentReflectionSnapshot = calculateReflectionSnapshot(state.moviePlayer);
+			state.reflectionSnapshot = currentReflectionSnapshot;
+
+			const currentVideoDetails = collectCurrentVideoDetails(state.moviePlayer);
+			if(currentVideoDetails.title != state.videoDetails.title) {
+				state.videoDetails = currentVideoDetails;
+				triggerClientMessage('SendVideoDetails', state.videoDetails);
+			}
 
 			if(document.querySelector('.ad-showing') != null) {
 				state.reflectionSnapshot.state = YoutubePlayerState.Paused;
@@ -74,7 +89,9 @@ function handleState(clientState: CoreActionDetails['SendState']) {
 }
 
 function syncPlayer(reflection: ReflectionSnapshot) {
-	collectReflection();
+	const currentReflectionSnapshot = calculateReflectionSnapshot(state.moviePlayer);
+	state.reflectionSnapshot = currentReflectionSnapshot;
+
 	if(reflection.id !== state.reflectionSnapshot.id) {
 		state.moviePlayer.loadVideoById(reflection.id);
 	}
@@ -95,6 +112,28 @@ function syncPlayer(reflection: ReflectionSnapshot) {
 	if(Math.abs(reflection.time - state.reflectionSnapshot.time) > REFLECTION_RESYNC_OFFSET) {
 		state.moviePlayer.seekTo(reflection.time);
 	}
+}
+
+function syncDetails(videoDetails: CoreActionDetails['UpdateDetails']) {
+	const domWebsiteTitle = document.querySelector<HTMLTitleElement>('head title');
+	const domVideoTitle   = document.querySelector<HTMLParagraphElement>('#above-the-fold #title yt-formatted-string');
+	const domAuthorName   = document.querySelector<HTMLLinkElement>('#above-the-fold #channel-name a');
+	const domAuthorImage  = document.querySelector<HTMLImageElement>('yt-img-shadow.ytd-video-owner-renderer  > img');
+	const domSubCounter   = document.querySelector<HTMLElement>('#owner-sub-count');
+	const domLikeCounter  = document.querySelector<HTMLElement>('button[title="I like this"] div:nth-of-type(2)');
+	log(LogLevel.Warn, 'Details:', domVideoTitle, videoDetails)();
+
+	if(
+		domWebsiteTitle == null || domVideoTitle == null || domAuthorName == null || 
+		domAuthorImage == null || domSubCounter == null || domLikeCounter == null
+	) return;
+
+	domWebsiteTitle.textContent = videoDetails.title + ' - YouTube';
+	domVideoTitle.textContent = videoDetails.title;
+	domAuthorName.textContent = videoDetails.author;
+	domAuthorImage.src = videoDetails.authorImage;
+	domSubCounter.textContent = videoDetails.subscriberCount;
+	domLikeCounter.textContent = videoDetails.likeCount;
 }
 
 function limitInteractivity(videoId: string) {
@@ -137,12 +176,6 @@ function limitInteractivity(videoId: string) {
 	}
 }
 
-function collectReflection() {
-	const reflection_frame = calculateReflectionSnapshot(state.moviePlayer);
-	setReflectionSnapshot(reflection_frame);
-	log(LogLevel.Debug, reflection_frame)();
-}
-
 function calculateReflectionSnapshot(player: YoutubePlayer): ReflectionSnapshot {
 	return {
 		id: player.getVideoData().video_id ?? '',
@@ -151,6 +184,27 @@ function calculateReflectionSnapshot(player: YoutubePlayer): ReflectionSnapshot 
 	}
 }
 
-function setReflectionSnapshot(new_reflection: ReflectionSnapshot) {
-	state.reflectionSnapshot = new_reflection;
+function collectCurrentVideoDetails(player: YoutubePlayer): VideoDetails {
+	let videoDetails: VideoDetails = {
+		title: '',
+		author: '',
+		authorImage: '',
+		subscriberCount: '',
+		likeCount: '',
+	};
+
+	const domAuthorImage = document.querySelector<HTMLImageElement>('yt-img-shadow.ytd-video-owner-renderer  > img');
+	const domSubCounter  = document.querySelector<HTMLElement>('#owner-sub-count');
+	const domLikeCounter = document.querySelector<HTMLElement>('button[title="I like this"] div:nth-of-type(2)');
+
+	if(domAuthorImage == null || domSubCounter == null || domLikeCounter == null) return videoDetails;
+
+	const { title, author } = player.getVideoData();
+	videoDetails.title = title;
+	videoDetails.author = author;
+	videoDetails.authorImage = domAuthorImage.src;
+	videoDetails.subscriberCount = domSubCounter.textContent;
+	videoDetails.likeCount = domLikeCounter.textContent;
+
+	return videoDetails;
 }
