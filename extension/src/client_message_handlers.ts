@@ -21,6 +21,7 @@ const LOCALSTORAGE_PRIVATETOKEN_KEY = 'cowatch_token';
  */
 const actionList = new Map<ClientMessageType, (action: ClientMessageDetails[ClientMessageType]) => void>([
 	['CollectClient', onClientMessageCollectClient],
+	['ShowTruePage', onClientShowTruePage],
 	['GetState', onClientMessageGetState],
 
 	['Authorize', onClientMessageRequestAuhtorize],
@@ -46,6 +47,11 @@ function onClientMessageCollectClient(action: ClientMessageDetails['CollectClien
 
 	log(LogLevel.Info, 'Injecting room ui...')();
 	injectRoomUI();
+}
+
+function onClientShowTruePage(clientAction: ClientMessageDetails['ShowTruePage']) {
+	getState().videoId = clientAction.videoId;
+	location.assign(`https://youtube.com/watch?v=${clientAction.videoId}`);
 }
 
 function onClientMessageGetState() {

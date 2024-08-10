@@ -1,4 +1,4 @@
-import { onCoreAction, triggerClientMessage } from './events';
+import { onCoreAction, triggerClientMessage, triggerCoreAction } from './events';
 import { LogLevel, log } from './log';
 import { CoreActionDetails, ReflectionSnapshot, VideoDetails, YoutubePlayer, YoutubePlayerState } from './types';
 import { sleep } from './utils';
@@ -25,6 +25,7 @@ const state = {
 		subscriberCount: '',
 		likeCount: '',
 	} as VideoDetails,
+	hasLimitedInterractivity: false,
 };
 
 intializePlayerInterceptor();
@@ -54,8 +55,11 @@ async function intializePlayerInterceptor() {
 }
 
 function handleState(clientState: CoreActionDetails['SendState']) {
-	if(!clientState.isShowingTruePage) {
-		limitInteractivity(clientState.roomDetails.videoId);
+	if(!clientState.isShowingTruePage && !state.hasLimitedInterractivity) {
+		limitInteractivity(clientState.videoId);
+		state.hasLimitedInterractivity = !clientState.isShowingTruePage;
+	} else if(clientState.isShowingTruePage && state.hasLimitedInterractivity) {
+		triggerClientMessage('ShowTruePage', { videoId: clientState.videoId });
 	}
 
 	if(state.reflectionIntervalReference !== null && clientState.clientStatus === 'host') {
@@ -145,7 +149,7 @@ function limitInteractivity(videoId: string) {
 		shouldRefresh = confirm('Are you sure you want to refresh?')
 
 		if(!shouldRefresh) return;
-		location.assign(`https://youtube.com/watch?v=${videoId}`)
+		triggerClientMessage('ShowTruePage', { videoId });
 	}
 
 	const refreshList = [
@@ -164,13 +168,11 @@ function limitInteractivity(videoId: string) {
 
 		if(domElementOrList['length'] == null) {
 			const domElement = domElementOrList as HTMLElement;
-			domElement?.removeEventListener('click', handleRefresh, { capture: true });
-			domElement?.addEventListener('click', handleRefresh, { capture: true });
+			domElement?.addEventListener('click', handleRefresh, true);
 		} else {
 			const domList = domElementOrList as NodeListOf<HTMLElement>;
 			for(const domElement of domList) {
-				domElement?.removeEventListener('click', handleRefresh, { capture: true });
-				domElement?.addEventListener('click', handleRefresh, { capture: true });
+				domElement?.addEventListener('click', handleRefresh, true);
 			}
 		}
 	}

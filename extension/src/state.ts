@@ -14,16 +14,9 @@ export function initializeState() {
 		pingTimeoutId: 0,
 
 		client: null,
+		videoId: location.href.split('=')[1] ?? '',
 		room: null,
 		isShowingTruePage: true,
-		roomDetails: {
-			videoID: '',
-			title: '',
-			author: '',
-			authorImage: '',
-			authorSubs: '',
-			videoLikes: '',
-		},
 	};
 }
 

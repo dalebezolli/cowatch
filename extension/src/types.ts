@@ -22,6 +22,7 @@ export type ClientState = {
 	pingTimeoutId: number,
 
 	client: AuthorizedClient | null,
+	videoId: string,
 	room: Room | null,
 	isShowingTruePage: boolean,
 }
@@ -59,6 +60,9 @@ export type ClientMessageDetails = {
 		status: Status,
 		client: Client,
 		errorMessage?: string,
+	},
+	'ShowTruePage': {
+		videoId: string,
 	},
 	'GetState': {},
 	'HostRoom': {},

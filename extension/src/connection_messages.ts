@@ -69,15 +69,18 @@ function onConnectionResponseDisconnectRoom(action: ServerMessageDetails['Discon
 		host: null,
 		viewers: [],
 	};
+	getState().isShowingTruePage = true;
 
 	triggerCoreAction('SendState', { ...getState() });
+
+
 }
 
 function onConnectionResponseReflectRoom(action: ServerMessageDetails['ReflectRoom']) {
-	const currentURL = `https://youtube.com/watch?v=${getState().roomDetails.videoId}`;
-	const newURL = `https://youtube.com/watch?v=${action.id}`
+	const currentURL = `https://youtube.com/watch?v=${getState().videoId}`;
+	const newURL = `https://youtube.com/watch?v=${action.id}`;
 	if(currentURL != newURL) {
-		getState().roomDetails.videoId = action.id;
+		getState().videoId = action.id;
 		getState().isShowingTruePage = false;
 		triggerCoreAction('SendState', { ...getState() });
 	}
