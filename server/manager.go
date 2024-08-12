@@ -14,23 +14,23 @@ type Manager struct {
 	upgrader websocket.Upgrader
 
 	publicToPrivateTokens map[PublicToken]PrivateToken
-	clients map[PrivateToken]*Client
+	clients               map[PrivateToken]*Client
 
-	activeRooms map[RoomID]*Room
+	activeRooms           map[RoomID]*Room
 	clientRequestHandlers map[ClientRequestType]ClientRequestHandler
 }
 
 func NewManager() *Manager {
-	var manager = &Manager {
-		upgrader:  websocket.Upgrader{
+	var manager = &Manager{
+		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
-			CheckOrigin: func(request *http.Request) bool { return true },
+			CheckOrigin:     func(request *http.Request) bool { return true },
 		},
-		publicToPrivateTokens:	make(map[PublicToken]PrivateToken),
-		clients:				make(map[PrivateToken]*Client),
-		activeRooms:			make(map[RoomID]*Room),
-		clientRequestHandlers:	make(map[ClientRequestType]ClientRequestHandler),
+		publicToPrivateTokens: make(map[PublicToken]PrivateToken),
+		clients:               make(map[PrivateToken]*Client),
+		activeRooms:           make(map[RoomID]*Room),
+		clientRequestHandlers: make(map[ClientRequestType]ClientRequestHandler),
 	}
 
 	manager.setupClientActionHandlers()
@@ -58,7 +58,7 @@ func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *ht
 
 		client.LatestReply = time.Now()
 
-		logger.Info("[%s] [%s] Handling Request: %s\n", client.IPAddress, clientRequest.ActionType,  clientRequest.Action)
+		logger.Info("[%s] [%s] Handling Request: %s\n", client.IPAddress, clientRequest.ActionType, clientRequest.Action)
 		clientActionHandler, foundHandler := manager.clientRequestHandlers[clientRequest.ActionType]
 
 		if !foundHandler {
@@ -66,8 +66,7 @@ func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *ht
 			continue
 		}
 
-		if 
-			manager.IsClientRegistered(client) == false &&
+		if manager.IsClientRegistered(client) == false &&
 			clientRequest.ActionType != ClientActionTypeAuthorize &&
 			clientRequest.ActionType != ClientActionTypePing {
 
@@ -83,7 +82,7 @@ func (manager *Manager) CleanupInnactiveClients() {
 	logger.Info("Cleaning up clients\n")
 
 	currentDate := time.Now()
-	for _, client := range(manager.clients) {
+	for _, client := range manager.clients {
 		oldNewDifferenceDuration := currentDate.Sub(client.LatestReply)
 		oldNewDifference := time.Time{}.Add(oldNewDifferenceDuration)
 		disconnectThresholdDuration, _ := time.ParseDuration(ClientInnactivityThreshold + "s")
@@ -107,7 +106,7 @@ func (manager *Manager) GenerateUniqueClientTokens() (PrivateToken, PublicToken)
 	publicToken, _ := uuid.NewRandom()
 
 	bytePrivateToken, _ := privateToken.MarshalText()
-	bytePublicToken, _  := publicToken.MarshalText()
+	bytePublicToken, _ := publicToken.MarshalText()
 
 	return PrivateToken(bytePrivateToken), PublicToken(bytePublicToken)
 }

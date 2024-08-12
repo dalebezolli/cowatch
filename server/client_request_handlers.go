@@ -10,31 +10,32 @@ import (
 type ClientRequestType string
 type ClientAction struct {
 	ActionType ClientRequestType `json:"actionType"`
-	Action string `json:"action"`
+	Action     string            `json:"action"`
 }
 
 type ClientRequestHandler func(client *Client, manager *Manager, clientAction string)
+
 const (
-	ClientActionTypeAuthorize = "Authorize"
-	ClientActionTypeHostRoom  = "HostRoom"
-	ClientActionTypeJoinRoom  = "JoinRoom"
-	ClientActionTypeDisconnectRoom = "DisconnectRoom"
-	ClientActionTypeSendReflection = "SendReflection"
+	ClientActionTypeAuthorize        = "Authorize"
+	ClientActionTypeHostRoom         = "HostRoom"
+	ClientActionTypeJoinRoom         = "JoinRoom"
+	ClientActionTypeDisconnectRoom   = "DisconnectRoom"
+	ClientActionTypeSendReflection   = "SendReflection"
 	ClientActionTypeSendVideoDetails = "SendVideoDetails"
-	ClientActionTypePing = "Ping"
+	ClientActionTypePing             = "Ping"
 )
 
 type ClientRequestAuthorizeRoom struct {
-	Name  string `json:"name"`
-	Image string `json:"image"`
+	Name         string       `json:"name"`
+	Image        string       `json:"image"`
 	PrivateToken PrivateToken `json:"privateToken"`
 }
 
 type ServerResponseAuthorizeRoom struct {
-	Name  string `json:"name"`
-	Image string `json:"image"`
+	Name         string       `json:"name"`
+	Image        string       `json:"image"`
 	PrivateToken PrivateToken `json:"privateToken"`
-	PublicToken PublicToken `json:"publicToken"`
+	PublicToken  PublicToken  `json:"publicToken"`
 }
 
 func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) {
@@ -42,7 +43,7 @@ func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) {
 
 	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &requestAuthorize)
 	if errorParsingRequest != nil {
-		logger.Error("[%s] [Authorize] Bad json: %s\n", client.IPAddress, errorParsingRequest);
+		logger.Error("[%s] [Authorize] Bad json: %s\n", client.IPAddress, errorParsingRequest)
 		client.SendMessage(ServerMessageTypeAuthorize, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
 		return
 	}
@@ -59,15 +60,15 @@ func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) {
 			isClientAuthorized = true
 		}
 	}
-	
+
 	if !isClientAuthorized {
 		privateToken, publicToken := manager.GenerateUniqueClientTokens()
 		clientDetails = Client{
-			Name: requestAuthorize.Name,
-			Image: requestAuthorize.Image,
-			Type: ClientTypeInnactive,
+			Name:         requestAuthorize.Name,
+			Image:        requestAuthorize.Image,
+			Type:         ClientTypeInnactive,
 			PrivateToken: privateToken,
-			PublicToken: publicToken,
+			PublicToken:  publicToken,
 		}
 	}
 
@@ -75,10 +76,10 @@ func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) {
 	manager.RegisterClient(client)
 
 	serverMessageAuthorize, serverMessageAuthorizeMarshalError := json.Marshal(ServerResponseAuthorizeRoom{
-		Name: client.Name,
-		Image: client.Image,
+		Name:         client.Name,
+		Image:        client.Image,
 		PrivateToken: client.PrivateToken,
-		PublicToken: client.PublicToken,
+		PublicToken:  client.PublicToken,
 	})
 
 	if serverMessageAuthorizeMarshalError != nil {
@@ -88,18 +89,18 @@ func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) {
 	}
 
 	client.SendMessage(ServerMessageTypeAuthorize, serverMessageAuthorize, ServerMessageStatusOk, "")
-	
+
 	if client.Type != ClientTypeHost && client.Type != ClientTypeViewer {
 		return
 	}
 
-	JoinRoomHandler(client, manager, "{ \"roomID\": \"" + string(client.RoomID) + "\" }" )
+	JoinRoomHandler(client, manager, "{ \"roomID\": \""+string(client.RoomID)+"\" }")
 }
 
 func HostRoomHandler(client *Client, manager *Manager, clientRequest string) {
 	room := NewRoom(manager.GenerateUniqueRoomID(), client)
 	manager.RegisterRoom(room)
-	client.UpdateClientDetails(Client{ Type: ClientTypeHost, RoomID: room.RoomID })
+	client.UpdateClientDetails(Client{Type: ClientTypeHost, RoomID: room.RoomID})
 
 	logger.Info("[%s] [HostRoom] Created room with id: %s\n", client.IPAddress, room.RoomID)
 
@@ -124,7 +125,7 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 
 	errorParsingAction := json.Unmarshal([]byte(clientRequest), &requestJoinRoom)
 	if errorParsingAction != nil {
-		logger.Error("[%s] [JoinRoom] Client sent bad json object: %s\n", client.IPAddress, errorParsingAction);
+		logger.Error("[%s] [JoinRoom] Client sent bad json object: %s\n", client.IPAddress, errorParsingAction)
 		client.SendMessage(ServerMessageTypeJoinRoom, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
 		return
 	}
@@ -148,19 +149,19 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 	}
 
 	if client.Type == ClientTypeViewer {
-		for _, possibleOldClient := range(room.Viewers) {
+		for _, possibleOldClient := range room.Viewers {
 			if client.PrivateToken == possibleOldClient.PrivateToken {
 				room.RemoveViewer(possibleOldClient)
 			}
 		}
 	}
-	
+
 	if client.Type == ClientTypeInnactive || client.Type == ClientTypeViewer {
 		client.Type = ClientTypeViewer
 		room.AddViewer(client)
 	}
 
-	client.UpdateClientDetails(Client{ Type: client.Type, RoomID: requestJoinRoom.RoomID })
+	client.UpdateClientDetails(Client{Type: client.Type, RoomID: requestJoinRoom.RoomID})
 
 	filteredRoom := room.GetFilteredRoom()
 
@@ -195,8 +196,8 @@ func DisconnectRoomHandler(client *Client, manager *Manager, clientRequest strin
 }
 
 type RoomReflection struct {
-	ID	   string `json:"id"`
-	State  int    `json:"state"`
+	ID          string  `json:"id"`
+	State       int     `json:"state"`
 	CurrentTime float32 `json:"time"`
 }
 
@@ -205,7 +206,7 @@ func ReflectRoomHandler(client *Client, manager *Manager, clientRequest string) 
 	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &reflection)
 
 	if errorParsingRequest != nil {
-		logger.Error("[%s] [ReflectRoom] Client sent bad json object: %s\n", client.IPAddress, errorParsingRequest);
+		logger.Error("[%s] [ReflectRoom] Client sent bad json object: %s\n", client.IPAddress, errorParsingRequest)
 		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
 		return
 	}
@@ -220,7 +221,7 @@ func ReflectRoomHandler(client *Client, manager *Manager, clientRequest string) 
 	if client.Type != ClientTypeHost {
 		logger.Info("[%s] [ReflectRoom] Client isn't a host\n", client.IPAddress)
 		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageClientNotHost)
-		return;
+		return
 	}
 
 	serverMessageReflection, serverMessageMarshalError := json.Marshal(reflection)
@@ -230,17 +231,17 @@ func ReflectRoomHandler(client *Client, manager *Manager, clientRequest string) 
 		return
 	}
 
-	for _, viewer := range(room.Viewers) {
+	for _, viewer := range room.Viewers {
 		viewer.SendMessage(ServerMessageTypeReflectRoom, serverMessageReflection, ServerMessageStatusOk, "")
 	}
 }
 
 type VideoDetails struct {
-	Title string `json:"title"`
-	Author string `json:"author"`
-	AuthorImage string `json:"authorImage"`
+	Title           string `json:"title"`
+	Author          string `json:"author"`
+	AuthorImage     string `json:"authorImage"`
 	SubscriberCount string `json:"subscriberCount"`
-	LikeCount string `json:"likeCount"`
+	LikeCount       string `json:"likeCount"`
 }
 
 func ReflectDetailsHandler(client *Client, manager *Manager, clientRequest string) {
@@ -248,7 +249,7 @@ func ReflectDetailsHandler(client *Client, manager *Manager, clientRequest strin
 	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &videoDetails)
 
 	if errorParsingRequest != nil {
-		logger.Error("[%s] [ReflectVideoDetails] Client sent bad json object: %s\n", client.IPAddress, errorParsingRequest);
+		logger.Error("[%s] [ReflectVideoDetails] Client sent bad json object: %s\n", client.IPAddress, errorParsingRequest)
 		client.SendMessage(ServerMessageTypeReflectVideoDetails, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
 		return
 	}
@@ -263,15 +264,14 @@ func ReflectDetailsHandler(client *Client, manager *Manager, clientRequest strin
 	if client.Type != ClientTypeHost {
 		logger.Info("[%s] [ReflectVideoDetails] Client isn't a host\n", client.IPAddress)
 		client.SendMessage(ServerMessageTypeReflectVideoDetails, nil, ServerMessageStatusError, ServerErrorMessageClientNotHost)
-		return;
+		return
 	}
 
-	if
-		videoDetails.Title != "" && videoDetails.Author != "" &&
+	if videoDetails.Title != "" && videoDetails.Author != "" &&
 		videoDetails.AuthorImage != "" && videoDetails.SubscriberCount != "" &&
 		videoDetails.LikeCount != "" {
 
-		room.SaveVideoDetails(videoDetails);
+		room.SaveVideoDetails(videoDetails)
 	}
 
 	serverMessageRoomDetails, serverMessageMarshalError := json.Marshal(videoDetails)
@@ -281,7 +281,7 @@ func ReflectDetailsHandler(client *Client, manager *Manager, clientRequest strin
 		return
 	}
 
-	for _, viewer := range(room.Viewers) {
+	for _, viewer := range room.Viewers {
 		viewer.SendMessage(ServerMessageTypeReflectVideoDetails, serverMessageRoomDetails, ServerMessageStatusOk, "")
 	}
 }
@@ -297,7 +297,7 @@ func PingHandler(client *Client, manager *Manager, clientRequest string) {
 	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &ping)
 
 	if errorParsingRequest != nil {
-		logger.Error("[%s] [Ping] Client sent bad json object: %s\n", client.IPAddress, errorParsingRequest);
+		logger.Error("[%s] [Ping] Client sent bad json object: %s\n", client.IPAddress, errorParsingRequest)
 		client.SendMessage(ServerMessageTypePong, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
 		return
 	}
@@ -332,8 +332,8 @@ func updateRoomClientsWithLatestChanges(room Room) {
 		}
 	}
 
-	for _, viewer := range(room.Viewers) {
-		if(viewer.Connection == nil) {
+	for _, viewer := range room.Viewers {
+		if viewer.Connection == nil {
 			continue
 		}
 
@@ -359,7 +359,7 @@ func (manager *Manager) DisconnectClient(client *Client) {
 	}
 
 	if client.Type == ClientTypeHost {
-		for _, viewer := range(room.Viewers) {
+		for _, viewer := range room.Viewers {
 			manager.DisconnectClient(viewer)
 		}
 
@@ -369,6 +369,6 @@ func (manager *Manager) DisconnectClient(client *Client) {
 		updateRoomClientsWithLatestChanges(*room)
 	}
 
-	client.UpdateClientDetails(Client{ Type: ClientTypeInnactive, RoomID: "" })
+	client.UpdateClientDetails(Client{Type: ClientTypeInnactive, RoomID: ""})
 	client.SendMessage(ServerMessageTypeDisconnectRoom, nil, ServerMessageStatusOk, "")
 }

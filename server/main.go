@@ -22,7 +22,7 @@ func main() {
 
 	logFileName := "log_" + time.Now().Format("2006_01_02_15_04_05.000")
 	logFile, errorOpeningLogFile := os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
-	
+
 	if errorOpeningLogFile != nil {
 		logger.Error("Failed to setup logger: %s\n", errorOpeningLogFile)
 	} else {
@@ -38,11 +38,11 @@ func main() {
 
 	// WARN: The following test data must be removed after (Closed Alpha)
 	managerInstance.clients["private-test"] = &Client{
-		Type: ClientTypeInnactive,
-		Name: "Final Boss",
-		Image: "https://yt3.ggpht.com/yti/ANjgQV9p6GfGGhyml6eA44zBvSER2q3MjEGVcTgSoRFcuJtxvqw=s88-c-k-c0x00ffffff-no-rj",
+		Type:         ClientTypeInnactive,
+		Name:         "Final Boss",
+		Image:        "https://yt3.ggpht.com/yti/ANjgQV9p6GfGGhyml6eA44zBvSER2q3MjEGVcTgSoRFcuJtxvqw=s88-c-k-c0x00ffffff-no-rj",
 		PrivateToken: "private-test",
-		PublicToken: "public-test",
+		PublicToken:  "public-test",
 	}
 
 	managerInstance.publicToPrivateTokens["public-test"] = "private-test"
@@ -51,11 +51,11 @@ func main() {
 		RoomID: "test",
 		Host: &Client{
 			Connection: nil,
-			IPAddress: nil,
+			IPAddress:  nil,
 
-			Type: ClientTypeHost,
-			Name: "Final Boss",
-			Image: "https://yt3.ggpht.com/yti/ANjgQV9p6GfGGhyml6eA44zBvSER2q3MjEGVcTgSoRFcuJtxvqw=s88-c-k-c0x00ffffff-no-rj",
+			Type:   ClientTypeHost,
+			Name:   "Final Boss",
+			Image:  "https://yt3.ggpht.com/yti/ANjgQV9p6GfGGhyml6eA44zBvSER2q3MjEGVcTgSoRFcuJtxvqw=s88-c-k-c0x00ffffff-no-rj",
 			Email:  "",
 			RoomID: "test",
 		},
@@ -71,7 +71,7 @@ func main() {
 		}
 	}()
 
-	if err := http.ListenAndServe(":" + port, nil) ; err != nil {
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		logger.Error("Failed while serving: %s\n", err)
 	}
 }

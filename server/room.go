@@ -5,23 +5,23 @@ const DEFAULT_ROOM_SIZE = 10
 type RoomID string
 
 type Room struct {
-	RoomID  RoomID
+	RoomID       RoomID
 	VideoDetails VideoDetails
-	Host    *Client
-	Viewers []*Client
+	Host         *Client
+	Viewers      []*Client
 }
 
 func NewRoom(roomID RoomID, host *Client) *Room {
 	return &Room{
 		RoomID: roomID,
 		VideoDetails: VideoDetails{
-			Title: "",
-			Author: "",
-			AuthorImage: "",
+			Title:           "",
+			Author:          "",
+			AuthorImage:     "",
 			SubscriberCount: "",
-			LikeCount: "",
+			LikeCount:       "",
 		},
-		Host: host,
+		Host:    host,
 		Viewers: make([]*Client, 0, DEFAULT_ROOM_SIZE),
 	}
 }
@@ -35,7 +35,7 @@ func (room *Room) AddViewer(viewer *Client) {
 }
 
 func (room *Room) RemoveViewer(viewer *Client) {
-	roomIndex, recordFound := FindInSlice(room.Viewers, viewer, func(a *Client , b *Client) bool {
+	roomIndex, recordFound := FindInSlice(room.Viewers, viewer, func(a *Client, b *Client) bool {
 		return a.IPAddress == b.IPAddress
 	})
 
@@ -45,13 +45,13 @@ func (room *Room) RemoveViewer(viewer *Client) {
 }
 
 func (room *Room) SaveVideoDetails(vidoeDetails VideoDetails) {
-	room.VideoDetails = vidoeDetails;
+	room.VideoDetails = vidoeDetails
 }
 
 type RoomRecord struct {
-	RoomID  RoomID			`json:"roomID"`
-	Host    ClientRecord	`json:"host"`
-	Viewers []ClientRecord	`json:"viewers"`
+	RoomID  RoomID         `json:"roomID"`
+	Host    ClientRecord   `json:"host"`
+	Viewers []ClientRecord `json:"viewers"`
 }
 
 // Calculates only the necessary data to be sent to a request
@@ -66,8 +66,8 @@ func (room *Room) GetFilteredRoom() RoomRecord {
 	}
 
 	filteredRoom = RoomRecord{
-		RoomID: room.RoomID,
-		Host: filteredHost,
+		RoomID:  room.RoomID,
+		Host:    filteredHost,
 		Viewers: filteredViewers,
 	}
 

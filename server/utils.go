@@ -18,8 +18,8 @@ func FindInSlice[T any](slice []T, search T, compare func(T, T) bool) (int, bool
 func RemoveFromSlice[T any](slice []T, index int) []T {
 	var newSlice = make([]T, index)
 
-	copy(newSlice, slice[:index + 1])
-	newSlice = append(newSlice, slice[index + 1:]...)
+	copy(newSlice, slice[:index+1])
+	newSlice = append(newSlice, slice[index+1:]...)
 
 	return newSlice
 }

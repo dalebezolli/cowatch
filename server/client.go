@@ -36,23 +36,23 @@ type Client struct {
 }
 
 type ClientRecord struct {
-	Name  string `json:"name"`
-	Image string `json:"image"`
+	Name        string      `json:"name"`
+	Image       string      `json:"image"`
 	PublicToken PublicToken `json:"publicToken"`
 }
 
 /*
-	Initializes a new Client
+Initializes a new Client
 */
 func NewClient(clientConnection *websocket.Conn) *Client {
 	client := &Client{
 		Connection: clientConnection,
-		IPAddress:	clientConnection.RemoteAddr(),
+		IPAddress:  clientConnection.RemoteAddr(),
 
-		Type:	ClientTypeInnactive,
-		Name:	"",
-		Image:	"",
-		Email:	"",
+		Type:   ClientTypeInnactive,
+		Name:   "",
+		Image:  "",
+		Email:  "",
 		RoomID: "",
 
 		LatestReply: time.Now(),
@@ -79,39 +79,42 @@ func (client *Client) GetClientRequest() (ClientAction, error) {
 }
 
 type ServerMessageType string
+
 const (
-	ServerMessageTypeAuthorize		= "Authorize"
-	ServerMessageTypeHostRoom		= "HostRoom"
-	ServerMessageTypeJoinRoom		= "JoinRoom"
-	ServerMessageTypeUpdateRoom		= "UpdateRoom"
-	ServerMessageTypeDisconnectRoom = "DisconnectRoom"
-	ServerMessageTypeReflectRoom	= "ReflectRoom"
+	ServerMessageTypeAuthorize           = "Authorize"
+	ServerMessageTypeHostRoom            = "HostRoom"
+	ServerMessageTypeJoinRoom            = "JoinRoom"
+	ServerMessageTypeUpdateRoom          = "UpdateRoom"
+	ServerMessageTypeDisconnectRoom      = "DisconnectRoom"
+	ServerMessageTypeReflectRoom         = "ReflectRoom"
 	ServerMessageTypeReflectVideoDetails = "ReflectVideoDetails"
-	ServerMessageTypePong			= "Pong"
+	ServerMessageTypePong                = "Pong"
 )
 
 type ServerMessageStatus string
+
 const (
-	ServerMessageStatusOk	 = "ok"
+	ServerMessageStatusOk    = "ok"
 	ServerMessageStatusError = "error"
 )
 
 type ServerErrorMessage string
+
 const (
 	ServerErrorMessageInternalServerError = "Internal server error."
-	ServerErrorMessageBadJson = "Bad request, please upgrade your extension to a newer version"
+	ServerErrorMessageBadJson             = "Bad request, please upgrade your extension to a newer version"
 
-	ServerErrorMessageNoRoom = "The room you're trying to join doesn't exist"
+	ServerErrorMessageNoRoom   = "The room you're trying to join doesn't exist"
 	ServerErrorMessageFullRoom = "The room you're trying to join is full"
 
 	ServerErrorMessageClientNotHost = "You're not a host"
 )
 
 type ServerMessage struct {
-	MessageType		ServerMessageType	`json:"actionType"`
-	MessageDetails	json.RawMessage		`json:"action"`
-	Status			ServerMessageStatus	`json:"status"`			// Returns 'ok' or 'error'
-	ErrorMessage	ServerErrorMessage	`json:"errorMessage"`	// Populated only if there's an error
+	MessageType    ServerMessageType   `json:"actionType"`
+	MessageDetails json.RawMessage     `json:"action"`
+	Status         ServerMessageStatus `json:"status"`       // Returns 'ok' or 'error'
+	ErrorMessage   ServerErrorMessage  `json:"errorMessage"` // Populated only if there's an error
 }
 
 func (client *Client) SendMessage(
@@ -119,24 +122,24 @@ func (client *Client) SendMessage(
 	status ServerMessageStatus, errorMessage ServerErrorMessage,
 ) error {
 	var serverMessage = ServerMessage{
-		MessageType:	messageType,
+		MessageType:    messageType,
 		MessageDetails: messageDetails,
-		Status:			status,
-		ErrorMessage:	errorMessage,
+		Status:         status,
+		ErrorMessage:   errorMessage,
 	}
 
 	serverAction, serverActionMarshalError := json.Marshal(serverMessage)
 
 	if serverActionMarshalError != nil {
-		return serverActionMarshalError;
+		return serverActionMarshalError
 	}
 
-	client.Connection.WriteMessage(websocket.TextMessage, serverAction);
+	client.Connection.WriteMessage(websocket.TextMessage, serverAction)
 	return nil
 }
 
 func (client *Client) UpdateClientDetails(newData Client) {
-	logger.Info("[%s] Updating existing details {%s, %s, %s} with {%s, %s, %s}\n", client.IPAddress, client.Name, client.Image, client.Email, newData.Name, newData.Image, newData.Email);
+	logger.Info("[%s] Updating existing details {%s, %s, %s} with {%s, %s, %s}\n", client.IPAddress, client.Name, client.Image, client.Email, newData.Name, newData.Image, newData.Email)
 
 	if newData.Name != "" {
 		client.Name = newData.Name
@@ -168,8 +171,8 @@ func (client *Client) UpdateClientDetails(newData Client) {
 // Calculates only the necessary data to be sent to a request
 func (client *Client) GetFilteredClient() ClientRecord {
 	return ClientRecord{
-		Name: client.Name,
-		Image: client.Image,
+		Name:        client.Name,
+		Image:       client.Image,
 		PublicToken: client.PublicToken,
 	}
 }
