@@ -178,14 +178,14 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 		client.SendMessage(ServerMessageTypeJoinRoom, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
 	}
 
-	serverMessageRoomDetails, serverMessageMarshalError := json.Marshal(room.VideoDetails)
-	if serverMessageMarshalError != nil {
-		logger.Error("[%s] [JoinRoom] Bad json: %s\n", client.IPAddress, client.RoomID)
-		client.SendMessage(ServerMessageTypeReflectVideoDetails, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
-		return
+	if room.VideoDetails.Title != "" {
+		serverMessageRoomDetails, serverMessageMarshalError := json.Marshal(room.VideoDetails)
+		if serverMessageMarshalError != nil {
+			logger.Error("[%s] [JoinRoom] Bad json: %s\n", client.IPAddress, client.RoomID)
+		} else {
+			client.SendMessage(ServerMessageTypeReflectVideoDetails, serverMessageRoomDetails, ServerMessageStatusOk, "")
+		}
 	}
-
-	client.SendMessage(ServerMessageTypeReflectVideoDetails, serverMessageRoomDetails, ServerMessageStatusOk, "")
 
 	client.SendMessage(ServerMessageTypeJoinRoom, serverMessageJoinRoom, ServerMessageStatusOk, "")
 	updateRoomClientsWithLatestChanges(*room)

@@ -89,6 +89,7 @@ function onConnectionResponseReflectRoom(action: ServerMessageDetails['ReflectRo
 }
 
 function onConnectionResponseReflectVideoDetails(action: ServerMessageDetails['ReflectVideoDetails']) {
+	if(getState().clientStatus != 'viewer') return;
 	triggerCoreAction('UpdateDetails', action);
 }
 
