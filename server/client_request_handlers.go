@@ -267,12 +267,13 @@ func ReflectDetailsHandler(client *Client, manager *Manager, clientRequest strin
 		return
 	}
 
-	if videoDetails.Title != "" && videoDetails.Author != "" &&
-		videoDetails.AuthorImage != "" && videoDetails.SubscriberCount != "" &&
-		videoDetails.LikeCount != "" {
+	if videoDetails.Title == "" || videoDetails.Author == "" || videoDetails.AuthorImage == "" ||
+		videoDetails.SubscriberCount == "" || videoDetails.LikeCount == "" {
 
-		room.SaveVideoDetails(videoDetails)
+		logger.Info("[%s] [ReflectVideoDetails] Client sent malformed details %+v\n", client.IPAddress, videoDetails)
+		return
 	}
+	room.SaveVideoDetails(videoDetails)
 
 	serverMessageRoomDetails, serverMessageMarshalError := json.Marshal(videoDetails)
 	if serverMessageMarshalError != nil {

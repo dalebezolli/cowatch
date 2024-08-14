@@ -67,22 +67,7 @@ function handleState(clientState: CoreActionDetails['SendState']) {
 	}
 
 	if(state.reflectionIntervalReference == null && clientState.clientStatus === 'host') {
-		state.reflectionIntervalReference = setInterval(() => {
-			const currentReflectionSnapshot = calculateReflectionSnapshot(state.moviePlayer);
-			state.reflectionSnapshot = currentReflectionSnapshot;
-
-			const currentVideoDetails = collectCurrentVideoDetails(state.moviePlayer);
-			if(currentVideoDetails.title != state.videoDetails.title) {
-				state.videoDetails = currentVideoDetails;
-				triggerClientMessage('SendVideoDetails', state.videoDetails);
-			}
-
-			if(document.querySelector('.ad-showing') != null) {
-				state.reflectionSnapshot.state = YoutubePlayerState.Paused;
-			}
-
-			triggerClientMessage('SendReflection', state.reflectionSnapshot);
-		}, INITIAL_REFLECTION_SNAPSHOT_INTERVAL);
+		state.reflectionIntervalReference = setInterval(reflectPlayer, INITIAL_REFLECTION_SNAPSHOT_INTERVAL);
 	}
 	
 	if(state.reflectionIntervalReference !== null && clientState.clientStatus !== 'host') {
@@ -90,6 +75,23 @@ function handleState(clientState: CoreActionDetails['SendState']) {
 		state.reflectionIntervalReference = null;
 		return;
 	}
+}
+
+function reflectPlayer() {
+	const currentReflectionSnapshot = calculateReflectionSnapshot(state.moviePlayer);
+	state.reflectionSnapshot = currentReflectionSnapshot;
+
+	const currentVideoDetails = collectCurrentVideoDetails(state.moviePlayer);
+	if(currentVideoDetails.title != '' && currentVideoDetails.title != state.videoDetails.title) {
+		state.videoDetails = currentVideoDetails;
+		triggerClientMessage('SendVideoDetails', state.videoDetails);
+	}
+
+	if(document.querySelector('.ad-showing') != null) {
+		state.reflectionSnapshot.state = YoutubePlayerState.Paused;
+	}
+
+	triggerClientMessage('SendReflection', state.reflectionSnapshot);
 }
 
 function syncPlayer(reflection: ReflectionSnapshot) {
