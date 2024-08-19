@@ -5,6 +5,7 @@ import { getState, initializeState } from './state';
 import { initializeConnection } from './connection';
 import { initializeConnectionMessages } from './connection_messages';
 import { initializeClientMessageHandlers } from './client_message_handlers';
+import { triggerCoreAction } from './events';
 
 onStartup();
 
@@ -26,6 +27,13 @@ async function onStartup() {
 	log(LogLevel.Info, 'Injecting client info collector...')();
 	collectClient();
 	connectYoutubeInterceptor();
+
+	browser.runtime.onMessage.addListener((message) => {
+		getState().isPrimaryTab = message.isActive;
+		getState().isShowingTruePage = true;
+		triggerCoreAction('SendState', { ...getState() });
+	});
+	browser.runtime.sendMessage({ action: 'GetCurrentID' });
 }
 
 function collectClient() {

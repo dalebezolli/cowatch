@@ -4,6 +4,11 @@
   "version": "0.0.4",
   "permissions": ["webNavigation", "scripting", "tabs"],
 
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+
   "content_scripts": [
     {
       "js": ["core.js"],

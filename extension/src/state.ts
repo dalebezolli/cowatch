@@ -17,6 +17,7 @@ export function initializeState() {
 		videoId: location.href.split('=')[1] ?? '',
 		room: null,
 		isShowingTruePage: true,
+		isPrimaryTab: false,
 	};
 }
 

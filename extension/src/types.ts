@@ -25,6 +25,7 @@ export type ClientState = {
 	videoId: string,
 	room: Room | null,
 	isShowingTruePage: boolean,
+	isPrimaryTab: boolean,
 }
 
 export type Timestamp = number;
@@ -152,7 +153,8 @@ export enum CowatchStatus {
 	Join,
 	Loading,
 	Connected,
-	Options
+	Options,
+	NotPrimaryTab,
 };
 
 export type CowatchHeaderProps = {

@@ -9,6 +9,10 @@
     }
   },
 
+  "background": {
+    "scripts": ["background.js"]
+  },
+
   "content_scripts": [
     {
       "js": ["core.js"],

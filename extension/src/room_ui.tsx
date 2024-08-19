@@ -86,7 +86,9 @@ function Cowatch() {
 		log(LogLevel.Info, 'Sent state:', state)();
 
 		setClientState(state.client);
-		if(state.clientStatus === 'innactive') {
+		if(!state.isPrimaryTab) {
+			setContentStatus(CowatchStatus.NotPrimaryTab);
+		} else if(state.clientStatus === 'innactive') {
 			setContentStatus(CowatchStatus.Initial);
 		} else {
 			setContentStatus(CowatchStatus.Connected);
@@ -206,6 +208,10 @@ function CowatchContent({ room, client, status, onChangeStatus }: CowatchContent
 		onChangeStatus(CowatchStatus.Options);
 	}
 
+	function onSwitchActiveInstance() {
+		triggerClientMessage('SwitchActiveTab', {});
+	}
+
 	switch(status) {
 		case CowatchStatus.Initial:
 			selectedContent = <CowatchContentInitial client={client} onHost={onRequestHost} onJoin={onRequestJoinOptions} />;
@@ -221,6 +227,19 @@ function CowatchContent({ room, client, status, onChangeStatus }: CowatchContent
 			break;
 		case CowatchStatus.Connected:
 			selectedContent = <CowatchContentConnected client={client} room={room} onDisconnect={onRequestDisconnect} onSettings={onSettings} />;
+			break;
+		case CowatchStatus.NotPrimaryTab:
+			selectedContent = (
+				<section className={cowatchContentFlexCenter}>
+					<p>Another cowatch is active, switch to this one?</p>
+					<button
+						className={cowatchButton + ' ' + cowatchButtonPrimary}
+						onClick={onSwitchActiveInstance}
+					>
+						Switch
+					</button>
+				</section>
+			);
 			break;
 		case CowatchStatus.Loading:
 			selectedContent = (

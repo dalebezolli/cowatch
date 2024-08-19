@@ -21,6 +21,7 @@ const LOCALSTORAGE_PRIVATETOKEN_KEY = 'cowatch_token';
  */
 const actionList = new Map<ClientMessageType, (action: ClientMessageDetails[ClientMessageType]) => void>([
 	['CollectClient', onClientMessageCollectClient],
+	['SwitchActiveTab', onClientSwitchActiveTab],
 	['ShowTruePage', onClientShowTruePage],
 	['GetState', onClientMessageGetState],
 
@@ -47,6 +48,10 @@ function onClientMessageCollectClient(action: ClientMessageDetails['CollectClien
 
 	log(LogLevel.Info, 'Injecting room ui...')();
 	injectRoomUI();
+}
+
+function onClientSwitchActiveTab() {
+	browser.runtime.sendMessage({ action: 'UpdateActiveID' });
 }
 
 function onClientShowTruePage(clientAction: ClientMessageDetails['ShowTruePage']) {

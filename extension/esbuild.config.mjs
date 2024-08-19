@@ -8,6 +8,14 @@ formatProcessEnvNames(definitions);
 const outpath = process.argv[2] ?? './dist/firefox/';
 
 await esbuild.build({
+	entryPoints: ['./src/background.ts'],
+	bundle: true,
+	outfile: outpath + '/background.js',
+	define: definitions,
+	format: 'esm'
+});
+
+await esbuild.build({
 	entryPoints: ['./src/core.ts'],
 	bundle: true,
 	outfile: outpath + '/core.js',
