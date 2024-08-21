@@ -42,9 +42,9 @@ func (connManager GorillaConnectionManager) NewConnection(w http.ResponseWriter,
 	return connection, nil
 }
 
-// Registers client to be managed
-func (connManager GorillaConnectionManager) RegisterClientConnection(clientToken PrivateToken, connection Connection) error {
-	return nil
+// Registers client to be managed. If an id is equal with an existing one, the connection will replace the original.
+func (connManager GorillaConnectionManager) RegisterClientConnection(clientToken PrivateToken, connection *Connection) {
+	connManager.connectionsMap[clientToken] = connection
 }
 
 // Unregisters managed client
