@@ -7,24 +7,6 @@ import (
 	"github.com/cowatch/logger"
 )
 
-type ClientRequestType string
-type ClientAction struct {
-	ActionType ClientRequestType `json:"actionType"`
-	Action     string            `json:"action"`
-}
-
-type ClientRequestHandler func(client *Client, manager *Manager, clientAction string)
-
-const (
-	ClientActionTypeAuthorize        = "Authorize"
-	ClientActionTypeHostRoom         = "HostRoom"
-	ClientActionTypeJoinRoom         = "JoinRoom"
-	ClientActionTypeDisconnectRoom   = "DisconnectRoom"
-	ClientActionTypeSendReflection   = "SendReflection"
-	ClientActionTypeSendVideoDetails = "SendVideoDetails"
-	ClientActionTypePing             = "Ping"
-)
-
 type ClientRequestAuthorizeRoom struct {
 	Name         string       `json:"name"`
 	Image        string       `json:"image"`
@@ -89,7 +71,6 @@ func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) {
 	}
 
 	client.SendMessage(ServerMessageTypeAuthorize, serverMessageAuthorize, ServerMessageStatusOk, "")
-
 	if client.Type != ClientTypeHost && client.Type != ClientTypeViewer {
 		return
 	}
@@ -123,9 +104,9 @@ type ClientRequestJoinRoom struct {
 func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 	var requestJoinRoom ClientRequestJoinRoom
 
-	errorParsingAction := json.Unmarshal([]byte(clientRequest), &requestJoinRoom)
-	if errorParsingAction != nil {
-		logger.Error("[%s] [JoinRoom] Client sent bad json object: %s\n", client.IPAddress, errorParsingAction)
+	errorParsingMessage := json.Unmarshal([]byte(clientRequest), &requestJoinRoom)
+	if errorParsingMessage != nil {
+		logger.Error("[%s] [JoinRoom] Client sent bad json object: %s\n", client.IPAddress, errorParsingMessage)
 		client.SendMessage(ServerMessageTypeJoinRoom, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
 		return
 	}

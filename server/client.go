@@ -61,21 +61,39 @@ func NewClient(clientConnection *websocket.Conn) *Client {
 	return client
 }
 
-func (client *Client) GetClientRequest() (ClientAction, error) {
+type ClientMessageType string
+type ClientMessage struct {
+	MessageType ClientMessageType `json:"actionType"`
+	Message     string            `json:"action"`
+}
+
+type ClientRequestHandler func(client *Client, manager *Manager, clientAction string)
+
+const (
+	ClientMessageTypeAuthorize        = "Authorize"
+	ClientMessageTypeHostRoom         = "HostRoom"
+	ClientMessageTypeJoinRoom         = "JoinRoom"
+	ClientMessageTypeDisconnectRoom   = "DisconnectRoom"
+	ClientMessageTypeSendReflection   = "SendReflection"
+	ClientMessageTypeSendVideoDetails = "SendVideoDetails"
+	ClientMessageTypePing             = "Ping"
+)
+
+func (client *Client) GetClientMessage() (ClientMessage, error) {
 	_, rawMessage, errorReadingMessage := client.Connection.ReadMessage()
 
 	if errorReadingMessage != nil {
-		return ClientAction{}, errors.New("Client potentially disconnected")
+		return ClientMessage{}, errors.New("Client potentially disconnected")
 	}
 
-	var clientActionRequest ClientAction
-	unmarshalError := json.Unmarshal(rawMessage, &clientActionRequest)
+	var clientMessage ClientMessage
+	unmarshalError := json.Unmarshal(rawMessage, &clientMessage)
 
 	if unmarshalError != nil {
-		return ClientAction{}, unmarshalError
+		return ClientMessage{}, unmarshalError
 	}
 
-	return clientActionRequest, nil
+	return clientMessage, nil
 }
 
 type ServerMessageType string
@@ -128,13 +146,13 @@ func (client *Client) SendMessage(
 		ErrorMessage:   errorMessage,
 	}
 
-	serverAction, serverActionMarshalError := json.Marshal(serverMessage)
+	jsonServerMessage, serverMessageMarshalError := json.Marshal(serverMessage)
 
-	if serverActionMarshalError != nil {
-		return serverActionMarshalError
+	if serverMessageMarshalError != nil {
+		return serverMessageMarshalError
 	}
 
-	client.Connection.WriteMessage(websocket.TextMessage, serverAction)
+	client.Connection.WriteMessage(websocket.TextMessage, jsonServerMessage)
 	return nil
 }
 

@@ -17,7 +17,7 @@ type Manager struct {
 	clients               map[PrivateToken]*Client
 
 	activeRooms           map[RoomID]*Room
-	clientRequestHandlers map[ClientRequestType]ClientRequestHandler
+	clientMessageHandlers map[ClientMessageType]ClientRequestHandler
 }
 
 func NewManager() *Manager {
@@ -30,14 +30,14 @@ func NewManager() *Manager {
 		publicToPrivateTokens: make(map[PublicToken]PrivateToken),
 		clients:               make(map[PrivateToken]*Client),
 		activeRooms:           make(map[RoomID]*Room),
-		clientRequestHandlers: make(map[ClientRequestType]ClientRequestHandler),
+		clientMessageHandlers: make(map[ClientMessageType]ClientRequestHandler),
 	}
 
-	manager.setupClientActionHandlers()
+	manager.setupClientMessageHandlers()
 	return manager
 }
 
-func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *http.Request) {
+func (manager *Manager) HandleMessages(writer http.ResponseWriter, request *http.Request) {
 	websocketConnection, errorUpgradeWebsocket := manager.upgrader.Upgrade(writer, request, nil)
 	clientAddress := websocketConnection.RemoteAddr()
 
@@ -51,30 +51,30 @@ func (manager *Manager) HandleConnection(writer http.ResponseWriter, request *ht
 	client := NewClient(websocketConnection)
 	logger.Info("[%s] Established connection\n", websocketConnection.RemoteAddr())
 	for {
-		clientRequest, errorGetClientRequest := client.GetClientRequest()
-		if errorGetClientRequest != nil {
+		clientMessage, errorGetClientMessage := client.GetClientMessage()
+		if errorGetClientMessage != nil {
 			break
 		}
 
 		client.LatestReply = time.Now()
 
-		logger.Info("[%s] [%s] Handling Request: %s\n", client.IPAddress, clientRequest.ActionType, clientRequest.Action)
-		clientActionHandler, foundHandler := manager.clientRequestHandlers[clientRequest.ActionType]
+		logger.Info("[%s] [%s] Handling Request: %s\n", client.IPAddress, clientMessage.MessageType, clientMessage.Message)
+		clientMessageHandler, foundHandler := manager.clientMessageHandlers[clientMessage.MessageType]
 
 		if !foundHandler {
-			logger.Info("[%s] [%s] Handler for requested action does not exist\n", client.IPAddress, clientRequest.ActionType)
+			logger.Info("[%s] [%s] Handler for message does not exist\n", client.IPAddress, clientMessage.MessageType)
 			continue
 		}
 
 		if manager.IsClientRegistered(client) == false &&
-			clientRequest.ActionType != ClientActionTypeAuthorize &&
-			clientRequest.ActionType != ClientActionTypePing {
+			clientMessage.MessageType != ClientMessageTypeAuthorize &&
+			clientMessage.MessageType != ClientMessageTypePing {
 
-			logger.Info("[%s] [%s] User not authorized\n", client.IPAddress, clientRequest.ActionType)
+			logger.Info("[%s] [%s] User not authorized\n", client.IPAddress, clientMessage.MessageType)
 			continue
 		}
 
-		clientActionHandler(client, manager, clientRequest.Action)
+		clientMessageHandler(client, manager, clientMessage.Message)
 	}
 }
 
@@ -97,9 +97,6 @@ func (manager *Manager) CleanupInnactiveClients() {
 		manager.UnregisterClient(client)
 	}
 }
-
-type PrivateToken string
-type PublicToken string
 
 func (manager *Manager) GenerateUniqueClientTokens() (PrivateToken, PublicToken) {
 	privateToken, _ := uuid.NewRandom()
@@ -181,12 +178,12 @@ func (manager *Manager) GetRegisteredRoom(roomID RoomID) *Room {
 	}
 }
 
-func (manager *Manager) setupClientActionHandlers() {
-	manager.clientRequestHandlers[ClientActionTypeAuthorize] = AuthorizeHandler
-	manager.clientRequestHandlers[ClientActionTypeHostRoom] = HostRoomHandler
-	manager.clientRequestHandlers[ClientActionTypeJoinRoom] = JoinRoomHandler
-	manager.clientRequestHandlers[ClientActionTypeDisconnectRoom] = DisconnectRoomHandler
-	manager.clientRequestHandlers[ClientActionTypeSendReflection] = ReflectRoomHandler
-	manager.clientRequestHandlers[ClientActionTypeSendVideoDetails] = ReflectDetailsHandler
-	manager.clientRequestHandlers[ClientActionTypePing] = PingHandler
+func (manager *Manager) setupClientMessageHandlers() {
+	manager.clientMessageHandlers[ClientMessageTypeAuthorize] = AuthorizeHandler
+	manager.clientMessageHandlers[ClientMessageTypeHostRoom] = HostRoomHandler
+	manager.clientMessageHandlers[ClientMessageTypeJoinRoom] = JoinRoomHandler
+	manager.clientMessageHandlers[ClientMessageTypeDisconnectRoom] = DisconnectRoomHandler
+	manager.clientMessageHandlers[ClientMessageTypeSendReflection] = ReflectRoomHandler
+	manager.clientMessageHandlers[ClientMessageTypeSendVideoDetails] = ReflectDetailsHandler
+	manager.clientMessageHandlers[ClientMessageTypePing] = PingHandler
 }
