@@ -10,6 +10,21 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type PrivateToken string
+type PublicToken string
+
+type Connection interface {
+	ReadMessage() (ClientMessage, error)
+	WriteMessage(interface{}) error
+}
+
+type ConnectionManager interface {
+	NewConnection(w http.ResponseWriter, r *http.Request) (Connection, error)
+	RegisterClientConnection(clientToken PrivateToken, connection *Connection) error
+	UnregisterClientConnection(clientToken PrivateToken) error
+	GetConnection(clientToken PrivateToken) (*Connection, error)
+}
+
 type Manager struct {
 	upgrader websocket.Upgrader
 
