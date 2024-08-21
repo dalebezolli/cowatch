@@ -2,6 +2,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -52,9 +53,17 @@ func (connManager GorillaConnectionManager) UnregisterClientConnection(clientTok
 	return nil
 }
 
+var ErrConnectionNotExists = errors.New("Connection does not exist")
+
 // Get's managed client
-func (connManager GorillaConnectionManager) GetConnection(clientToken PrivateToken) error {
-	return nil
+func (connManager GorillaConnectionManager) GetConnection(clientToken PrivateToken) (*Connection, error) {
+	conn, ok := connManager.connectionsMap[clientToken]
+
+	if !ok {
+		return nil, ErrConnectionNotExists
+	}
+
+	return conn, nil
 }
 
 func NewGorillaConnectionManager() GorillaConnectionManager {
