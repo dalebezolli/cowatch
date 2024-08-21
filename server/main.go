@@ -13,6 +13,8 @@ var port string
 var ClientCleanupRoutineInterval int
 var ClientInnactivityThreshold string
 
+const EndpointReflect = "/reflect"
+
 func main() {
 	flag.StringVar(&port, "p", "8080", "Port that the server will run on")
 	flag.StringVar(&ClientInnactivityThreshold, "innactivity-threshold", "600", "The amount of time (sec) a client can be innactive before his session is cleaned up")
@@ -35,7 +37,7 @@ func main() {
 
 	managerInstance := NewManager()
 
-	http.HandleFunc("/reflect", managerInstance.HandleConnection)
+	http.HandleFunc(EndpointReflect, managerInstance.HandleMessages)
 
 	go func() {
 		for true {
