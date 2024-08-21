@@ -8,6 +8,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+var ErrConnectionNotExists = errors.New("Connection does not exist")
+
 // Encapsulation of websocket connection from the gorilla module.
 type GorillaConnection struct {
 	connection *websocket.Conn
@@ -50,10 +52,14 @@ func (connManager GorillaConnectionManager) RegisterClientConnection(clientToken
 
 // Unregisters managed client
 func (connManager GorillaConnectionManager) UnregisterClientConnection(clientToken PrivateToken) error {
+	_, ok := connManager.connectionsMap[clientToken]
+	if !ok {
+		return ErrConnectionNotExists
+	}
+
+	delete(connManager.connectionsMap, clientToken)
 	return nil
 }
-
-var ErrConnectionNotExists = errors.New("Connection does not exist")
 
 // Get's managed client
 func (connManager GorillaConnectionManager) GetConnection(clientToken PrivateToken) (*Connection, error) {

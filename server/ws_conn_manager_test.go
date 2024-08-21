@@ -120,15 +120,15 @@ func TestGorillaConnectionManager(t *testing.T) {
 			id := mockClients[len(gorillaConnectionManager.connectionsMap)]
 
 			gorillaConnectionManager.RegisterClientConnection(id, &conn)
-			allClients[id + PrivateToken(strconv.Itoa(len(allClients)))] = &conn
+			allClients[id+PrivateToken(strconv.Itoa(len(allClients)))] = &conn
 		})
 
 		for range mockClients {
 			connectToServer(mockServer)
 		}
 
-		connOld, okOld := allClients[mockClients[0] + "0"]
-		connNew, okNew := allClients[mockClients[0] + "1"]
+		connOld, okOld := allClients[mockClients[0]+"0"]
+		connNew, okNew := allClients[mockClients[0]+"1"]
 
 		if !okOld || !okNew {
 			t.Errorf("old(%t) or new(%t) does not exist\n", okOld, okNew)
@@ -149,6 +149,41 @@ func TestGorillaConnectionManager(t *testing.T) {
 		if !reflect.DeepEqual(conn, connNew) {
 			t.Errorf("Client is NOT equal to new Client\nNEW: %v\nGET: %v\n", connNew, conn)
 			return
+		}
+	})
+
+	t.Run("unregistering clients after the connection", func(t *testing.T) {
+		const mockID = "clientA"
+
+		gorillaConnectionManager := NewGorillaConnectionManager()
+		mockServer := setupServer(func(w http.ResponseWriter, r *http.Request) {
+			conn, _ := gorillaConnectionManager.NewConnection(w, r)
+			gorillaConnectionManager.RegisterClientConnection(mockID, &conn)
+		})
+
+		connectToServer(mockServer)
+
+		err := gorillaConnectionManager.UnregisterClientConnection(mockID)
+
+		if err != nil {
+			t.Errorf("Client with id %q couldn't be unregistered: %v\n", mockID, err)
+			return
+		}
+
+		_, err = gorillaConnectionManager.GetConnection(mockID)
+		if err == nil {
+			t.Errorf("Client with id %q was not unregistered\n", mockID)
+		}
+	})
+
+	t.Run("unregistering clients that doesn't exist", func(t *testing.T) {
+		const mockID = "clientA"
+
+		gorillaConnectionManager := NewGorillaConnectionManager()
+		err := gorillaConnectionManager.UnregisterClientConnection(mockID)
+
+		if err == nil {
+			t.Errorf("Client with id %q was unregistered when he shouldn't haven", mockID)
 		}
 	})
 }
