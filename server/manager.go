@@ -10,18 +10,51 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// PrivateToken is the primary identifier of a client.
+//
+// It isn't used in every request rather we use it to fingerprint an already existing
+// connection to it's information and state upon re-logging in our system.
+// A PrivateToken is generated using the [Manager.GenerateUniqueClientTokens].
 type PrivateToken string
+
+// PublicToken is the identifier of a client in regards to other clients.
+//
+// It is used as the primary identifier for other clients to interact with a client.
+// A PublicToken is generated using the [Manager.GenerateUniqueClientTokens].
 type PublicToken string
 
+// Connection is responsible of handling the communication between the server and connection.
 type Connection interface {
+
+	// ReadMessage collects the next message from the connection and respons to the server.
 	ReadMessage() (ClientMessage, error)
+
+	// WriteMessage accepts an arbitrary json object and forwards it to the connection.
 	WriteMessage(interface{}) error
 }
 
+// ConnectionManger manages all incoming connections.
+//
+// It abstracts the idea of a connection from the client manager to separate the concern
+// between the client representation and their connection. The primary mechanism of identifying
+// user resources is the [PrivateToken] thus it's expected for a client to be assigned one before
+// the token is registered.
 type ConnectionManager interface {
+
+	// NewConnection upgrades a normal HTTP connection to a Websocket connection.
+	// It handles all the necessary steps for the handshake to be complete.
 	NewConnection(w http.ResponseWriter, r *http.Request) (Connection, error)
-	RegisterClientConnection(clientToken PrivateToken, connection *Connection) error
+
+	// RegisterClientConnection stores the client connection.
+	//
+	// An already registered clientToken will replace the existing connection. It is assumed
+	// in that case that the connection has been reopened after a disconnection.
+	RegisterClientConnection(clientToken PrivateToken, connection *Connection)
+
+	// UnregisterClientConnection will remove the existing connection from our data.
 	UnregisterClientConnection(clientToken PrivateToken) error
+
+	// GetConnection get's the connection based on the clientToken.
 	GetConnection(clientToken PrivateToken) (*Connection, error)
 }
 
