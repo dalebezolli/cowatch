@@ -15,6 +15,10 @@ type GorillaConnection struct {
 	connection *websocket.Conn
 }
 
+func (conn GorillaConnection) GetAddr() string {
+	return conn.connection.RemoteAddr().String()
+}
+
 // Read's next websocket message
 func (conn GorillaConnection) ReadMessage() (ClientMessage, error) {
 	var message ClientMessage

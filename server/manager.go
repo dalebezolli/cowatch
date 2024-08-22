@@ -26,6 +26,9 @@ type PublicToken string
 // Connection is responsible of handling the communication between the server and connection.
 type Connection interface {
 
+	// Get's public address of connection
+	GetAddr() string
+
 	// ReadMessage collects the next message from the connection and respons to the server.
 	ReadMessage() (ClientMessage, error)
 
