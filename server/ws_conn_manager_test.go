@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -23,10 +24,12 @@ func TestGorillaConnectionManager(t *testing.T) {
 		})
 		defer mockServer.Close()
 
-		err := connectToServer(mockServer)
+		ws, err := connectToServer(mockServer)
 		if err != nil {
 			t.Errorf("Failed to open a ws connection: %v\n", err)
 		}
+
+		ws.Close()
 	})
 
 	t.Run("registring clients to the connection manager", func(t *testing.T) {
@@ -46,7 +49,8 @@ func TestGorillaConnectionManager(t *testing.T) {
 		})
 
 		for range mockClients {
-			connectToServer(mockServer)
+			ws, _ := connectToServer(mockServer)
+			ws.Close()
 		}
 
 		got := len(gorillaConnectionManager.connectionsMap)
@@ -86,7 +90,8 @@ func TestGorillaConnectionManager(t *testing.T) {
 			gorillaConnectionManager.RegisterClientConnection(id, &conn)
 		})
 
-		connectToServer(mockServer)
+		ws, _ := connectToServer(mockServer)
+		defer ws.Close()
 
 		for _, mockClientID := range mockClients {
 			_, err := gorillaConnectionManager.GetConnection(mockClientID)
@@ -124,7 +129,8 @@ func TestGorillaConnectionManager(t *testing.T) {
 		})
 
 		for range mockClients {
-			connectToServer(mockServer)
+			ws, _ := connectToServer(mockServer)
+			ws.Close()
 		}
 
 		connOld, okOld := allClients[mockClients[0]+"0"]
@@ -161,7 +167,8 @@ func TestGorillaConnectionManager(t *testing.T) {
 			gorillaConnectionManager.RegisterClientConnection(mockID, &conn)
 		})
 
-		connectToServer(mockServer)
+		ws, _ := connectToServer(mockServer)
+		defer ws.Close()
 
 		err := gorillaConnectionManager.UnregisterClientConnection(mockID)
 
@@ -188,19 +195,79 @@ func TestGorillaConnectionManager(t *testing.T) {
 	})
 }
 
+func TestGorillaConnection(t *testing.T) {
+	t.Run("reading data from user", func(t *testing.T) {
+		done := make(chan bool)
+		gorillaConnectionManager := NewGorillaConnectionManager()
+
+		mockServer := setupServer(func(w http.ResponseWriter, r *http.Request) {
+			conn, _ := gorillaConnectionManager.NewConnection(w, r)
+
+			_, err := conn.ReadMessage()
+			if err != nil {
+				t.Errorf("Failed for server to read user message: %v\n", err)
+			}
+			done <- true
+		})
+
+		ws, _ := connectToServer(mockServer)
+
+		err := ws.WriteJSON(ClientMessage{MessageType: "test", Message: "tested"})
+		if err != nil {
+			t.Errorf("Failed to write message: %v\n", err)
+		}
+
+		<-done
+	})
+
+	t.Run("recieving data from server", func(t *testing.T) {
+		clientMessage := ClientMessage{MessageType: "test", Message: "tested"}
+
+		gorillaConnectionManager := NewGorillaConnectionManager()
+
+		mockServer := setupServer(func(w http.ResponseWriter, r *http.Request) {
+			conn, _ := gorillaConnectionManager.NewConnection(w, r)
+
+			msg, _ := conn.ReadMessage()
+			conn.WriteMessage(msg)
+		})
+
+		ws, _ := connectToServer(mockServer)
+
+		err := ws.WriteJSON(clientMessage)
+		if err != nil {
+			t.Errorf("Failed to write message: %v\n", err)
+		}
+
+		_, msg, err := ws.ReadMessage()
+		if err != nil {
+			t.Errorf("Failed to read message from server: %v\n", err)
+		}
+
+		var got ClientMessage
+		json.Unmarshal(msg, &got)
+		if err != nil {
+			t.Errorf("Failed to unmarshal json: %v\n", err)
+		}
+
+		if !reflect.DeepEqual(got, clientMessage) {
+			t.Errorf("Server didn't return expected details\nGot %v Want %v\n", got, clientMessage)
+		}
+	})
+}
+
 func setupServer(reflectionHandler func(w http.ResponseWriter, r *http.Request)) *httptest.Server {
 	router := http.NewServeMux()
 	router.HandleFunc(EndpointReflect, reflectionHandler)
 	return httptest.NewServer(router)
 }
 
-func connectToServer(mockServer *httptest.Server) error {
+func connectToServer(mockServer *httptest.Server) (*websocket.Conn, error) {
 	wsURL := "ws" + strings.TrimPrefix(mockServer.URL, "http") + EndpointReflect
 	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	defer ws.Close()
-	return nil
+	return ws, nil
 }

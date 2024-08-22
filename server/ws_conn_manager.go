@@ -17,11 +17,14 @@ type GorillaConnection struct {
 
 // Read's next websocket message
 func (conn GorillaConnection) ReadMessage() (ClientMessage, error) {
-	return ClientMessage{}, nil
+	var message ClientMessage
+	err := conn.connection.ReadJSON(&message)
+	return message, err
 }
 
 // Sends an abstract json to the client
-func (conn GorillaConnection) WriteMessage(interface{}) error {
+func (conn GorillaConnection) WriteMessage(data interface{}) error {
+	conn.connection.WriteJSON(data)
 	return nil
 }
 
