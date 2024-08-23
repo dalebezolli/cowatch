@@ -67,7 +67,7 @@ func Log(level LogLevel, format string, args ...any) {
 
 	output += fmt.Sprintf(format, args...)
 
-	if logger.PrintTraceOnWarnOrError && (level == LogLevelWarn || level == LogLevelError) {
+	if logger.PrintTraceOnWarnOrError && level == LogLevelError {
 		output += formatStackTrace()
 	}
 
