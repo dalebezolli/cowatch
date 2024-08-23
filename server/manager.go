@@ -10,18 +10,17 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// PrivateToken is the primary identifier of a client.
+// Token describes the idea of a Private & Public token.
 //
+// If used as a PrivateToken, it is the primary identifier of a client.
 // It isn't used in every request rather we use it to fingerprint an already existing
 // connection to it's information and state upon re-logging in our system.
 // A PrivateToken is generated using the [Manager.GenerateUniqueClientTokens].
-type PrivateToken string
-
-// PublicToken is the identifier of a client in regards to other clients.
 //
+// If used as a PublicToken, it is the identifier of a client in regards to other clients.
 // It is used as the primary identifier for other clients to interact with a client.
 // A PublicToken is generated using the [Manager.GenerateUniqueClientTokens].
-type PublicToken string
+type Token string
 
 // Connection is responsible of handling the communication between the server and connection.
 type Connection interface {
@@ -52,13 +51,13 @@ type ConnectionManager interface {
 	//
 	// An already registered clientToken will replace the existing connection. It is assumed
 	// in that case that the connection has been reopened after a disconnection.
-	RegisterClientConnection(clientToken PrivateToken, connection *Connection)
+	RegisterClientConnection(privateToken Token, connection *Connection)
 
 	// UnregisterClientConnection will remove the existing connection from our data.
-	UnregisterClientConnection(clientToken PrivateToken) error
+	UnregisterClientConnection(privateToken Token) error
 
 	// GetConnection get's the connection based on the clientToken.
-	GetConnection(clientToken PrivateToken) (*Connection, error)
+	GetConnection(privateToken Token) (*Connection, error)
 }
 
 type Manager struct {
@@ -149,14 +148,12 @@ func (manager *Manager) CleanupInnactiveClients() {
 	}
 }
 
-func (manager *Manager) GenerateUniqueClientTokens() (PrivateToken, PublicToken) {
-	privateToken, _ := uuid.NewRandom()
-	publicToken, _ := uuid.NewRandom()
+func (manager *Manager) GenerateToken() Token {
+	token, _ := uuid.NewRandom()
 
-	bytePrivateToken, _ := privateToken.MarshalText()
-	bytePublicToken, _ := publicToken.MarshalText()
+	tokenBytes, _ := token.MarshalText()
 
-	return PrivateToken(bytePrivateToken), PublicToken(bytePublicToken)
+	return Token(tokenBytes)
 }
 
 func (manager *Manager) RegisterClient(client *Client) error {
@@ -179,8 +176,8 @@ func (manager *Manager) IsClientRegistered(client *Client) bool {
 	return exists
 }
 
-func (manager *Manager) GetClient(token PrivateToken) (*Client, bool) {
-	client, exists := manager.clients[token]
+func (manager *Manager) GetClient(privateToken Token) (*Client, bool) {
+	client, exists := manager.clients[privateToken]
 	if !exists {
 		return nil, false
 	}
@@ -188,8 +185,8 @@ func (manager *Manager) GetClient(token PrivateToken) (*Client, bool) {
 	return client, true
 }
 
-func (manager *Manager) GetPrivateToken(token PublicToken) (PrivateToken, bool) {
-	privateToken, exists := manager.publicToPrivateTokens[token]
+func (manager *Manager) GetPrivateToken(publicToken Token) (Token, bool) {
+	privateToken, exists := manager.publicToPrivateTokens[publicToken]
 	if !exists {
 		return "", false
 	}

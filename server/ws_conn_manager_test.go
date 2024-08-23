@@ -33,7 +33,7 @@ func TestGorillaConnectionManager(t *testing.T) {
 	})
 
 	t.Run("registring clients to the connection manager", func(t *testing.T) {
-		mockClients := []PrivateToken{
+		mockClients := []Token{
 			"clientA",
 			"clientB",
 			"clientC",
@@ -55,7 +55,7 @@ func TestGorillaConnectionManager(t *testing.T) {
 
 		got := len(gorillaConnectionManager.connectionsMap)
 
-		setUniqueClients := make(map[PrivateToken]bool)
+		setUniqueClients := make(map[Token]bool)
 
 		for _, mockClientID := range mockClients {
 			setUniqueClients[mockClientID] = true
@@ -78,7 +78,7 @@ func TestGorillaConnectionManager(t *testing.T) {
 	})
 
 	t.Run("getting existing connection", func(t *testing.T) {
-		mockClients := []PrivateToken{
+		mockClients := []Token{
 			"clientA",
 		}
 
@@ -112,12 +112,12 @@ func TestGorillaConnectionManager(t *testing.T) {
 	})
 
 	t.Run("getting the correct connection after a reconnection", func(t *testing.T) {
-		mockClients := []PrivateToken{
+		mockClients := []Token{
 			"clientC",
 			"clientC",
 		}
 
-		allClients := make(map[PrivateToken]*Connection)
+		allClients := make(map[Token]*Connection)
 
 		gorillaConnectionManager := NewGorillaConnectionManager()
 		mockServer := setupServer(func(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +125,7 @@ func TestGorillaConnectionManager(t *testing.T) {
 			id := mockClients[len(gorillaConnectionManager.connectionsMap)]
 
 			gorillaConnectionManager.RegisterClientConnection(id, &conn)
-			allClients[id+PrivateToken(strconv.Itoa(len(allClients)))] = &conn
+			allClients[id+Token(strconv.Itoa(len(allClients)))] = &conn
 		})
 
 		for range mockClients {

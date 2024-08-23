@@ -10,14 +10,14 @@ import (
 type ClientRequestAuthorizeRoom struct {
 	Name         string       `json:"name"`
 	Image        string       `json:"image"`
-	PrivateToken PrivateToken `json:"privateToken"`
+	PrivateToken Token        `json:"privateToken"`
 }
 
 type ServerResponseAuthorizeRoom struct {
 	Name         string       `json:"name"`
 	Image        string       `json:"image"`
-	PrivateToken PrivateToken `json:"privateToken"`
-	PublicToken  PublicToken  `json:"publicToken"`
+	PrivateToken Token        `json:"privateToken"`
+	PublicToken  Token        `json:"publicToken"`
 }
 
 func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) {

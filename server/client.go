@@ -23,8 +23,8 @@ type Client struct {
 	Connection *websocket.Conn
 	IPAddress  IPAddress
 
-	PrivateToken PrivateToken
-	PublicToken  PublicToken
+	PrivateToken Token
+	PublicToken  Token
 
 	Type   ClientType
 	Name   string
@@ -38,7 +38,7 @@ type Client struct {
 type ClientRecord struct {
 	Name        string      `json:"name"`
 	Image       string      `json:"image"`
-	PublicToken PublicToken `json:"publicToken"`
+	PublicToken Token       `json:"publicToken"`
 }
 
 /*

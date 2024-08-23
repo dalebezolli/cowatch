@@ -35,7 +35,7 @@ func (conn GorillaConnection) WriteMessage(data interface{}) error {
 // Manager for GorillaConnections.
 type GorillaConnectionManager struct {
 	upgrader       websocket.Upgrader
-	connectionsMap map[PrivateToken]*Connection
+	connectionsMap map[Token]*Connection
 }
 
 // Upgrade logic for a HTTP to a long-term TCP connection.
@@ -53,24 +53,24 @@ func (connManager GorillaConnectionManager) NewConnection(w http.ResponseWriter,
 }
 
 // Registers client to be managed. If an id is equal with an existing one, the connection will replace the original.
-func (connManager GorillaConnectionManager) RegisterClientConnection(clientToken PrivateToken, connection *Connection) {
-	connManager.connectionsMap[clientToken] = connection
+func (connManager GorillaConnectionManager) RegisterClientConnection(privateToken Token, connection *Connection) {
+	connManager.connectionsMap[privateToken] = connection
 }
 
 // Unregisters managed client
-func (connManager GorillaConnectionManager) UnregisterClientConnection(clientToken PrivateToken) error {
-	_, ok := connManager.connectionsMap[clientToken]
+func (connManager GorillaConnectionManager) UnregisterClientConnection(privateToken Token) error {
+	_, ok := connManager.connectionsMap[privateToken]
 	if !ok {
 		return ErrConnectionNotExists
 	}
 
-	delete(connManager.connectionsMap, clientToken)
+	delete(connManager.connectionsMap, privateToken)
 	return nil
 }
 
 // Get's managed client
-func (connManager GorillaConnectionManager) GetConnection(clientToken PrivateToken) (*Connection, error) {
-	conn, ok := connManager.connectionsMap[clientToken]
+func (connManager GorillaConnectionManager) GetConnection(privateToken Token) (*Connection, error) {
+	conn, ok := connManager.connectionsMap[privateToken]
 
 	if !ok {
 		return nil, ErrConnectionNotExists
@@ -86,6 +86,6 @@ func NewGorillaConnectionManager() GorillaConnectionManager {
 			WriteBufferSize: 1024,
 			CheckOrigin:     func(request *http.Request) bool { return true },
 		},
-		connectionsMap: make(map[PrivateToken]*Connection, 1024),
+		connectionsMap: make(map[Token]*Connection, 1024),
 	}
 }
