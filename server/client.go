@@ -36,19 +36,16 @@ type Client struct {
 }
 
 type ClientRecord struct {
-	Name        string      `json:"name"`
-	Image       string      `json:"image"`
-	PublicToken Token       `json:"publicToken"`
+	Name        string `json:"name"`
+	Image       string `json:"image"`
+	PublicToken Token  `json:"publicToken"`
 }
 
 /*
 Initializes a new Client
 */
-func NewClient(clientConnection *websocket.Conn) *Client {
+func NewClient(privateToken Token) *Client {
 	client := &Client{
-		Connection: clientConnection,
-		IPAddress:  clientConnection.RemoteAddr(),
-
 		Type:   ClientTypeInnactive,
 		Name:   "",
 		Image:  "",
@@ -56,6 +53,9 @@ func NewClient(clientConnection *websocket.Conn) *Client {
 		RoomID: "",
 
 		LatestReply: time.Now(),
+
+		PrivateToken: privateToken,
+		PublicToken:  "",
 	}
 
 	return client
@@ -67,7 +67,12 @@ type ClientMessage struct {
 	Message     string            `json:"action"`
 }
 
-type ClientRequestHandler func(client *Client, manager *Manager, clientAction string)
+type DirectedServerMessage struct {
+	token   Token
+	message ServerMessage
+}
+
+type ClientRequestHandler func(client *Client, manager *Manager, clientAction string) []DirectedServerMessage
 
 const (
 	ClientMessageTypeAuthorize        = "Authorize"
@@ -138,7 +143,7 @@ type ServerMessage struct {
 func (client *Client) SendMessage(
 	messageType ServerMessageType, messageDetails json.RawMessage,
 	status ServerMessageStatus, errorMessage ServerErrorMessage,
-) error {
+) ServerMessage {
 	var serverMessage = ServerMessage{
 		MessageType:    messageType,
 		MessageDetails: messageDetails,
@@ -146,14 +151,7 @@ func (client *Client) SendMessage(
 		ErrorMessage:   errorMessage,
 	}
 
-	jsonServerMessage, serverMessageMarshalError := json.Marshal(serverMessage)
-
-	if serverMessageMarshalError != nil {
-		return serverMessageMarshalError
-	}
-
-	client.Connection.WriteMessage(websocket.TextMessage, jsonServerMessage)
-	return nil
+	return serverMessage
 }
 
 func (client *Client) UpdateClientDetails(newData Client) {

@@ -69,14 +69,9 @@ func (connManager GorillaConnectionManager) UnregisterClientConnection(privateTo
 }
 
 // Get's managed client
-func (connManager GorillaConnectionManager) GetConnection(privateToken Token) (*Connection, error) {
+func (connManager GorillaConnectionManager) GetConnection(privateToken Token) (*Connection, bool) {
 	conn, ok := connManager.connectionsMap[privateToken]
-
-	if !ok {
-		return nil, ErrConnectionNotExists
-	}
-
-	return conn, nil
+	return conn, ok
 }
 
 func NewGorillaConnectionManager() GorillaConnectionManager {

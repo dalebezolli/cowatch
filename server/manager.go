@@ -7,7 +7,6 @@ import (
 
 	"github.com/cowatch/logger"
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 )
 
 // Token describes the idea of a Private & Public token.
@@ -57,62 +56,54 @@ type ConnectionManager interface {
 	UnregisterClientConnection(privateToken Token) error
 
 	// GetConnection get's the connection based on the clientToken.
-	GetConnection(privateToken Token) (*Connection, error)
+	GetConnection(privateToken Token) (*Connection, bool)
 }
 
 type Manager struct {
-	upgrader websocket.Upgrader
-
-	publicToPrivateTokens map[PublicToken]PrivateToken
-	clients               map[PrivateToken]*Client
-
+	connectionManager     ConnectionManager
+	publicToPrivateTokens map[Token]Token
+	clients               map[Token]*Client
 	activeRooms           map[RoomID]*Room
 	clientMessageHandlers map[ClientMessageType]ClientRequestHandler
 }
 
-func NewManager() *Manager {
+func NewManager(connManager ConnectionManager) *Manager {
 	var manager = &Manager{
-		upgrader: websocket.Upgrader{
-			ReadBufferSize:  1024,
-			WriteBufferSize: 1024,
-			CheckOrigin:     func(request *http.Request) bool { return true },
-		},
-		publicToPrivateTokens: make(map[PublicToken]PrivateToken),
-		clients:               make(map[PrivateToken]*Client),
+		connectionManager:     connManager,
+		publicToPrivateTokens: make(map[Token]Token),
+		clients:               make(map[Token]*Client),
 		activeRooms:           make(map[RoomID]*Room),
 		clientMessageHandlers: make(map[ClientMessageType]ClientRequestHandler),
 	}
-
 	manager.setupClientMessageHandlers()
 	return manager
 }
 
 func (manager *Manager) HandleMessages(writer http.ResponseWriter, request *http.Request) {
-	websocketConnection, errorUpgradeWebsocket := manager.upgrader.Upgrade(writer, request, nil)
-	clientAddress := websocketConnection.RemoteAddr()
-
-	if errorUpgradeWebsocket != nil {
-		logger.Error("[%s] Failed to establish websocket channel: %s\n", clientAddress, errorUpgradeWebsocket)
-		return
+	connection, errorUpgrading := manager.connectionManager.NewConnection(writer, request)
+	clientAddress := connection.GetAddr()
+	if errorUpgrading != nil {
+		logger.Error("[%s] Failed to upgrade to websocket: %s\n", clientAddress, errorUpgrading)
 	}
 
-	defer websocketConnection.Close()
+	tempPrivateToken := manager.GenerateToken()
+	manager.connectionManager.RegisterClientConnection(tempPrivateToken, &connection)
 
-	client := NewClient(websocketConnection)
-	logger.Info("[%s] Established connection\n", websocketConnection.RemoteAddr())
+	client := NewClient(tempPrivateToken)
+	logger.Info("[%s] Established connection for %q\n", clientAddress, client.PrivateToken)
 	for {
-		clientMessage, errorGetClientMessage := client.GetClientMessage()
+		clientMessage, errorGetClientMessage := connection.ReadMessage()
 		if errorGetClientMessage != nil {
 			break
 		}
 
 		client.LatestReply = time.Now()
 
-		logger.Info("[%s] [%s] Handling Request: %s\n", client.IPAddress, clientMessage.MessageType, clientMessage.Message)
+		logger.Info("[%s] [%s] Handling Request: %s\n", client.PrivateToken, clientMessage.MessageType, clientMessage.Message)
 		clientMessageHandler, foundHandler := manager.clientMessageHandlers[clientMessage.MessageType]
 
 		if !foundHandler {
-			logger.Info("[%s] [%s] Handler for message does not exist\n", client.IPAddress, clientMessage.MessageType)
+			logger.Info("[%s] [%s] Handler for message does not exist\n", client.PrivateToken, clientMessage.MessageType)
 			continue
 		}
 
@@ -120,11 +111,25 @@ func (manager *Manager) HandleMessages(writer http.ResponseWriter, request *http
 			clientMessage.MessageType != ClientMessageTypeAuthorize &&
 			clientMessage.MessageType != ClientMessageTypePing {
 
-			logger.Info("[%s] [%s] User not authorized\n", client.IPAddress, clientMessage.MessageType)
+			logger.Info("[%s] [%s] User not authorized\n", client.PrivateToken, clientMessage.MessageType)
 			continue
 		}
 
-		clientMessageHandler(client, manager, clientMessage.Message)
+		serverMessages := clientMessageHandler(client, manager, clientMessage.Message)
+		for _, directedMessage := range serverMessages {
+			if directedMessage.message.MessageType == "" {
+				continue
+			}
+
+			connectionToBeSentAMessage, exists := manager.connectionManager.GetConnection(directedMessage.token)
+			if !exists {
+				logger.Warn("[%s] [%s] Get connection does not exist\n", directedMessage.token, directedMessage.message.MessageType)
+				continue
+			}
+
+			logger.Info("[%s] [%s] Sending: %q\n", directedMessage.token, directedMessage.message.MessageType, string(directedMessage.message.MessageDetails))
+			(*connectionToBeSentAMessage).WriteMessage(directedMessage.message)
+		}
 	}
 }
 
@@ -157,7 +162,7 @@ func (manager *Manager) GenerateToken() Token {
 }
 
 func (manager *Manager) RegisterClient(client *Client) error {
-	if client.PrivateToken == "" || client.PublicToken == "" {
+	if client.PrivateToken == "" {
 		return errors.New("Client does not have a registered private & public")
 	}
 
@@ -228,10 +233,10 @@ func (manager *Manager) GetRegisteredRoom(roomID RoomID) *Room {
 
 func (manager *Manager) setupClientMessageHandlers() {
 	manager.clientMessageHandlers[ClientMessageTypeAuthorize] = AuthorizeHandler
-	manager.clientMessageHandlers[ClientMessageTypeHostRoom] = HostRoomHandler
-	manager.clientMessageHandlers[ClientMessageTypeJoinRoom] = JoinRoomHandler
-	manager.clientMessageHandlers[ClientMessageTypeDisconnectRoom] = DisconnectRoomHandler
-	manager.clientMessageHandlers[ClientMessageTypeSendReflection] = ReflectRoomHandler
-	manager.clientMessageHandlers[ClientMessageTypeSendVideoDetails] = ReflectDetailsHandler
-	manager.clientMessageHandlers[ClientMessageTypePing] = PingHandler
+	// manager.clientMessageHandlers[ClientMessageTypeHostRoom] = HostRoomHandler
+	// manager.clientMessageHandlers[ClientMessageTypeJoinRoom] = JoinRoomHandler
+	// manager.clientMessageHandlers[ClientMessageTypeDisconnectRoom] = DisconnectRoomHandler
+	// manager.clientMessageHandlers[ClientMessageTypeSendReflection] = ReflectRoomHandler
+	// manager.clientMessageHandlers[ClientMessageTypeSendVideoDetails] = ReflectDetailsHandler
+	// manager.clientMessageHandlers[ClientMessageTypePing] = PingHandler
 }

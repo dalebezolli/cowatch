@@ -35,7 +35,8 @@ func main() {
 
 	logger.Info("Starting cowatch in port %s\n", port)
 
-	managerInstance := NewManager()
+	connectionManager := NewGorillaConnectionManager()
+	managerInstance := NewManager(connectionManager)
 
 	http.HandleFunc(EndpointReflect, managerInstance.HandleMessages)
 

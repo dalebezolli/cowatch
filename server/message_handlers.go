@@ -8,49 +8,87 @@ import (
 )
 
 type ClientRequestAuthorizeRoom struct {
-	Name         string       `json:"name"`
-	Image        string       `json:"image"`
-	PrivateToken Token        `json:"privateToken"`
+	Name         string `json:"name"`
+	Image        string `json:"image"`
+	PrivateToken Token  `json:"privateToken"`
 }
 
 type ServerResponseAuthorizeRoom struct {
-	Name         string       `json:"name"`
-	Image        string       `json:"image"`
-	PrivateToken Token        `json:"privateToken"`
-	PublicToken  Token        `json:"publicToken"`
+	Name         string `json:"name"`
+	Image        string `json:"image"`
+	PrivateToken Token  `json:"privateToken"`
+	PublicToken  Token  `json:"publicToken"`
 }
 
-func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) {
+func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) []DirectedServerMessage {
+	logger.Info("[%s] [Authorize] Autorizing client\n", client.PrivateToken)
 	var requestAuthorize ClientRequestAuthorizeRoom
 
 	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &requestAuthorize)
 	if errorParsingRequest != nil {
-		logger.Error("[%s] [Authorize] Bad json: %s\n", client.IPAddress, errorParsingRequest)
-		client.SendMessage(ServerMessageTypeAuthorize, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
-		return
+		logger.Warn("[%s] [Authorize] User sent wrong json: %s\n", client.PrivateToken, errorParsingRequest)
+		return []DirectedServerMessage{
+			{
+				token: client.PrivateToken,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeAuthorize,
+					MessageDetails: nil,
+					Status:         ServerMessageStatusError,
+					ErrorMessage:   ServerErrorMessageBadJson,
+				},
+			},
+		}
 	}
 
 	var clientDetails Client
 	var isClientAuthorized bool
-	logger.Info("[%s] [Authorize] Autorizing client with token: '%s'\n", client.IPAddress, requestAuthorize.PrivateToken)
 	if requestAuthorize.PrivateToken != "" {
 		existingClient, exists := manager.GetClient(requestAuthorize.PrivateToken)
-		logger.Info("[%s] [Authorize] Retrieving information for existing user? %t\n", client.IPAddress, exists)
-
+		logger.Info("[%s] [Authorize] Does previous user id (%s) exist? %t\n", client.PrivateToken, requestAuthorize.PrivateToken, exists)
 		if exists {
+			logger.Info("[%s] [Authorize] Collecting existing user's details %q\n", client.PrivateToken, existingClient.PrivateToken)
 			clientDetails = *existingClient
 			isClientAuthorized = true
 		}
 	}
 
 	if !isClientAuthorized {
-		privateToken, publicToken := manager.GenerateUniqueClientTokens()
 		clientDetails = Client{
-			Name:         requestAuthorize.Name,
-			Image:        requestAuthorize.Image,
-			Type:         ClientTypeInnactive,
-			PrivateToken: privateToken,
-			PublicToken:  publicToken,
+			Name:  requestAuthorize.Name,
+			Image: requestAuthorize.Image,
+			Type:  ClientTypeInnactive,
+		}
+	}
+
+	clientDetails.PublicToken = manager.GenerateToken()
+
+	if isClientAuthorized {
+		logger.Info("[%s] [Authorize] Unregistering previous client\n", client.PrivateToken)
+		manager.UnregisterClient(client)
+
+		newConnection, connectionExists := manager.connectionManager.GetConnection(client.PrivateToken)
+
+		if !connectionExists {
+			logger.Error("[%s] [Authorize] Failed to collect already registered client connection\n", client.PrivateToken)
+			return []DirectedServerMessage{
+				{
+					token: client.PrivateToken,
+					message: ServerMessage{
+						MessageType:    ServerMessageTypeAuthorize,
+						MessageDetails: nil,
+						Status:         ServerMessageStatusError,
+						ErrorMessage:   ServerErrorMessageInternalServerError,
+					},
+				},
+			}
+		}
+
+		manager.connectionManager.RegisterClientConnection(requestAuthorize.PrivateToken, newConnection)
+		manager.UnregisterClient(client)
+
+		errorUnregisteringClient := manager.connectionManager.UnregisterClientConnection(client.PrivateToken)
+		if errorUnregisteringClient != nil {
+			logger.Error("[%s] [Authorize] Failed to unregister temporary connection id: %s\n", client.PrivateToken, errorUnregisteringClient)
 		}
 	}
 
@@ -65,17 +103,31 @@ func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) {
 	})
 
 	if serverMessageAuthorizeMarshalError != nil {
-		logger.Error("[%s] [Authorize] Failed to marshal host room response: %s\n", client.IPAddress, serverMessageAuthorizeMarshalError)
-		client.SendMessage(ServerMessageTypeAuthorize, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
-		return
+		logger.Error("[%s] [Authorize] Failed to marshal host room response: %s\n", client.PrivateToken, serverMessageAuthorizeMarshalError)
+		return []DirectedServerMessage{
+			{
+				token: client.PrivateToken,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeAuthorize,
+					MessageDetails: nil,
+					Status:         ServerMessageStatusError,
+					ErrorMessage:   ServerErrorMessageInternalServerError,
+				},
+			},
+		}
 	}
 
-	client.SendMessage(ServerMessageTypeAuthorize, serverMessageAuthorize, ServerMessageStatusOk, "")
-	if client.Type != ClientTypeHost && client.Type != ClientTypeViewer {
-		return
+	return []DirectedServerMessage{
+		{
+			token: client.PrivateToken,
+			message: ServerMessage{
+				MessageType:    ServerMessageTypeAuthorize,
+				MessageDetails: serverMessageAuthorize,
+				Status:         ServerMessageStatusOk,
+				ErrorMessage:   "",
+			},
+		},
 	}
-
-	JoinRoomHandler(client, manager, "{ \"roomID\": \""+string(client.RoomID)+"\" }")
 }
 
 func HostRoomHandler(client *Client, manager *Manager, clientRequest string) {

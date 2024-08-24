@@ -94,9 +94,9 @@ func TestGorillaConnectionManager(t *testing.T) {
 		defer ws.Close()
 
 		for _, mockClientID := range mockClients {
-			_, err := gorillaConnectionManager.GetConnection(mockClientID)
+			_, exists := gorillaConnectionManager.GetConnection(mockClientID)
 
-			if err != nil {
+			if !exists {
 				t.Errorf("Client with id %q isn't registered\n", mockClientID)
 			}
 		}
@@ -104,9 +104,9 @@ func TestGorillaConnectionManager(t *testing.T) {
 
 	t.Run("getting non existing connection", func(t *testing.T) {
 		gorillaConnectionManager := NewGorillaConnectionManager()
-		_, err := gorillaConnectionManager.GetConnection("client")
+		_, exists := gorillaConnectionManager.GetConnection("client")
 
-		if err == nil {
+		if exists {
 			t.Error("Client is registered when he shouldn't be\n")
 		}
 	})
@@ -141,8 +141,8 @@ func TestGorillaConnectionManager(t *testing.T) {
 			return
 		}
 
-		conn, err := gorillaConnectionManager.GetConnection("clientC")
-		if err != nil {
+		conn, exists := gorillaConnectionManager.GetConnection("clientC")
+		if !exists {
 			t.Errorf("Client isn't registered\nList: %v\n", gorillaConnectionManager.connectionsMap)
 			return
 		}
@@ -177,8 +177,8 @@ func TestGorillaConnectionManager(t *testing.T) {
 			return
 		}
 
-		_, err = gorillaConnectionManager.GetConnection(mockID)
-		if err == nil {
+		_, exists := gorillaConnectionManager.GetConnection(mockID)
+		if exists {
 			t.Errorf("Client with id %q was not unregistered\n", mockID)
 		}
 	})
