@@ -221,19 +221,14 @@ func (manager *Manager) UnregisterRoom(room *Room) {
 	delete(manager.activeRooms, room.RoomID)
 }
 
-func (manager *Manager) GetRegisteredRoom(roomID RoomID) *Room {
+func (manager *Manager) GetRegisteredRoom(roomID RoomID) (*Room, bool) {
 	room, exists := manager.activeRooms[roomID]
-
-	if exists {
-		return room
-	} else {
-		return nil
-	}
+	return room, exists
 }
 
 func (manager *Manager) setupClientMessageHandlers() {
 	manager.clientMessageHandlers[ClientMessageTypeAuthorize] = AuthorizeHandler
-	// manager.clientMessageHandlers[ClientMessageTypeHostRoom] = HostRoomHandler
+	manager.clientMessageHandlers[ClientMessageTypeHostRoom] = HostRoomHandler
 	// manager.clientMessageHandlers[ClientMessageTypeJoinRoom] = JoinRoomHandler
 	// manager.clientMessageHandlers[ClientMessageTypeDisconnectRoom] = DisconnectRoomHandler
 	// manager.clientMessageHandlers[ClientMessageTypeSendReflection] = ReflectRoomHandler

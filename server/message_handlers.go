@@ -130,23 +130,42 @@ func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) []
 	}
 }
 
-func HostRoomHandler(client *Client, manager *Manager, clientRequest string) {
+func HostRoomHandler(client *Client, manager *Manager, clientRequest string) []DirectedServerMessage {
 	room := NewRoom(manager.GenerateUniqueRoomID(), client)
 	manager.RegisterRoom(room)
 	client.UpdateClientDetails(Client{Type: ClientTypeHost, RoomID: room.RoomID})
 
-	logger.Info("[%s] [HostRoom] Created room with id: %s\n", client.IPAddress, room.RoomID)
+	logger.Info("[%s] [HostRoom] Created room with id: %s\n", client.PrivateToken, room.RoomID)
 
 	filteredRoom := room.GetFilteredRoom()
 	serverMessageHostRoom, serverMessageHostRoomMarshalError := json.Marshal(filteredRoom)
 
 	if serverMessageHostRoomMarshalError != nil {
-		logger.Error("[%s] [HostRoom] Failed to marshal host room response: %s\n", client.IPAddress, serverMessageHostRoomMarshalError)
-		client.SendMessage(ServerMessageTypeHostRoom, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
-		return
+		logger.Error("[%s] [HostRoom] Failed to marshal host room response: %s\n", client.PrivateToken, serverMessageHostRoomMarshalError)
+		return []DirectedServerMessage{
+			{
+				token: client.PrivateToken,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeHostRoom,
+					MessageDetails: nil,
+					Status:         ServerMessageStatusError,
+					ErrorMessage:   ServerErrorMessageInternalServerError,
+				},
+			},
+		}
 	}
 
-	client.SendMessage(ServerMessageTypeHostRoom, serverMessageHostRoom, ServerMessageStatusOk, "")
+	return []DirectedServerMessage{
+		{
+			token: client.PrivateToken,
+			message: ServerMessage{
+				MessageType:    ServerMessageTypeHostRoom,
+				MessageDetails: serverMessageHostRoom,
+				Status:         ServerMessageStatusOk,
+				ErrorMessage:   "",
+			},
+		},
+	}
 }
 
 type ClientRequestJoinRoom struct {
@@ -163,8 +182,8 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 		return
 	}
 
-	room := manager.GetRegisteredRoom(requestJoinRoom.RoomID)
-	if room == nil {
+	room, exists := manager.GetRegisteredRoom(requestJoinRoom.RoomID)
+	if !exists {
 		logger.Info("[%s] [JoinRoom] No room found with id: %s\n", client.IPAddress, requestJoinRoom.RoomID)
 		client.SendMessage(ServerMessageTypeJoinRoom, nil, ServerMessageStatusError, ServerErrorMessageNoRoom)
 		return
@@ -244,8 +263,8 @@ func ReflectRoomHandler(client *Client, manager *Manager, clientRequest string) 
 		return
 	}
 
-	room := manager.GetRegisteredRoom(client.RoomID)
-	if room == nil {
+	room, exists := manager.GetRegisteredRoom(client.RoomID)
+	if !exists {
 		logger.Info("[%s] [ReflectRoom] No room found with id: %s\n", client.IPAddress, client.RoomID)
 		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageNoRoom)
 		return
@@ -287,8 +306,8 @@ func ReflectDetailsHandler(client *Client, manager *Manager, clientRequest strin
 		return
 	}
 
-	room := manager.GetRegisteredRoom(client.RoomID)
-	if room == nil {
+	room, exists := manager.GetRegisteredRoom(client.RoomID)
+	if !exists {
 		logger.Info("[%s] [ReflectVideoDetails] No room found with id: %s\n", client.IPAddress, client.RoomID)
 		client.SendMessage(ServerMessageTypeReflectVideoDetails, nil, ServerMessageStatusError, ServerErrorMessageNoRoom)
 		return
@@ -387,8 +406,8 @@ func (manager *Manager) DisconnectClient(client *Client) {
 		return
 	}
 
-	room := manager.GetRegisteredRoom(client.RoomID)
-	if room == nil {
+	room, exists := manager.GetRegisteredRoom(client.RoomID)
+	if !exists {
 		return
 	}
 

@@ -183,6 +183,206 @@ func TestAuthorizationHandler(t *testing.T) {
 	})
 }
 
+func TestHostRoomHandler(t *testing.T) {
+	t.Run("client receiving correct response after hosting room", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+		mockClientPrivateID := mockManager.GenerateToken()
+		mockClient := NewClient(mockClientPrivateID)
+
+		mockConnectionManager.RegisterClientConnection(mockClientPrivateID, nil)
+		mockManager.RegisterClient(mockClient)
+
+		receivedServerMessages := HostRoomHandler(mockClient, mockManager, "")
+
+		response, _ := json.Marshal(RoomRecord{
+			RoomID:  "",
+			Host:    mockClient.GetFilteredClient(),
+			Viewers: []ClientRecord{},
+		})
+
+		expectedServerMessages := []DirectedServerMessage{
+			{
+				token: mockClientPrivateID,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeHostRoom,
+					MessageDetails: response,
+					Status:         ServerMessageStatusOk,
+					ErrorMessage:   "",
+				},
+			},
+		}
+
+		assertExpectedMessageCount(t, 1, receivedServerMessages)
+		assertExpectedMessages(
+			t,
+			expectedServerMessages,
+			receivedServerMessages,
+			func(a json.RawMessage, b json.RawMessage) bool {
+				var aRes RoomRecord
+				var bRes RoomRecord
+				json.Unmarshal(a, &aRes)
+				json.Unmarshal(b, &bRes)
+
+				equal := aRes.Host.PublicToken == bRes.Host.PublicToken
+				equal = equal && (bRes.RoomID != "")
+
+				return equal
+			},
+		)
+	})
+
+	t.Run("client hosted room exists & contains correct privileges", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+		mockClientPrivateID := mockManager.GenerateToken()
+		mockClient := NewClient(mockClientPrivateID)
+
+		mockConnectionManager.RegisterClientConnection(mockClientPrivateID, nil)
+		mockManager.RegisterClient(mockClient)
+
+		receivedServerMessages := HostRoomHandler(mockClient, mockManager, "")
+
+		response, _ := json.Marshal(RoomRecord{
+			RoomID:  "",
+			Host:    mockClient.GetFilteredClient(),
+			Viewers: []ClientRecord{},
+		})
+
+		expectedServerMessages := []DirectedServerMessage{
+			{
+				token: mockClientPrivateID,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeHostRoom,
+					MessageDetails: response,
+					Status:         ServerMessageStatusOk,
+					ErrorMessage:   "",
+				},
+			},
+		}
+
+		assertExpectedMessageCount(t, 1, receivedServerMessages)
+		assertExpectedMessages(
+			t,
+			expectedServerMessages,
+			receivedServerMessages,
+			func(a json.RawMessage, b json.RawMessage) bool {
+				var aRes RoomRecord
+				var bRes RoomRecord
+				json.Unmarshal(a, &aRes)
+				json.Unmarshal(b, &bRes)
+
+				equal := aRes.Host.PublicToken == bRes.Host.PublicToken
+				equal = equal && (bRes.RoomID != "")
+
+				return equal
+			},
+		)
+
+		var roomRecord RoomRecord
+		json.Unmarshal(receivedServerMessages[0].message.MessageDetails, &roomRecord)
+
+		room, exists := mockManager.GetRegisteredRoom(roomRecord.RoomID)
+		if !exists {
+			t.Errorf("Room with id %q was created but isn't registered\n", roomRecord.RoomID)
+		}
+
+		if room.Host.PrivateToken != mockClient.PrivateToken {
+			t.Errorf(
+				"Room with id %q does not contain the appropriate host privileges.\nExpected host: %q\nReceived host: %q",
+				room.RoomID,
+				mockClient.PrivateToken,
+				room.Host.PrivateToken,
+			)
+		}
+	})
+
+	t.Run("client hosting room after hosting another room", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+		mockClientPrivateID := mockManager.GenerateToken()
+		mockClient := NewClient(mockClientPrivateID)
+
+		mockConnectionManager.RegisterClientConnection(mockClientPrivateID, nil)
+		mockManager.RegisterClient(mockClient)
+
+		receivedServerMessagesFirst := HostRoomHandler(mockClient, mockManager, "")
+		receivedServerMessagesSecond := HostRoomHandler(mockClient, mockManager, "")
+
+		response, _ := json.Marshal(RoomRecord{
+			RoomID:  "",
+			Host:    mockClient.GetFilteredClient(),
+			Viewers: []ClientRecord{},
+		})
+
+		expectedServerMessages := []DirectedServerMessage{
+			{
+				token: mockClientPrivateID,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeHostRoom,
+					MessageDetails: response,
+					Status:         ServerMessageStatusOk,
+					ErrorMessage:   "",
+				},
+			},
+		}
+
+		assertExpectedMessageCount(t, 1, receivedServerMessagesFirst)
+		assertExpectedMessageCount(t, 1, receivedServerMessagesSecond)
+
+		assertExpectedMessages(
+			t,
+			expectedServerMessages,
+			receivedServerMessagesFirst,
+			func(a json.RawMessage, b json.RawMessage) bool {
+				var aRes RoomRecord
+				var bRes RoomRecord
+				json.Unmarshal(a, &aRes)
+				json.Unmarshal(b, &bRes)
+
+				equal := aRes.Host.PublicToken == bRes.Host.PublicToken
+				equal = equal && (bRes.RoomID != "")
+
+				return equal
+			},
+		)
+		assertExpectedMessages(
+			t,
+			expectedServerMessages,
+			receivedServerMessagesSecond,
+			func(a json.RawMessage, b json.RawMessage) bool {
+				var aRes RoomRecord
+				var bRes RoomRecord
+				json.Unmarshal(a, &aRes)
+				json.Unmarshal(b, &bRes)
+
+				equal := aRes.Host.PublicToken == bRes.Host.PublicToken
+				equal = equal && (bRes.RoomID != "")
+
+				return equal
+			},
+		)
+
+		var roomRecordFirst RoomRecord
+		json.Unmarshal(receivedServerMessagesFirst[0].message.MessageDetails, &roomRecordFirst)
+
+		var roomRecordSecond RoomRecord
+		json.Unmarshal(receivedServerMessagesSecond[0].message.MessageDetails, &roomRecordSecond)
+
+		t.Logf("Created Rooms: First(%q) Second(%q)", roomRecordFirst.RoomID, roomRecordSecond.RoomID)
+
+		_, exists := mockManager.GetRegisteredRoom(roomRecordFirst.RoomID)
+		if exists {
+			t.Errorf("Initially created room with id %q should not exist but does", roomRecordFirst.RoomID)
+		}
+
+		_, exists = mockManager.GetRegisteredRoom(roomRecordSecond.RoomID)
+		if !exists {
+			t.Errorf("Second created room with id %q should exist but doesn't", roomRecordSecond.RoomID)
+		}
+	})
+}
+
 func assertExpectedMessageCount(t *testing.T, expected int, received []DirectedServerMessage) {
 	t.Helper()
 
