@@ -1,5 +1,7 @@
 package main
 
+import "errors"
+
 const DEFAULT_ROOM_SIZE = 10
 
 type RoomID string
@@ -11,7 +13,13 @@ type Room struct {
 	Viewers      []*Client
 }
 
-func NewRoom(roomID RoomID, host *Client) *Room {
+var ErrRoomHasNoHost = errors.New("There's no host for the new room")
+
+func NewRoom(roomID RoomID, host *Client) (*Room, error) {
+	if host == nil {
+		return nil, ErrRoomHasNoHost
+	}
+
 	return &Room{
 		RoomID: roomID,
 		VideoDetails: VideoDetails{
@@ -23,7 +31,7 @@ func NewRoom(roomID RoomID, host *Client) *Room {
 		},
 		Host:    host,
 		Viewers: make([]*Client, 0, DEFAULT_ROOM_SIZE),
-	}
+	}, nil
 }
 
 func (room *Room) UpdateHost(host *Client) {

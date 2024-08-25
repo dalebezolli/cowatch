@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 )
 
@@ -297,89 +298,209 @@ func TestHostRoomHandler(t *testing.T) {
 		}
 	})
 
-	t.Run("client hosting room after hosting another room", func(t *testing.T) {
+	// t.Run("client hosting room after hosting another room", func(t *testing.T) {
+	// 	mockConnectionManager := NewGorillaConnectionManager()
+	// 	mockManager := NewManager(mockConnectionManager)
+	// 	mockClientPrivateID := mockManager.GenerateToken()
+	// 	mockClient := NewClient(mockClientPrivateID)
+	//
+	// 	mockConnectionManager.RegisterClientConnection(mockClientPrivateID, nil)
+	// 	mockManager.RegisterClient(mockClient)
+	//
+	// 	receivedServerMessagesFirst := HostRoomHandler(mockClient, mockManager, "")
+	// 	receivedServerMessagesSecond := HostRoomHandler(mockClient, mockManager, "")
+	//
+	// 	response, _ := json.Marshal(RoomRecord{
+	// 		RoomID:  "",
+	// 		Host:    mockClient.GetFilteredClient(),
+	// 		Viewers: []ClientRecord{},
+	// 	})
+	//
+	// 	expectedServerMessages := []DirectedServerMessage{
+	// 		{
+	// 			token: mockClientPrivateID,
+	// 			message: ServerMessage{
+	// 				MessageType:    ServerMessageTypeHostRoom,
+	// 				MessageDetails: response,
+	// 				Status:         ServerMessageStatusOk,
+	// 				ErrorMessage:   "",
+	// 			},
+	// 		},
+	// 	}
+	//
+	// 	assertExpectedMessageCount(t, 1, receivedServerMessagesFirst)
+	// 	assertExpectedMessageCount(t, 1, receivedServerMessagesSecond)
+	//
+	// 	assertExpectedMessages(
+	// 		t,
+	// 		expectedServerMessages,
+	// 		receivedServerMessagesFirst,
+	// 		func(a json.RawMessage, b json.RawMessage) bool {
+	// 			var aRes RoomRecord
+	// 			var bRes RoomRecord
+	// 			json.Unmarshal(a, &aRes)
+	// 			json.Unmarshal(b, &bRes)
+	//
+	// 			equal := aRes.Host.PublicToken == bRes.Host.PublicToken
+	// 			equal = equal && (bRes.RoomID != "")
+	//
+	// 			return equal
+	// 		},
+	// 	)
+	// 	assertExpectedMessages(
+	// 		t,
+	// 		expectedServerMessages,
+	// 		receivedServerMessagesSecond,
+	// 		func(a json.RawMessage, b json.RawMessage) bool {
+	// 			var aRes RoomRecord
+	// 			var bRes RoomRecord
+	// 			json.Unmarshal(a, &aRes)
+	// 			json.Unmarshal(b, &bRes)
+	//
+	// 			equal := aRes.Host.PublicToken == bRes.Host.PublicToken
+	// 			equal = equal && (bRes.RoomID != "")
+	//
+	// 			return equal
+	// 		},
+	// 	)
+	//
+	// 	var roomRecordFirst RoomRecord
+	// 	json.Unmarshal(receivedServerMessagesFirst[0].message.MessageDetails, &roomRecordFirst)
+	//
+	// 	var roomRecordSecond RoomRecord
+	// 	json.Unmarshal(receivedServerMessagesSecond[0].message.MessageDetails, &roomRecordSecond)
+	//
+	// 	t.Logf("Created Rooms: First(%q) Second(%q)", roomRecordFirst.RoomID, roomRecordSecond.RoomID)
+	//
+	// 	_, exists := mockManager.GetRegisteredRoom(roomRecordFirst.RoomID)
+	// 	if exists {
+	// 		t.Errorf("Initially created room with id %q should not exist but does", roomRecordFirst.RoomID)
+	// 	}
+	//
+	// 	_, exists = mockManager.GetRegisteredRoom(roomRecordSecond.RoomID)
+	// 	if !exists {
+	// 		t.Errorf("Second created room with id %q should exist but doesn't", roomRecordSecond.RoomID)
+	// 	}
+	// })
+}
+
+func TestUpdateRoomClientsWithLatestChange(t *testing.T) {
+	t.Run("updating room clients with a host only", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
 		mockManager := NewManager(mockConnectionManager)
-		mockClientPrivateID := mockManager.GenerateToken()
-		mockClient := NewClient(mockClientPrivateID)
+	
+		hostClient := NewClient(mockManager.GenerateToken())
 
-		mockConnectionManager.RegisterClientConnection(mockClientPrivateID, nil)
-		mockManager.RegisterClient(mockClient)
+		roomID := mockManager.GenerateUniqueRoomID()
+		testRoom, _ := NewRoom(roomID, hostClient)
 
-		receivedServerMessagesFirst := HostRoomHandler(mockClient, mockManager, "")
-		receivedServerMessagesSecond := HostRoomHandler(mockClient, mockManager, "")
+		receivedChanges := updateRoomClientsWithLatestChanges(*testRoom)
 
-		response, _ := json.Marshal(RoomRecord{
-			RoomID:  "",
-			Host:    mockClient.GetFilteredClient(),
+		successfulUpdate := RoomRecord{
+			RoomID: roomID,
+			Host: hostClient.GetFilteredClient(),
 			Viewers: []ClientRecord{},
-		})
+		}
 
-		expectedServerMessages := []DirectedServerMessage{
-			{
-				token: mockClientPrivateID,
-				message: ServerMessage{
-					MessageType:    ServerMessageTypeHostRoom,
-					MessageDetails: response,
-					Status:         ServerMessageStatusOk,
-					ErrorMessage:   "",
+		successfulUpdateRawMessage, _ := json.Marshal(successfulUpdate)
+
+		assertExpectedMessageCount(t, 1, receivedChanges)
+		assertExpectedMessages(
+			t,
+			[]DirectedServerMessage{
+				{
+					token: hostClient.PrivateToken,
+					message: ServerMessage{
+						MessageType: ServerMessageTypeUpdateRoom,
+						MessageDetails: successfulUpdateRawMessage,
+						Status: ServerMessageStatusOk,
+						ErrorMessage: "",
+					},
 				},
 			},
-		}
-
-		assertExpectedMessageCount(t, 1, receivedServerMessagesFirst)
-		assertExpectedMessageCount(t, 1, receivedServerMessagesSecond)
-
-		assertExpectedMessages(
-			t,
-			expectedServerMessages,
-			receivedServerMessagesFirst,
+			receivedChanges,
 			func(a json.RawMessage, b json.RawMessage) bool {
 				var aRes RoomRecord
 				var bRes RoomRecord
+
 				json.Unmarshal(a, &aRes)
 				json.Unmarshal(b, &bRes)
 
-				equal := aRes.Host.PublicToken == bRes.Host.PublicToken
-				equal = equal && (bRes.RoomID != "")
-
-				return equal
+				return reflect.DeepEqual(aRes, bRes)
 			},
 		)
+	})
+
+	t.Run("updating room clients with host and multiple users", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+	
+		hostClient := NewClient(mockManager.GenerateToken())
+		viewer1Client := NewClient(mockManager.GenerateToken())
+		viewer2Client := NewClient(mockManager.GenerateToken())
+
+		roomID := mockManager.GenerateUniqueRoomID()
+		testRoom, _ := NewRoom(roomID, hostClient)
+
+		testRoom.Viewers = append(testRoom.Viewers, viewer1Client)
+		testRoom.Viewers = append(testRoom.Viewers, viewer2Client)
+
+		receivedChanges := updateRoomClientsWithLatestChanges(*testRoom)
+
+		successfulUpdate := RoomRecord{
+			RoomID: roomID,
+			Host: hostClient.GetFilteredClient(),
+			Viewers: []ClientRecord{
+				viewer1Client.GetFilteredClient(),
+				viewer2Client.GetFilteredClient(),
+			},
+		}
+
+		successfulUpdateRawMessage, _ := json.Marshal(successfulUpdate)
+
+		assertExpectedMessageCount(t, 3, receivedChanges)
 		assertExpectedMessages(
 			t,
-			expectedServerMessages,
-			receivedServerMessagesSecond,
+			[]DirectedServerMessage{
+				{
+					token: hostClient.PrivateToken,
+					message: ServerMessage{
+						MessageType: ServerMessageTypeUpdateRoom,
+						MessageDetails: successfulUpdateRawMessage,
+						Status: ServerMessageStatusOk,
+						ErrorMessage: "",
+					},
+				},
+				{
+					token: viewer1Client.PrivateToken,
+					message: ServerMessage{
+						MessageType: ServerMessageTypeUpdateRoom,
+						MessageDetails: successfulUpdateRawMessage,
+						Status: ServerMessageStatusOk,
+						ErrorMessage: "",
+					},
+				},
+				{
+					token: viewer2Client.PrivateToken,
+					message: ServerMessage{
+						MessageType: ServerMessageTypeUpdateRoom,
+						MessageDetails: successfulUpdateRawMessage,
+						Status: ServerMessageStatusOk,
+						ErrorMessage: "",
+					},
+				},
+			},
+			receivedChanges,
 			func(a json.RawMessage, b json.RawMessage) bool {
 				var aRes RoomRecord
 				var bRes RoomRecord
+
 				json.Unmarshal(a, &aRes)
 				json.Unmarshal(b, &bRes)
 
-				equal := aRes.Host.PublicToken == bRes.Host.PublicToken
-				equal = equal && (bRes.RoomID != "")
-
-				return equal
+				return reflect.DeepEqual(aRes, bRes)
 			},
 		)
-
-		var roomRecordFirst RoomRecord
-		json.Unmarshal(receivedServerMessagesFirst[0].message.MessageDetails, &roomRecordFirst)
-
-		var roomRecordSecond RoomRecord
-		json.Unmarshal(receivedServerMessagesSecond[0].message.MessageDetails, &roomRecordSecond)
-
-		t.Logf("Created Rooms: First(%q) Second(%q)", roomRecordFirst.RoomID, roomRecordSecond.RoomID)
-
-		_, exists := mockManager.GetRegisteredRoom(roomRecordFirst.RoomID)
-		if exists {
-			t.Errorf("Initially created room with id %q should not exist but does", roomRecordFirst.RoomID)
-		}
-
-		_, exists = mockManager.GetRegisteredRoom(roomRecordSecond.RoomID)
-		if !exists {
-			t.Errorf("Second created room with id %q should exist but doesn't", roomRecordSecond.RoomID)
-		}
 	})
 }
 

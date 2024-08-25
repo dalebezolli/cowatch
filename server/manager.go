@@ -148,7 +148,7 @@ func (manager *Manager) CleanupInnactiveClients() {
 		}
 
 		logger.Info("Removing innactive client: %s\n", client.IPAddress)
-		manager.DisconnectClient(client)
+		manager.disconnectClient(client)
 		manager.UnregisterClient(client)
 	}
 }
@@ -226,11 +226,51 @@ func (manager *Manager) GetRegisteredRoom(roomID RoomID) (*Room, bool) {
 	return room, exists
 }
 
+// Disconnects a client from a room
+// If the client is a Viewer, they are removed from the viewer list
+// If the client is a Host, they disconnect every other viewer before closing the connection
+func (manager *Manager) disconnectClient(client *Client) []DirectedServerMessage {
+	if !manager.IsClientRegistered(client) {
+		return []DirectedServerMessage{}
+	}
+
+	room, exists := manager.GetRegisteredRoom(client.RoomID)
+	if !exists {
+		return []DirectedServerMessage{}
+	}
+
+	serverMessages := make([]DirectedServerMessage, 0, len(room.Viewers) + 1)
+
+	if client.Type == ClientTypeHost {
+		for _, viewer := range room.Viewers {
+			serverMessages = append(serverMessages, manager.disconnectClient(viewer)[0])
+		}
+
+		manager.UnregisterRoom(room)
+	} else if client.Type == ClientTypeViewer {
+		room.RemoveViewer(client)
+		updateRoomClientsWithLatestChanges(*room)
+	}
+
+	client.UpdateClientDetails(Client{Type: ClientTypeInnactive, RoomID: ""})
+	removeMessage := DirectedServerMessage {
+		token: client.PrivateToken,
+		message: ServerMessage{
+			MessageType: ServerMessageTypeDisconnectRoom,
+			MessageDetails: nil,
+			Status: ServerMessageStatusOk,
+			ErrorMessage: "",
+		},
+	}
+	serverMessages = append(serverMessages, removeMessage)
+	return serverMessages
+}
+
 func (manager *Manager) setupClientMessageHandlers() {
 	manager.clientMessageHandlers[ClientMessageTypeAuthorize] = AuthorizeHandler
 	manager.clientMessageHandlers[ClientMessageTypeHostRoom] = HostRoomHandler
 	// manager.clientMessageHandlers[ClientMessageTypeJoinRoom] = JoinRoomHandler
-	// manager.clientMessageHandlers[ClientMessageTypeDisconnectRoom] = DisconnectRoomHandler
+	manager.clientMessageHandlers[ClientMessageTypeDisconnectRoom] = DisconnectRoomHandler
 	// manager.clientMessageHandlers[ClientMessageTypeSendReflection] = ReflectRoomHandler
 	// manager.clientMessageHandlers[ClientMessageTypeSendVideoDetails] = ReflectDetailsHandler
 	// manager.clientMessageHandlers[ClientMessageTypePing] = PingHandler

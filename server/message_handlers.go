@@ -131,12 +131,41 @@ func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) []
 }
 
 func HostRoomHandler(client *Client, manager *Manager, clientRequest string) []DirectedServerMessage {
-	room := NewRoom(manager.GenerateUniqueRoomID(), client)
-	manager.RegisterRoom(room)
-	client.UpdateClientDetails(Client{Type: ClientTypeHost, RoomID: room.RoomID})
+	if client == nil || manager == nil {
+		logger.Error("[Unspecified] [HostRoom] Failed to specify a client or manager for the current host room handler.\n")
+		return []DirectedServerMessage{
+			{
+				token: client.PrivateToken,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeHostRoom,
+					MessageDetails: nil,
+					Status:         ServerMessageStatusError,
+					ErrorMessage:   ServerErrorMessageInternalServerError,
+				},
+			},
+		}
+	}
 
+	room, errNewRoom := NewRoom(manager.GenerateUniqueRoomID(), client)
+	if errNewRoom != nil {
+		logger.Error("[%s] [HostRoom] Failed to create a room: %s\n", client.PrivateToken, errNewRoom)
+		return []DirectedServerMessage{
+			{
+				token: client.PrivateToken,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeHostRoom,
+					MessageDetails: nil,
+					Status:         ServerMessageStatusError,
+					ErrorMessage:   ServerErrorMessageInternalServerError,
+				},
+			},
+		}
+	}
+
+	manager.RegisterRoom(room)
 	logger.Info("[%s] [HostRoom] Created room with id: %s\n", client.PrivateToken, room.RoomID)
 
+	client.UpdateClientDetails(Client{Type: ClientTypeHost, RoomID: room.RoomID})
 	filteredRoom := room.GetFilteredRoom()
 	serverMessageHostRoom, serverMessageHostRoomMarshalError := json.Marshal(filteredRoom)
 
@@ -243,8 +272,8 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 	updateRoomClientsWithLatestChanges(*room)
 }
 
-func DisconnectRoomHandler(client *Client, manager *Manager, clientRequest string) {
-	manager.DisconnectClient(client)
+func DisconnectRoomHandler(client *Client, manager *Manager, clientRequest string) []DirectedServerMessage {
+	return manager.disconnectClient(client)
 }
 
 type RoomReflection struct {
@@ -369,59 +398,43 @@ func PingHandler(client *Client, manager *Manager, clientRequest string) {
 	client.SendMessage(ServerMessageTypePong, serverMessagePong, ServerMessageStatusOk, "")
 }
 
-func updateRoomClientsWithLatestChanges(room Room) {
-	filteredRoom := room.GetFilteredRoom()
+func updateRoomClientsWithLatestChanges(room Room) []DirectedServerMessage {
+	serverMessages := make([]DirectedServerMessage, 0, len(room.Viewers) + 1)
 
+	filteredRoom := room.GetFilteredRoom()
 	serverMessageUpdateRoom, serverMessageUpdateRoomMarshalError := json.Marshal(filteredRoom)
 	if serverMessageUpdateRoomMarshalError != nil {
 		logger.Error("[UpdateRoom] Bad json: %s\n", serverMessageUpdateRoomMarshalError)
 	}
 
-	if room.Host.Connection != nil {
-		if serverMessageUpdateRoomMarshalError == nil {
-			room.Host.SendMessage(ServerMessageTypeUpdateRoom, serverMessageUpdateRoom, ServerMessageStatusOk, "")
-		} else {
-			room.Host.SendMessage(ServerMessageTypeUpdateRoom, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
+	var serverMessage ServerMessage
+	if serverMessageUpdateRoomMarshalError != nil {
+		serverMessage = ServerMessage{
+			MessageType: ServerMessageTypeUpdateRoom,
+			MessageDetails: nil,
+			Status: ServerMessageStatusError,
+			ErrorMessage: ServerErrorMessageInternalServerError,
+		}
+	} else {
+		serverMessage = ServerMessage{
+			MessageType: ServerMessageTypeUpdateRoom,
+			MessageDetails: serverMessageUpdateRoom,
+			Status: ServerMessageStatusOk,
+			ErrorMessage: "",
 		}
 	}
+
+	serverMessages = append(serverMessages, DirectedServerMessage{
+		token: room.Host.PrivateToken,
+		message: serverMessage,
+	})
 
 	for _, viewer := range room.Viewers {
-		if viewer.Connection == nil {
-			continue
-		}
-
-		if serverMessageUpdateRoomMarshalError == nil {
-			viewer.SendMessage(ServerMessageTypeUpdateRoom, serverMessageUpdateRoom, ServerMessageStatusOk, "")
-		} else {
-			viewer.SendMessage(ServerMessageTypeUpdateRoom, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
-		}
-	}
-}
-
-// Disconnects a client from a room
-// If the client is a Viewer, they are removed from the viewer list
-// If the client is a Host, they disconnect every other viewer before closing the connection
-func (manager *Manager) DisconnectClient(client *Client) {
-	if !manager.IsClientRegistered(client) {
-		return
+		serverMessages = append(serverMessages, DirectedServerMessage{
+			token: viewer.PrivateToken,
+			message: serverMessage,
+		})
 	}
 
-	room, exists := manager.GetRegisteredRoom(client.RoomID)
-	if !exists {
-		return
-	}
-
-	if client.Type == ClientTypeHost {
-		for _, viewer := range room.Viewers {
-			manager.DisconnectClient(viewer)
-		}
-
-		manager.UnregisterRoom(room)
-	} else if client.Type == ClientTypeViewer {
-		room.RemoveViewer(client)
-		updateRoomClientsWithLatestChanges(*room)
-	}
-
-	client.UpdateClientDetails(Client{Type: ClientTypeInnactive, RoomID: ""})
-	client.SendMessage(ServerMessageTypeDisconnectRoom, nil, ServerMessageStatusOk, "")
+	return serverMessages
 }
