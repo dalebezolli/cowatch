@@ -148,7 +148,7 @@ func (manager *Manager) CleanupInnactiveClients() {
 		}
 
 		logger.Info("Removing innactive client: %s\n", client.IPAddress)
-		manager.disconnectClient(client)
+		manager.disconnectClientFromRoom(client)
 		manager.UnregisterClient(client)
 	}
 }
@@ -229,7 +229,7 @@ func (manager *Manager) GetRegisteredRoom(roomID RoomID) (*Room, bool) {
 // Disconnects a client from a room
 // If the client is a Viewer, they are removed from the viewer list
 // If the client is a Host, they disconnect every other viewer before closing the connection
-func (manager *Manager) disconnectClient(client *Client) []DirectedServerMessage {
+func (manager *Manager) disconnectClientFromRoom(client *Client) []DirectedServerMessage {
 	if !manager.IsClientRegistered(client) {
 		return []DirectedServerMessage{}
 	}
@@ -239,17 +239,17 @@ func (manager *Manager) disconnectClient(client *Client) []DirectedServerMessage
 		return []DirectedServerMessage{}
 	}
 
-	serverMessages := make([]DirectedServerMessage, 0, len(room.Viewers) + 1)
+	serverMessages := make([]DirectedServerMessage, 0, len(room.Viewers) * 2 + 1)
 
 	if client.Type == ClientTypeHost {
 		for _, viewer := range room.Viewers {
-			serverMessages = append(serverMessages, manager.disconnectClient(viewer)[0])
+			serverMessages = append(serverMessages, manager.disconnectClientFromRoom(viewer)...)
 		}
 
 		manager.UnregisterRoom(room)
 	} else if client.Type == ClientTypeViewer {
 		room.RemoveViewer(client)
-		updateRoomClientsWithLatestChanges(*room)
+		serverMessages = append(serverMessages, updateRoomClientsWithLatestChanges(*room)...)
 	}
 
 	client.UpdateClientDetails(Client{Type: ClientTypeInnactive, RoomID: ""})

@@ -131,6 +131,7 @@ func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) []
 }
 
 func HostRoomHandler(client *Client, manager *Manager, clientRequest string) []DirectedServerMessage {
+	serverResponses := make([]DirectedServerMessage, 0, 1)
 	if client == nil || manager == nil {
 		logger.Error("[Unspecified] [HostRoom] Failed to specify a client or manager for the current host room handler.\n")
 		return []DirectedServerMessage{
@@ -144,6 +145,10 @@ func HostRoomHandler(client *Client, manager *Manager, clientRequest string) []D
 				},
 			},
 		}
+	}
+
+	if client.RoomID != "" {
+		serverResponses = append(serverResponses, manager.disconnectClientFromRoom(client)...)
 	}
 
 	room, errNewRoom := NewRoom(manager.GenerateUniqueRoomID(), client)
@@ -184,17 +189,17 @@ func HostRoomHandler(client *Client, manager *Manager, clientRequest string) []D
 		}
 	}
 
-	return []DirectedServerMessage{
-		{
-			token: client.PrivateToken,
-			message: ServerMessage{
-				MessageType:    ServerMessageTypeHostRoom,
-				MessageDetails: serverMessageHostRoom,
-				Status:         ServerMessageStatusOk,
-				ErrorMessage:   "",
-			},
+	serverResponses = append(serverResponses, DirectedServerMessage{
+		token: client.PrivateToken,
+		message: ServerMessage{
+			MessageType:    ServerMessageTypeHostRoom,
+			MessageDetails: serverMessageHostRoom,
+			Status:         ServerMessageStatusOk,
+			ErrorMessage:   "",
 		},
-	}
+	})
+
+	return serverResponses
 }
 
 type ClientRequestJoinRoom struct {
@@ -273,7 +278,7 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 }
 
 func DisconnectRoomHandler(client *Client, manager *Manager, clientRequest string) []DirectedServerMessage {
-	return manager.disconnectClient(client)
+	return manager.disconnectClientFromRoom(client)
 }
 
 type RoomReflection struct {

@@ -298,90 +298,102 @@ func TestHostRoomHandler(t *testing.T) {
 		}
 	})
 
-	// t.Run("client hosting room after hosting another room", func(t *testing.T) {
-	// 	mockConnectionManager := NewGorillaConnectionManager()
-	// 	mockManager := NewManager(mockConnectionManager)
-	// 	mockClientPrivateID := mockManager.GenerateToken()
-	// 	mockClient := NewClient(mockClientPrivateID)
-	//
-	// 	mockConnectionManager.RegisterClientConnection(mockClientPrivateID, nil)
-	// 	mockManager.RegisterClient(mockClient)
-	//
-	// 	receivedServerMessagesFirst := HostRoomHandler(mockClient, mockManager, "")
-	// 	receivedServerMessagesSecond := HostRoomHandler(mockClient, mockManager, "")
-	//
-	// 	response, _ := json.Marshal(RoomRecord{
-	// 		RoomID:  "",
-	// 		Host:    mockClient.GetFilteredClient(),
-	// 		Viewers: []ClientRecord{},
-	// 	})
-	//
-	// 	expectedServerMessages := []DirectedServerMessage{
-	// 		{
-	// 			token: mockClientPrivateID,
-	// 			message: ServerMessage{
-	// 				MessageType:    ServerMessageTypeHostRoom,
-	// 				MessageDetails: response,
-	// 				Status:         ServerMessageStatusOk,
-	// 				ErrorMessage:   "",
-	// 			},
-	// 		},
-	// 	}
-	//
-	// 	assertExpectedMessageCount(t, 1, receivedServerMessagesFirst)
-	// 	assertExpectedMessageCount(t, 1, receivedServerMessagesSecond)
-	//
-	// 	assertExpectedMessages(
-	// 		t,
-	// 		expectedServerMessages,
-	// 		receivedServerMessagesFirst,
-	// 		func(a json.RawMessage, b json.RawMessage) bool {
-	// 			var aRes RoomRecord
-	// 			var bRes RoomRecord
-	// 			json.Unmarshal(a, &aRes)
-	// 			json.Unmarshal(b, &bRes)
-	//
-	// 			equal := aRes.Host.PublicToken == bRes.Host.PublicToken
-	// 			equal = equal && (bRes.RoomID != "")
-	//
-	// 			return equal
-	// 		},
-	// 	)
-	// 	assertExpectedMessages(
-	// 		t,
-	// 		expectedServerMessages,
-	// 		receivedServerMessagesSecond,
-	// 		func(a json.RawMessage, b json.RawMessage) bool {
-	// 			var aRes RoomRecord
-	// 			var bRes RoomRecord
-	// 			json.Unmarshal(a, &aRes)
-	// 			json.Unmarshal(b, &bRes)
-	//
-	// 			equal := aRes.Host.PublicToken == bRes.Host.PublicToken
-	// 			equal = equal && (bRes.RoomID != "")
-	//
-	// 			return equal
-	// 		},
-	// 	)
-	//
-	// 	var roomRecordFirst RoomRecord
-	// 	json.Unmarshal(receivedServerMessagesFirst[0].message.MessageDetails, &roomRecordFirst)
-	//
-	// 	var roomRecordSecond RoomRecord
-	// 	json.Unmarshal(receivedServerMessagesSecond[0].message.MessageDetails, &roomRecordSecond)
-	//
-	// 	t.Logf("Created Rooms: First(%q) Second(%q)", roomRecordFirst.RoomID, roomRecordSecond.RoomID)
-	//
-	// 	_, exists := mockManager.GetRegisteredRoom(roomRecordFirst.RoomID)
-	// 	if exists {
-	// 		t.Errorf("Initially created room with id %q should not exist but does", roomRecordFirst.RoomID)
-	// 	}
-	//
-	// 	_, exists = mockManager.GetRegisteredRoom(roomRecordSecond.RoomID)
-	// 	if !exists {
-	// 		t.Errorf("Second created room with id %q should exist but doesn't", roomRecordSecond.RoomID)
-	// 	}
-	// })
+	t.Run("client hosting room after hosting another room", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+		mockClientPrivateID := mockManager.GenerateToken()
+		mockClient := NewClient(mockClientPrivateID)
+
+		mockConnectionManager.RegisterClientConnection(mockClientPrivateID, nil)
+		mockManager.RegisterClient(mockClient)
+
+		receivedServerMessagesFirst := HostRoomHandler(mockClient, mockManager, "")
+		receivedServerMessagesSecond := HostRoomHandler(mockClient, mockManager, "")
+
+		response, _ := json.Marshal(RoomRecord{
+			RoomID:  "",
+			Host:    mockClient.GetFilteredClient(),
+			Viewers: []ClientRecord{},
+		})
+
+		expectedServerMessages1 := []DirectedServerMessage{
+			{
+				token: mockClientPrivateID,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeHostRoom,
+					MessageDetails: response,
+					Status:         ServerMessageStatusOk,
+					ErrorMessage:   "",
+				},
+			},
+		}
+
+		assertExpectedMessageCount(t, 1, receivedServerMessagesFirst)
+		assertExpectedMessageCount(t, 2, receivedServerMessagesSecond)
+
+		assertExpectedMessages(
+			t,
+			expectedServerMessages1,
+			receivedServerMessagesFirst,
+			func(a json.RawMessage, b json.RawMessage) bool {
+				var aRes RoomRecord
+				var bRes RoomRecord
+				json.Unmarshal(a, &aRes)
+				json.Unmarshal(b, &bRes)
+
+				equal := aRes.Host.PublicToken == bRes.Host.PublicToken
+				equal = equal && (bRes.RoomID != "")
+
+				return equal
+			},
+		)
+
+		expectedServerMessages2 := append([]DirectedServerMessage{
+			{
+				token: mockClientPrivateID,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeDisconnectRoom,
+					Status:         ServerMessageStatusOk,
+					ErrorMessage:   "",
+				},
+			},
+		}, expectedServerMessages1...)
+
+		assertExpectedMessages(
+			t,
+			expectedServerMessages2,
+			receivedServerMessagesSecond,
+			func(a json.RawMessage, b json.RawMessage) bool {
+				var aRes RoomRecord
+				var bRes RoomRecord
+				json.Unmarshal(a, &aRes)
+				json.Unmarshal(b, &bRes)
+
+				equal := aRes.Host.PublicToken == bRes.Host.PublicToken
+				equal = equal && (bRes.RoomID != "")
+
+				return equal
+			},
+		)
+
+		var roomRecordFirst RoomRecord
+		json.Unmarshal(receivedServerMessagesFirst[0].message.MessageDetails, &roomRecordFirst)
+
+		var roomRecordSecond RoomRecord
+		json.Unmarshal(receivedServerMessagesSecond[1].message.MessageDetails, &roomRecordSecond)
+
+		t.Logf("Created Rooms: First(%q) Second(%q)", roomRecordFirst.RoomID, roomRecordSecond.RoomID)
+
+		_, exists := mockManager.GetRegisteredRoom(roomRecordFirst.RoomID)
+		if exists {
+			t.Errorf("Initially created room with id %q should not exist but does", roomRecordFirst.RoomID)
+		}
+
+		_, exists = mockManager.GetRegisteredRoom(roomRecordSecond.RoomID)
+		if !exists {
+			t.Errorf("Second created room with id %q should exist but doesn't", roomRecordSecond.RoomID)
+		}
+	})
 }
 
 func TestUpdateRoomClientsWithLatestChange(t *testing.T) {
@@ -504,6 +516,195 @@ func TestUpdateRoomClientsWithLatestChange(t *testing.T) {
 	})
 }
 
+func TestDisconnectRoomHandler(t *testing.T) {
+	t.Run("disconnecting a client that's innactive", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+		mockClient := NewClient(mockManager.GenerateToken())
+
+		receivedResponse := DisconnectRoomHandler(mockClient, mockManager, "")
+
+		assertExpectedMessageCount(t, 0, receivedResponse)
+	})
+
+	t.Run("disconnecting a viewer", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+
+		mockHost := NewClient(mockManager.GenerateToken())
+		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost)
+		mockManager.RegisterRoom(mockRoom)
+
+		mockViewer := NewClient(mockManager.GenerateToken())
+
+		authMessageDetails, _ := json.Marshal(ClientRequestAuthorizeRoom{
+			Name:         "TestUser",
+			Image:        "",
+			PrivateToken: "",
+		})
+		AuthorizeHandler(mockHost, mockManager, string(authMessageDetails))
+
+		authMessageDetails, _ = json.Marshal(ClientRequestAuthorizeRoom{
+			Name:         "TestUser2",
+			Image:        "",
+			PrivateToken: "",
+		})
+		AuthorizeHandler(mockViewer, mockManager, string(authMessageDetails))
+		mockViewer.RoomID = mockRoom.RoomID
+		mockViewer.Type = ClientTypeViewer
+		mockRoom.Viewers = append(mockRoom.Viewers, mockViewer)
+
+		t.Logf("Connected clients: %+v\n", mockManager.clients)
+		receivedResponse := DisconnectRoomHandler(mockViewer, mockManager, "")
+
+		roomRecord, _ := json.Marshal(mockRoom.GetFilteredRoom())
+
+		assertExpectedMessageCount(t, 2, receivedResponse)
+		assertExpectedMessages(
+			t,
+			[]DirectedServerMessage{
+				{
+					token: mockHost.PrivateToken,
+					message: ServerMessage{
+						MessageType: ServerMessageTypeUpdateRoom,
+						MessageDetails: roomRecord,
+						Status: ServerMessageStatusOk,
+						ErrorMessage: "",
+					},
+				},
+				{
+					token: mockViewer.PrivateToken,
+					message: ServerMessage{
+						MessageType: ServerMessageTypeDisconnectRoom,
+						MessageDetails: nil,
+						Status: ServerMessageStatusOk,
+						ErrorMessage: "",
+					},
+				},
+			},
+			receivedResponse,
+			func(a, b json.RawMessage) bool {
+				return true
+			},
+		)
+	})
+
+	t.Run("disconnecting a host in a room with no viewers", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+
+		mockHost := NewClient(mockManager.GenerateToken())
+		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost)
+		mockManager.RegisterRoom(mockRoom)
+
+		mockHost.RoomID = mockRoom.RoomID
+		mockHost.Type = ClientTypeHost
+
+		authMessageDetails, _ := json.Marshal(ClientRequestAuthorizeRoom{
+			Name:         "TestUser",
+			Image:        "",
+			PrivateToken: "",
+		})
+
+		AuthorizeHandler(mockHost, mockManager, string(authMessageDetails))
+		t.Logf("Connected clients: %+v\n", mockManager.clients)
+		receivedResponse := DisconnectRoomHandler(mockHost, mockManager, "")
+
+		assertExpectedMessageCount(t, 1, receivedResponse)
+		assertExpectedMessages(
+			t,
+			[]DirectedServerMessage{
+				{
+					token: mockHost.PrivateToken,
+					message: ServerMessage{
+						MessageType: ServerMessageTypeDisconnectRoom,
+						MessageDetails: nil,
+						Status: ServerMessageStatusOk,
+						ErrorMessage: "",
+					},
+				},
+			},
+			receivedResponse,
+			func(a, b json.RawMessage) bool {
+				return true
+			},
+		)
+	})
+
+	t.Run("disconnecting a host in a room with viewers", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+
+		mockHost := NewClient(mockManager.GenerateToken())
+		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost)
+		mockManager.RegisterRoom(mockRoom)
+
+		mockViewer := NewClient(mockManager.GenerateToken())
+
+		authMessageDetails, _ := json.Marshal(ClientRequestAuthorizeRoom{
+			Name:         "TestUser",
+			Image:        "",
+			PrivateToken: "",
+		})
+		AuthorizeHandler(mockHost, mockManager, string(authMessageDetails))
+		mockHost.RoomID = mockRoom.RoomID
+		mockHost.Type = ClientTypeHost
+
+		authMessageDetails, _ = json.Marshal(ClientRequestAuthorizeRoom{
+			Name:         "TestUser2",
+			Image:        "",
+			PrivateToken: "",
+		})
+		AuthorizeHandler(mockViewer, mockManager, string(authMessageDetails))
+		mockViewer.RoomID = mockRoom.RoomID
+		mockViewer.Type = ClientTypeViewer
+		mockRoom.Viewers = append(mockRoom.Viewers, mockViewer)
+
+		t.Logf("Connected clients: %+v\n", mockManager.clients)
+		receivedResponse := DisconnectRoomHandler(mockHost, mockManager, "")
+
+		roomRecord, _ := json.Marshal(mockRoom.GetFilteredRoom())
+
+		assertExpectedMessageCount(t, 3, receivedResponse)
+		assertExpectedMessages(
+			t,
+			[]DirectedServerMessage{
+				{
+					token: mockHost.PrivateToken,
+					message: ServerMessage{
+						MessageType: ServerMessageTypeUpdateRoom,
+						MessageDetails: roomRecord,
+						Status: ServerMessageStatusOk,
+						ErrorMessage: "",
+					},
+				},
+				{
+					token: mockViewer.PrivateToken,
+					message: ServerMessage{
+						MessageType: ServerMessageTypeDisconnectRoom,
+						MessageDetails: nil,
+						Status: ServerMessageStatusOk,
+						ErrorMessage: "",
+					},
+				},
+				{
+					token: mockHost.PrivateToken,
+					message: ServerMessage{
+						MessageType: ServerMessageTypeDisconnectRoom,
+						MessageDetails: nil,
+						Status: ServerMessageStatusOk,
+						ErrorMessage: "",
+					},
+				},
+			},
+			receivedResponse,
+			func(a, b json.RawMessage) bool {
+				return true
+			},
+		)
+	})
+}
+
 func assertExpectedMessageCount(t *testing.T, expected int, received []DirectedServerMessage) {
 	t.Helper()
 
@@ -521,14 +722,26 @@ func assertExpectedMessages(
 ) {
 	t.Helper()
 
+	if len(received) != len(expected) {
+		t.Errorf("Assert expected to contain %d cases but got %d\n", len(received), len(expected))
+		return
+	}
+
 	for index, receivedServerMessage := range received {
 		equal := true
 		equal = equal && (expected[index].token == receivedServerMessage.token)
+		t.Logf("Token equal? %t (expected: %q received %q)\n", equal, expected[index].token, receivedServerMessage.token)
 		equal = equal && (expected[index].message.MessageType == receivedServerMessage.message.MessageType)
+		t.Logf("MessageType eqaul? %t (expected: %q received %q)\n", equal, expected[index].message.MessageType, receivedServerMessage.message.MessageType)
 		equal = equal && (expected[index].message.ErrorMessage == receivedServerMessage.message.ErrorMessage)
+		t.Logf("ErrorMessage eqaul? %t (expected: %q received %q)\n", equal, expected[index].message.ErrorMessage, receivedServerMessage.message.ErrorMessage)
 		equal = equal && (expected[index].message.Status == receivedServerMessage.message.Status)
+		t.Logf("Status eqaul? %t (expected %q, received %q)\n", equal, expected[index].message.Status, receivedServerMessage.message.Status)
 
-		equal = equal && messageComparisson(expected[index].message.MessageDetails, receivedServerMessage.message.MessageDetails)
+		if expected[index].message.MessageDetails != nil && receivedServerMessage.message.MessageDetails != nil {
+			equal = equal && messageComparisson(expected[index].message.MessageDetails, receivedServerMessage.message.MessageDetails)
+			t.Logf("Message comparisson equal? %t\n", equal)
+		}
 
 		if !equal {
 			t.Errorf("Response doesn't match with expected:\nExpected: %+v\nReceived: %+v", expected[index], receivedServerMessage)
