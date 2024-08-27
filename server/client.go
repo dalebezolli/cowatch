@@ -155,7 +155,7 @@ func (client *Client) SendMessage(
 }
 
 func (client *Client) UpdateClientDetails(newData Client) {
-	logger.Info("[%s] Updating existing details {%s, %s, %s} with {%s, %s, %s}\n", client.IPAddress, client.Name, client.Image, client.Email, newData.Name, newData.Image, newData.Email)
+	logger.Info("[%s] Updating client details\n\tOld: %+v\n\tNew: %+v\n", client.PrivateToken, client, newData)
 
 	if newData.Name != "" {
 		client.Name = newData.Name
