@@ -943,6 +943,138 @@ func TestDisconnectRoomHandler(t *testing.T) {
 	})
 }
 
+func TestReflectRoomHandler(t *testing.T) {
+	t.Run("host sending reflect room message with no vieweres", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+		mockClient := NewClient(mockManager.GenerateToken())
+
+		HostRoomHandler(mockClient, mockManager, "")
+
+		roomReflection, _ := json.Marshal(RoomReflection{
+			ID:          "123",
+			State:       0,
+			CurrentTime: 0,
+		})
+		receivedResponse := ReflectRoomHandler(mockClient, mockManager, string(roomReflection))
+		assertExpectedMessageCount(t, 0, receivedResponse)
+	})
+
+	t.Run("host sending reflect room message with vieweres", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+		mockClient := NewClient(mockManager.GenerateToken())
+		mockViewer := NewClient(mockManager.GenerateToken())
+
+		HostRoomHandler(mockClient, mockManager, "")
+
+		requestJoin, _ := json.Marshal(ClientRequestJoinRoom{
+			RoomID: mockClient.RoomID,
+		})
+		JoinRoomHandler(mockViewer, mockManager, string(requestJoin))
+
+		requestRoomReflection, _ := json.Marshal(RoomReflection{
+			ID:          "123",
+			State:       0,
+			CurrentTime: 0,
+		})
+
+		receivedResponse := ReflectRoomHandler(mockClient, mockManager, string(requestRoomReflection))
+
+		assertExpectedMessageCount(t, 1, receivedResponse)
+		assertExpectedMessages(
+			t,
+			[]DirectedServerMessage{
+				{
+					token: mockViewer.PrivateToken,
+					message: ServerMessage{
+						MessageType:  ServerMessageTypeReflectRoom,
+						Status:       ServerMessageStatusOk,
+						ErrorMessage: "",
+					},
+				},
+			},
+			receivedResponse,
+			func(a, b json.RawMessage) bool {
+				return true
+			},
+		)
+	})
+
+	t.Run("viewer sending reflect room message", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+		mockClient := NewClient(mockManager.GenerateToken())
+		mockViewer := NewClient(mockManager.GenerateToken())
+
+		HostRoomHandler(mockClient, mockManager, "")
+
+		requestJoin, _ := json.Marshal(ClientRequestJoinRoom{
+			RoomID: mockClient.RoomID,
+		})
+		JoinRoomHandler(mockViewer, mockManager, string(requestJoin))
+
+		requestRoomReflection, _ := json.Marshal(RoomReflection{
+			ID:          "123",
+			State:       0,
+			CurrentTime: 0,
+		})
+
+		receivedResponse := ReflectRoomHandler(mockViewer, mockManager, string(requestRoomReflection))
+
+		assertExpectedMessageCount(t, 1, receivedResponse)
+		assertExpectedMessages(
+			t,
+			[]DirectedServerMessage{
+				{
+					token: mockViewer.PrivateToken,
+					message: ServerMessage{
+						MessageType:  ServerMessageTypeReflectRoom,
+						Status:       ServerMessageStatusError,
+						ErrorMessage: ServerErrorMessageClientNotHost,
+					},
+				},
+			},
+			receivedResponse,
+			func(a, b json.RawMessage) bool {
+				return true
+			},
+		)
+	})
+
+	t.Run("host sending reflect room for a non-existent room", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+		mockClient := NewClient(mockManager.GenerateToken())
+
+		requestRoomReflection, _ := json.Marshal(RoomReflection{
+			ID:          "123",
+			State:       0,
+			CurrentTime: 0,
+		})
+		receivedResponse := ReflectRoomHandler(mockClient, mockManager, string(requestRoomReflection))
+
+		assertExpectedMessageCount(t, 1, receivedResponse)
+		assertExpectedMessages(
+			t,
+			[]DirectedServerMessage{
+				{
+					token: mockClient.PrivateToken,
+					message: ServerMessage{
+						MessageType:  ServerMessageTypeReflectRoom,
+						Status:       ServerMessageStatusError,
+						ErrorMessage: ServerErrorMessageNoRoom,
+					},
+				},
+			},
+			receivedResponse,
+			func(a, b json.RawMessage) bool {
+				return true
+			},
+		)
+	})
+}
+
 func assertExpectedMessageCount(t *testing.T, expected int, received []DirectedServerMessage) {
 	t.Helper()
 

@@ -343,39 +343,86 @@ type RoomReflection struct {
 	CurrentTime float32 `json:"time"`
 }
 
-func ReflectRoomHandler(client *Client, manager *Manager, clientRequest string) {
+func ReflectRoomHandler(client *Client, manager *Manager, clientRequest string) []DirectedServerMessage {
 	var reflection RoomReflection
 	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &reflection)
-
 	if errorParsingRequest != nil {
 		logger.Error("[%s] [ReflectRoom] Client sent bad json object: %s\n", client.IPAddress, errorParsingRequest)
-		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
-		return
+		return []DirectedServerMessage{
+			{
+				token: client.PrivateToken,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeReflectRoom,
+					MessageDetails: nil,
+					Status:         ServerMessageStatusError,
+					ErrorMessage:   ServerErrorMessageBadJson,
+				},
+			},
+		}
 	}
 
 	room, exists := manager.GetRegisteredRoom(client.RoomID)
 	if !exists {
 		logger.Info("[%s] [ReflectRoom] No room found with id: %s\n", client.IPAddress, client.RoomID)
-		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageNoRoom)
-		return
+		return []DirectedServerMessage{
+			{
+				token: client.PrivateToken,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeReflectRoom,
+					MessageDetails: nil,
+					Status:         ServerMessageStatusError,
+					ErrorMessage:   ServerErrorMessageNoRoom,
+				},
+			},
+		}
 	}
 
 	if client.Type != ClientTypeHost {
 		logger.Info("[%s] [ReflectRoom] Client isn't a host\n", client.IPAddress)
-		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageClientNotHost)
-		return
+		return []DirectedServerMessage{
+			{
+				token: client.PrivateToken,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeReflectRoom,
+					MessageDetails: nil,
+					Status:         ServerMessageStatusError,
+					ErrorMessage:   ServerErrorMessageClientNotHost,
+				},
+			},
+		}
 	}
 
 	serverMessageReflection, serverMessageMarshalError := json.Marshal(reflection)
 	if serverMessageMarshalError != nil {
 		logger.Error("[%s] [ReflectRoom] Bad json: %s\n", client.IPAddress, client.RoomID)
-		client.SendMessage(ServerMessageTypeReflectRoom, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
-		return
+		return []DirectedServerMessage{
+			{
+				token: client.PrivateToken,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeReflectRoom,
+					MessageDetails: nil,
+					Status:         ServerMessageStatusError,
+					ErrorMessage:   ServerErrorMessageInternalServerError,
+				},
+			},
+		}
 	}
 
+	serverMessages := make([]DirectedServerMessage, 0, len(room.Viewers))
+
 	for _, viewer := range room.Viewers {
-		viewer.SendMessage(ServerMessageTypeReflectRoom, serverMessageReflection, ServerMessageStatusOk, "")
+		serverMessages = append(serverMessages, DirectedServerMessage{
+			token: viewer.PrivateToken,
+			message: ServerMessage{
+				MessageType:    ServerMessageTypeReflectRoom,
+				MessageDetails: serverMessageReflection,
+				Status:         ServerMessageStatusOk,
+				ErrorMessage:   "",
+			},
+		})
 	}
+
+	return serverMessages
 }
 
 type VideoDetails struct {
