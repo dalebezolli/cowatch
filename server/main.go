@@ -41,7 +41,7 @@ func main() {
 	http.HandleFunc(EndpointReflect, managerInstance.HandleMessages)
 
 	go func() {
-		for true {
+		for {
 			time.Sleep(time.Duration(ClientCleanupRoutineInterval) * time.Second)
 			managerInstance.CleanupInnactiveClients()
 		}

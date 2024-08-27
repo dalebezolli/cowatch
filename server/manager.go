@@ -134,8 +134,6 @@ func (manager *Manager) HandleMessages(writer http.ResponseWriter, request *http
 }
 
 func (manager *Manager) CleanupInnactiveClients() {
-	logger.Info("Cleaning up clients\n")
-
 	currentDate := time.Now()
 	for _, client := range manager.clients {
 		oldNewDifferenceDuration := currentDate.Sub(client.LatestReply)
@@ -147,7 +145,7 @@ func (manager *Manager) CleanupInnactiveClients() {
 			continue
 		}
 
-		logger.Info("Removing innactive client: %s\n", client.IPAddress)
+		logger.Info("Removing innactive client: %s\n", client.PrivateToken)
 		manager.disconnectClientFromRoom(client)
 		manager.UnregisterClient(client)
 	}
@@ -162,6 +160,7 @@ func (manager *Manager) GenerateToken() Token {
 }
 
 func (manager *Manager) RegisterClient(client *Client) error {
+	logger.Debug("Registering user: %+v\n", client)
 	if client.PrivateToken == "" {
 		return errors.New("Client does not have a registered private & public")
 	}
