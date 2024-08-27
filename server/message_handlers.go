@@ -528,14 +528,25 @@ type PingPong struct {
 	Timestamp Timestamp `json:"timestamp"`
 }
 
-func PingHandler(client *Client, manager *Manager, clientRequest string) {
+func PingHandler(client *Client, manager *Manager, clientRequest string) []DirectedServerMessage {
+	serverMessages := make([]DirectedServerMessage, 0, 1)
+
 	var ping PingPong
 	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &ping)
 
 	if errorParsingRequest != nil {
 		logger.Error("[%s] [Ping] Client sent bad json object: %s\n", client.IPAddress, errorParsingRequest)
-		client.SendMessage(ServerMessageTypePong, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
-		return
+		serverMessages = append(serverMessages, DirectedServerMessage{
+			token: client.PrivateToken,
+			message: ServerMessage{
+				MessageType:    ServerMessageTypePong,
+				MessageDetails: nil,
+				Status:         ServerMessageStatusError,
+				ErrorMessage:   ServerErrorMessageBadJson,
+			},
+		})
+
+		return serverMessages
 	}
 
 	pong := PingPong{
@@ -545,11 +556,29 @@ func PingHandler(client *Client, manager *Manager, clientRequest string) {
 	serverMessagePong, serverMessageMarshalError := json.Marshal(pong)
 	if serverMessageMarshalError != nil {
 		logger.Error("[%s] [Ping] Bad json: %s\n", client.IPAddress, client.RoomID)
-		client.SendMessage(ServerMessageTypePong, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
-		return
+		serverMessages = append(serverMessages, DirectedServerMessage{
+			token: client.PrivateToken,
+			message: ServerMessage{
+				MessageType:    ServerMessageTypePong,
+				MessageDetails: nil,
+				Status:         ServerMessageStatusError,
+				ErrorMessage:   ServerErrorMessageInternalServerError,
+			},
+		})
+
+		return serverMessages
 	}
 
-	client.SendMessage(ServerMessageTypePong, serverMessagePong, ServerMessageStatusOk, "")
+	serverMessages = append(serverMessages, DirectedServerMessage{
+		token: client.PrivateToken,
+		message: ServerMessage{
+			MessageType:    ServerMessageTypePong,
+			MessageDetails: serverMessagePong,
+			Status:         ServerMessageStatusOk,
+			ErrorMessage:   "",
+		},
+	})
+	return serverMessages
 }
 
 func updateRoomClientsWithLatestChanges(room Room) []DirectedServerMessage {

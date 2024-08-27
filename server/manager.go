@@ -273,5 +273,5 @@ func (manager *Manager) setupClientMessageHandlers() {
 	manager.clientMessageHandlers[ClientMessageTypeDisconnectRoom] = DisconnectRoomHandler
 	manager.clientMessageHandlers[ClientMessageTypeSendReflection] = ReflectRoomHandler
 	manager.clientMessageHandlers[ClientMessageTypeSendVideoDetails] = ReflectDetailsHandler
-	// manager.clientMessageHandlers[ClientMessageTypePing] = PingHandler
+	manager.clientMessageHandlers[ClientMessageTypePing] = PingHandler
 }
