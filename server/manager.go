@@ -239,7 +239,7 @@ func (manager *Manager) disconnectClientFromRoom(client *Client) []DirectedServe
 		return []DirectedServerMessage{}
 	}
 
-	serverMessages := make([]DirectedServerMessage, 0, len(room.Viewers) * 2 + 1)
+	serverMessages := make([]DirectedServerMessage, 0, len(room.Viewers)*2+1)
 
 	if client.Type == ClientTypeHost {
 		for _, viewer := range room.Viewers {
@@ -253,13 +253,13 @@ func (manager *Manager) disconnectClientFromRoom(client *Client) []DirectedServe
 	}
 
 	client.UpdateClientDetails(Client{Type: ClientTypeInnactive, RoomID: ""})
-	removeMessage := DirectedServerMessage {
+	removeMessage := DirectedServerMessage{
 		token: client.PrivateToken,
 		message: ServerMessage{
-			MessageType: ServerMessageTypeDisconnectRoom,
+			MessageType:    ServerMessageTypeDisconnectRoom,
 			MessageDetails: nil,
-			Status: ServerMessageStatusOk,
-			ErrorMessage: "",
+			Status:         ServerMessageStatusOk,
+			ErrorMessage:   "",
 		},
 	}
 	serverMessages = append(serverMessages, removeMessage)
@@ -269,7 +269,7 @@ func (manager *Manager) disconnectClientFromRoom(client *Client) []DirectedServe
 func (manager *Manager) setupClientMessageHandlers() {
 	manager.clientMessageHandlers[ClientMessageTypeAuthorize] = AuthorizeHandler
 	manager.clientMessageHandlers[ClientMessageTypeHostRoom] = HostRoomHandler
-	// manager.clientMessageHandlers[ClientMessageTypeJoinRoom] = JoinRoomHandler
+	manager.clientMessageHandlers[ClientMessageTypeJoinRoom] = JoinRoomHandler
 	manager.clientMessageHandlers[ClientMessageTypeDisconnectRoom] = DisconnectRoomHandler
 	// manager.clientMessageHandlers[ClientMessageTypeSendReflection] = ReflectRoomHandler
 	// manager.clientMessageHandlers[ClientMessageTypeSendVideoDetails] = ReflectDetailsHandler

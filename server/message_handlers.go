@@ -206,30 +206,57 @@ type ClientRequestJoinRoom struct {
 	RoomID RoomID `json:"roomID"`
 }
 
-func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
-	var requestJoinRoom ClientRequestJoinRoom
+func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) []DirectedServerMessage {
+	serverResponses := make([]DirectedServerMessage, 0, 10)
 
+	var requestJoinRoom ClientRequestJoinRoom
 	errorParsingMessage := json.Unmarshal([]byte(clientRequest), &requestJoinRoom)
 	if errorParsingMessage != nil {
-		logger.Error("[%s] [JoinRoom] Client sent bad json object: %s\n", client.IPAddress, errorParsingMessage)
-		client.SendMessage(ServerMessageTypeJoinRoom, nil, ServerMessageStatusError, ServerErrorMessageBadJson)
-		return
+		logger.Error("[%s] [JoinRoom] Client sent bad json object: %s\n", client.PrivateToken, errorParsingMessage)
+		serverResponses = append(serverResponses, DirectedServerMessage{
+			token: client.PrivateToken,
+			message: ServerMessage{
+				MessageType:    ServerMessageTypeJoinRoom,
+				MessageDetails: nil,
+				Status:         ServerMessageStatusError,
+				ErrorMessage:   ServerErrorMessageBadJson,
+			},
+		})
+
+		return serverResponses
 	}
 
 	room, exists := manager.GetRegisteredRoom(requestJoinRoom.RoomID)
 	if !exists {
-		logger.Info("[%s] [JoinRoom] No room found with id: %s\n", client.IPAddress, requestJoinRoom.RoomID)
-		client.SendMessage(ServerMessageTypeJoinRoom, nil, ServerMessageStatusError, ServerErrorMessageNoRoom)
-		return
+		logger.Info("[%s] [JoinRoom] No room found with id: %s\n", client.PrivateToken, requestJoinRoom.RoomID)
+		serverResponses = append(serverResponses, DirectedServerMessage{
+			token: client.PrivateToken,
+			message: ServerMessage{
+				MessageType:    ServerMessageTypeJoinRoom,
+				MessageDetails: nil,
+				Status:         ServerMessageStatusError,
+				ErrorMessage:   ServerErrorMessageNoRoom,
+			},
+		})
+
+		return serverResponses
 	}
 
 	if len(room.Viewers) >= DEFAULT_ROOM_SIZE {
-		logger.Info("[%s] [JoinRoom] Not enough space to join room with id: %s\n", client.IPAddress, requestJoinRoom.RoomID)
-		client.SendMessage(ServerMessageTypeJoinRoom, nil, ServerMessageStatusError, ServerErrorMessageFullRoom)
-		return
+		logger.Info("[%s] [JoinRoom] Not enough space to join room with id: %s\n", client.PrivateToken, requestJoinRoom.RoomID)
+		serverResponses = append(serverResponses, DirectedServerMessage{
+			token: client.PrivateToken,
+			message: ServerMessage{
+				MessageType:    ServerMessageTypeJoinRoom,
+				MessageDetails: nil,
+				Status:         ServerMessageStatusError,
+				ErrorMessage:   ServerErrorMessageFullRoom,
+			},
+		})
+
+		return serverResponses
 	}
 
-	logger.Debug("[%s] [JoinRoom] Adding user of type: %d\n", client.IPAddress, client.Type)
 	if client.Type == ClientTypeHost {
 		room.Host = client
 	}
@@ -260,21 +287,50 @@ func JoinRoomHandler(client *Client, manager *Manager, clientRequest string) {
 	})
 
 	if serverMessageJoinRoomMarshalError != nil {
-		logger.Error("[%s] [JoinRoom] Failed to marshal host room response: %s\n", client.IPAddress, serverMessageJoinRoomMarshalError)
-		client.SendMessage(ServerMessageTypeJoinRoom, nil, ServerMessageStatusError, ServerErrorMessageInternalServerError)
+		logger.Error("[%s] [JoinRoom] Failed to marshal host room response: %s\n", client.PrivateToken, serverMessageJoinRoomMarshalError)
+		serverResponses = append(serverResponses, DirectedServerMessage{
+			token: client.PrivateToken,
+			message: ServerMessage{
+				MessageType:    ServerMessageTypeJoinRoom,
+				MessageDetails: nil,
+				Status:         ServerMessageStatusError,
+				ErrorMessage:   ServerErrorMessageInternalServerError,
+			},
+		})
+
+		return serverResponses
 	}
+
+	serverResponses = append(serverResponses, DirectedServerMessage{
+		token: client.PrivateToken,
+		message: ServerMessage{
+			MessageType:    ServerMessageTypeJoinRoom,
+			MessageDetails: serverMessageJoinRoom,
+			Status:         ServerMessageStatusOk,
+			ErrorMessage:   "",
+		},
+	})
 
 	if room.VideoDetails.Title != "" {
 		serverMessageRoomDetails, serverMessageMarshalError := json.Marshal(room.VideoDetails)
 		if serverMessageMarshalError != nil {
-			logger.Error("[%s] [JoinRoom] Bad json: %s\n", client.IPAddress, client.RoomID)
+			logger.Error("[%s] [JoinRoom:UpdateVideoDetails] Bad json while updating data: %s\n", client.PrivateToken, client.RoomID)
 		} else {
-			client.SendMessage(ServerMessageTypeReflectVideoDetails, serverMessageRoomDetails, ServerMessageStatusOk, "")
+			serverResponses = append(serverResponses, DirectedServerMessage{
+				token: client.PrivateToken,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeReflectVideoDetails,
+					MessageDetails: serverMessageRoomDetails,
+					Status:         ServerMessageStatusOk,
+					ErrorMessage:   "",
+				},
+			})
 		}
 	}
 
-	client.SendMessage(ServerMessageTypeJoinRoom, serverMessageJoinRoom, ServerMessageStatusOk, "")
-	updateRoomClientsWithLatestChanges(*room)
+	serverResponses = append(serverResponses, updateRoomClientsWithLatestChanges(*room)...)
+
+	return serverResponses
 }
 
 func DisconnectRoomHandler(client *Client, manager *Manager, clientRequest string) []DirectedServerMessage {
@@ -404,7 +460,7 @@ func PingHandler(client *Client, manager *Manager, clientRequest string) {
 }
 
 func updateRoomClientsWithLatestChanges(room Room) []DirectedServerMessage {
-	serverMessages := make([]DirectedServerMessage, 0, len(room.Viewers) + 1)
+	serverMessages := make([]DirectedServerMessage, 0, len(room.Viewers)+1)
 
 	filteredRoom := room.GetFilteredRoom()
 	serverMessageUpdateRoom, serverMessageUpdateRoomMarshalError := json.Marshal(filteredRoom)
@@ -415,28 +471,28 @@ func updateRoomClientsWithLatestChanges(room Room) []DirectedServerMessage {
 	var serverMessage ServerMessage
 	if serverMessageUpdateRoomMarshalError != nil {
 		serverMessage = ServerMessage{
-			MessageType: ServerMessageTypeUpdateRoom,
+			MessageType:    ServerMessageTypeUpdateRoom,
 			MessageDetails: nil,
-			Status: ServerMessageStatusError,
-			ErrorMessage: ServerErrorMessageInternalServerError,
+			Status:         ServerMessageStatusError,
+			ErrorMessage:   ServerErrorMessageInternalServerError,
 		}
 	} else {
 		serverMessage = ServerMessage{
-			MessageType: ServerMessageTypeUpdateRoom,
+			MessageType:    ServerMessageTypeUpdateRoom,
 			MessageDetails: serverMessageUpdateRoom,
-			Status: ServerMessageStatusOk,
-			ErrorMessage: "",
+			Status:         ServerMessageStatusOk,
+			ErrorMessage:   "",
 		}
 	}
 
 	serverMessages = append(serverMessages, DirectedServerMessage{
-		token: room.Host.PrivateToken,
+		token:   room.Host.PrivateToken,
 		message: serverMessage,
 	})
 
 	for _, viewer := range room.Viewers {
 		serverMessages = append(serverMessages, DirectedServerMessage{
-			token: viewer.PrivateToken,
+			token:   viewer.PrivateToken,
 			message: serverMessage,
 		})
 	}

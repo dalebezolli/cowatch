@@ -352,9 +352,9 @@ func TestHostRoomHandler(t *testing.T) {
 			{
 				token: mockClientPrivateID,
 				message: ServerMessage{
-					MessageType:    ServerMessageTypeDisconnectRoom,
-					Status:         ServerMessageStatusOk,
-					ErrorMessage:   "",
+					MessageType:  ServerMessageTypeDisconnectRoom,
+					Status:       ServerMessageStatusOk,
+					ErrorMessage: "",
 				},
 			},
 		}, expectedServerMessages1...)
@@ -400,7 +400,7 @@ func TestUpdateRoomClientsWithLatestChange(t *testing.T) {
 	t.Run("updating room clients with a host only", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
 		mockManager := NewManager(mockConnectionManager)
-	
+
 		hostClient := NewClient(mockManager.GenerateToken())
 
 		roomID := mockManager.GenerateUniqueRoomID()
@@ -409,8 +409,8 @@ func TestUpdateRoomClientsWithLatestChange(t *testing.T) {
 		receivedChanges := updateRoomClientsWithLatestChanges(*testRoom)
 
 		successfulUpdate := RoomRecord{
-			RoomID: roomID,
-			Host: hostClient.GetFilteredClient(),
+			RoomID:  roomID,
+			Host:    hostClient.GetFilteredClient(),
 			Viewers: []ClientRecord{},
 		}
 
@@ -423,10 +423,10 @@ func TestUpdateRoomClientsWithLatestChange(t *testing.T) {
 				{
 					token: hostClient.PrivateToken,
 					message: ServerMessage{
-						MessageType: ServerMessageTypeUpdateRoom,
+						MessageType:    ServerMessageTypeUpdateRoom,
 						MessageDetails: successfulUpdateRawMessage,
-						Status: ServerMessageStatusOk,
-						ErrorMessage: "",
+						Status:         ServerMessageStatusOk,
+						ErrorMessage:   "",
 					},
 				},
 			},
@@ -446,7 +446,7 @@ func TestUpdateRoomClientsWithLatestChange(t *testing.T) {
 	t.Run("updating room clients with host and multiple users", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
 		mockManager := NewManager(mockConnectionManager)
-	
+
 		hostClient := NewClient(mockManager.GenerateToken())
 		viewer1Client := NewClient(mockManager.GenerateToken())
 		viewer2Client := NewClient(mockManager.GenerateToken())
@@ -461,7 +461,7 @@ func TestUpdateRoomClientsWithLatestChange(t *testing.T) {
 
 		successfulUpdate := RoomRecord{
 			RoomID: roomID,
-			Host: hostClient.GetFilteredClient(),
+			Host:   hostClient.GetFilteredClient(),
 			Viewers: []ClientRecord{
 				viewer1Client.GetFilteredClient(),
 				viewer2Client.GetFilteredClient(),
@@ -477,28 +477,28 @@ func TestUpdateRoomClientsWithLatestChange(t *testing.T) {
 				{
 					token: hostClient.PrivateToken,
 					message: ServerMessage{
-						MessageType: ServerMessageTypeUpdateRoom,
+						MessageType:    ServerMessageTypeUpdateRoom,
 						MessageDetails: successfulUpdateRawMessage,
-						Status: ServerMessageStatusOk,
-						ErrorMessage: "",
+						Status:         ServerMessageStatusOk,
+						ErrorMessage:   "",
 					},
 				},
 				{
 					token: viewer1Client.PrivateToken,
 					message: ServerMessage{
-						MessageType: ServerMessageTypeUpdateRoom,
+						MessageType:    ServerMessageTypeUpdateRoom,
 						MessageDetails: successfulUpdateRawMessage,
-						Status: ServerMessageStatusOk,
-						ErrorMessage: "",
+						Status:         ServerMessageStatusOk,
+						ErrorMessage:   "",
 					},
 				},
 				{
 					token: viewer2Client.PrivateToken,
 					message: ServerMessage{
-						MessageType: ServerMessageTypeUpdateRoom,
+						MessageType:    ServerMessageTypeUpdateRoom,
 						MessageDetails: successfulUpdateRawMessage,
-						Status: ServerMessageStatusOk,
-						ErrorMessage: "",
+						Status:         ServerMessageStatusOk,
+						ErrorMessage:   "",
 					},
 				},
 			},
@@ -511,6 +511,244 @@ func TestUpdateRoomClientsWithLatestChange(t *testing.T) {
 				json.Unmarshal(b, &bRes)
 
 				return reflect.DeepEqual(aRes, bRes)
+			},
+		)
+	})
+}
+
+func TestJoinRoomHandler(t *testing.T) {
+	t.Run("joining a room that exists and does not have a video loaded", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+
+		mockHost := NewClient(mockManager.GenerateToken())
+		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost)
+		mockManager.RegisterRoom(mockRoom)
+
+		mockViewer := NewClient(mockManager.GenerateToken())
+
+		authMessageDetails, _ := json.Marshal(ClientRequestAuthorizeRoom{
+			Name:         "TestUser",
+			Image:        "",
+			PrivateToken: "",
+		})
+		AuthorizeHandler(mockHost, mockManager, string(authMessageDetails))
+
+		authMessageDetails, _ = json.Marshal(ClientRequestAuthorizeRoom{
+			Name:         "TestUser2",
+			Image:        "",
+			PrivateToken: "",
+		})
+		AuthorizeHandler(mockViewer, mockManager, string(authMessageDetails))
+
+		requestJoinRoom, _ := json.Marshal(ClientRequestJoinRoom{RoomID: mockRoom.RoomID})
+		receivedJoinResponse := JoinRoomHandler(mockViewer, mockManager, string(requestJoinRoom))
+
+		expectedJoinResponse := []DirectedServerMessage{
+			{
+				token: mockViewer.PrivateToken,
+				message: ServerMessage{
+					MessageType:  ServerMessageTypeJoinRoom,
+					Status:       ServerMessageStatusOk,
+					ErrorMessage: "",
+				},
+			},
+			{
+				token: mockHost.PrivateToken,
+				message: ServerMessage{
+					MessageType:  ServerMessageTypeUpdateRoom,
+					Status:       ServerMessageStatusOk,
+					ErrorMessage: "",
+				},
+			},
+			{
+				token: mockViewer.PrivateToken,
+				message: ServerMessage{
+					MessageType:  ServerMessageTypeUpdateRoom,
+					Status:       ServerMessageStatusOk,
+					ErrorMessage: "",
+				},
+			},
+		}
+
+		assertExpectedMessageCount(t, 3, receivedJoinResponse)
+		assertExpectedMessages(
+			t,
+			expectedJoinResponse,
+			receivedJoinResponse,
+			func(a, b json.RawMessage) bool {
+				return true
+			},
+		)
+	})
+
+	t.Run("joining a room that exists and has a video loaded", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+
+		mockHost := NewClient(mockManager.GenerateToken())
+		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost)
+		mockManager.RegisterRoom(mockRoom)
+		mockRoom.VideoDetails = VideoDetails{
+			Title:           "Title",
+			Author:          "Author",
+			AuthorImage:     "image",
+			SubscriberCount: "5",
+			LikeCount:       "100",
+		}
+
+		mockViewer := NewClient(mockManager.GenerateToken())
+
+		authMessageDetails, _ := json.Marshal(ClientRequestAuthorizeRoom{
+			Name:         "TestUser",
+			Image:        "",
+			PrivateToken: "",
+		})
+		AuthorizeHandler(mockHost, mockManager, string(authMessageDetails))
+
+		authMessageDetails, _ = json.Marshal(ClientRequestAuthorizeRoom{
+			Name:         "TestUser2",
+			Image:        "",
+			PrivateToken: "",
+		})
+		AuthorizeHandler(mockViewer, mockManager, string(authMessageDetails))
+
+		requestJoinRoom, _ := json.Marshal(ClientRequestJoinRoom{RoomID: mockRoom.RoomID})
+		receivedJoinResponse := JoinRoomHandler(mockViewer, mockManager, string(requestJoinRoom))
+
+		expectedJoinResponse := []DirectedServerMessage{
+			{
+				token: mockViewer.PrivateToken,
+				message: ServerMessage{
+					MessageType:  ServerMessageTypeJoinRoom,
+					Status:       ServerMessageStatusOk,
+					ErrorMessage: "",
+				},
+			},
+			{
+				token: mockViewer.PrivateToken,
+				message: ServerMessage{
+					MessageType:  ServerMessageTypeReflectVideoDetails,
+					Status:       ServerMessageStatusOk,
+					ErrorMessage: "",
+				},
+			},
+			{
+				token: mockHost.PrivateToken,
+				message: ServerMessage{
+					MessageType:  ServerMessageTypeUpdateRoom,
+					Status:       ServerMessageStatusOk,
+					ErrorMessage: "",
+				},
+			},
+			{
+				token: mockViewer.PrivateToken,
+				message: ServerMessage{
+					MessageType:  ServerMessageTypeUpdateRoom,
+					Status:       ServerMessageStatusOk,
+					ErrorMessage: "",
+				},
+			},
+		}
+
+		assertExpectedMessageCount(t, len(expectedJoinResponse), receivedJoinResponse)
+		assertExpectedMessages(
+			t,
+			expectedJoinResponse,
+			receivedJoinResponse,
+			func(a, b json.RawMessage) bool {
+				return true
+			},
+		)
+	})
+
+	t.Run("joining a room that does not exist", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+
+		mockViewer := NewClient(mockManager.GenerateToken())
+
+		authMessageDetails, _ := json.Marshal(ClientRequestAuthorizeRoom{
+			Name:         "TestUser2",
+			Image:        "",
+			PrivateToken: "",
+		})
+		AuthorizeHandler(mockViewer, mockManager, string(authMessageDetails))
+
+		requestJoinRoom, _ := json.Marshal(ClientRequestJoinRoom{RoomID: ""})
+		receivedJoinResponse := JoinRoomHandler(mockViewer, mockManager, string(requestJoinRoom))
+
+		expectedJoinResponse := []DirectedServerMessage{
+			{
+				token: mockViewer.PrivateToken,
+				message: ServerMessage{
+					MessageType:  ServerMessageTypeJoinRoom,
+					Status:       ServerMessageStatusError,
+					ErrorMessage: ServerErrorMessageNoRoom,
+				},
+			},
+		}
+
+		assertExpectedMessageCount(t, 1, receivedJoinResponse)
+		assertExpectedMessages(
+			t,
+			expectedJoinResponse,
+			receivedJoinResponse,
+			func(a, b json.RawMessage) bool {
+				return true
+			},
+		)
+	})
+
+	t.Run("joining a room that's full", func(t *testing.T) {
+		mockConnectionManager := NewGorillaConnectionManager()
+		mockManager := NewManager(mockConnectionManager)
+
+		mockHost := NewClient(mockManager.GenerateToken())
+		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost)
+		for i := 0; i < 10; i++ {
+			mockRoom.Viewers = append(mockRoom.Viewers, mockHost)
+		}
+
+		mockManager.RegisterRoom(mockRoom)
+
+		mockViewer := NewClient(mockManager.GenerateToken())
+
+		authMessageDetails, _ := json.Marshal(ClientRequestAuthorizeRoom{
+			Name:         "TestUser",
+			Image:        "",
+			PrivateToken: "",
+		})
+		AuthorizeHandler(mockHost, mockManager, string(authMessageDetails))
+
+		authMessageDetails, _ = json.Marshal(ClientRequestAuthorizeRoom{
+			Name:         "TestUser2",
+			Image:        "",
+			PrivateToken: "",
+		})
+		AuthorizeHandler(mockViewer, mockManager, string(authMessageDetails))
+
+		requestJoinRoom, _ := json.Marshal(ClientRequestJoinRoom{RoomID: mockRoom.RoomID})
+		receivedJoinResponse := JoinRoomHandler(mockViewer, mockManager, string(requestJoinRoom))
+
+		expectedJoinResponse := []DirectedServerMessage{
+			{
+				token: mockViewer.PrivateToken,
+				message: ServerMessage{
+					MessageType:  ServerMessageTypeJoinRoom,
+					Status:       ServerMessageStatusError,
+					ErrorMessage: ServerErrorMessageFullRoom,
+				},
+			},
+		}
+
+		assertExpectedMessageCount(t, 1, receivedJoinResponse)
+		assertExpectedMessages(
+			t,
+			expectedJoinResponse,
+			receivedJoinResponse,
+			func(a, b json.RawMessage) bool {
+				return true
 			},
 		)
 	})
@@ -566,19 +804,19 @@ func TestDisconnectRoomHandler(t *testing.T) {
 				{
 					token: mockHost.PrivateToken,
 					message: ServerMessage{
-						MessageType: ServerMessageTypeUpdateRoom,
+						MessageType:    ServerMessageTypeUpdateRoom,
 						MessageDetails: roomRecord,
-						Status: ServerMessageStatusOk,
-						ErrorMessage: "",
+						Status:         ServerMessageStatusOk,
+						ErrorMessage:   "",
 					},
 				},
 				{
 					token: mockViewer.PrivateToken,
 					message: ServerMessage{
-						MessageType: ServerMessageTypeDisconnectRoom,
+						MessageType:    ServerMessageTypeDisconnectRoom,
 						MessageDetails: nil,
-						Status: ServerMessageStatusOk,
-						ErrorMessage: "",
+						Status:         ServerMessageStatusOk,
+						ErrorMessage:   "",
 					},
 				},
 			},
@@ -617,10 +855,10 @@ func TestDisconnectRoomHandler(t *testing.T) {
 				{
 					token: mockHost.PrivateToken,
 					message: ServerMessage{
-						MessageType: ServerMessageTypeDisconnectRoom,
+						MessageType:    ServerMessageTypeDisconnectRoom,
 						MessageDetails: nil,
-						Status: ServerMessageStatusOk,
-						ErrorMessage: "",
+						Status:         ServerMessageStatusOk,
+						ErrorMessage:   "",
 					},
 				},
 			},
@@ -672,28 +910,28 @@ func TestDisconnectRoomHandler(t *testing.T) {
 				{
 					token: mockHost.PrivateToken,
 					message: ServerMessage{
-						MessageType: ServerMessageTypeUpdateRoom,
+						MessageType:    ServerMessageTypeUpdateRoom,
 						MessageDetails: roomRecord,
-						Status: ServerMessageStatusOk,
-						ErrorMessage: "",
+						Status:         ServerMessageStatusOk,
+						ErrorMessage:   "",
 					},
 				},
 				{
 					token: mockViewer.PrivateToken,
 					message: ServerMessage{
-						MessageType: ServerMessageTypeDisconnectRoom,
+						MessageType:    ServerMessageTypeDisconnectRoom,
 						MessageDetails: nil,
-						Status: ServerMessageStatusOk,
-						ErrorMessage: "",
+						Status:         ServerMessageStatusOk,
+						ErrorMessage:   "",
 					},
 				},
 				{
 					token: mockHost.PrivateToken,
 					message: ServerMessage{
-						MessageType: ServerMessageTypeDisconnectRoom,
+						MessageType:    ServerMessageTypeDisconnectRoom,
 						MessageDetails: nil,
-						Status: ServerMessageStatusOk,
-						ErrorMessage: "",
+						Status:         ServerMessageStatusOk,
+						ErrorMessage:   "",
 					},
 				},
 			},
