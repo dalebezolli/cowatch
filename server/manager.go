@@ -266,11 +266,14 @@ func (manager *Manager) disconnectClientFromRoom(client *Client) []DirectedServe
 }
 
 func (manager *Manager) setupClientMessageHandlers() {
+	manager.clientMessageHandlers[ClientMessageTypePing] = PingHandler
 	manager.clientMessageHandlers[ClientMessageTypeAuthorize] = AuthorizeHandler
+
 	manager.clientMessageHandlers[ClientMessageTypeHostRoom] = HostRoomHandler
 	manager.clientMessageHandlers[ClientMessageTypeJoinRoom] = JoinRoomHandler
 	manager.clientMessageHandlers[ClientMessageTypeDisconnectRoom] = DisconnectRoomHandler
+
+	manager.clientMessageHandlers[ClientMessageTypeAttemptReconnect] = AttemptReconnectionHandler
 	manager.clientMessageHandlers[ClientMessageTypeSendReflection] = ReflectRoomHandler
 	manager.clientMessageHandlers[ClientMessageTypeSendVideoDetails] = ReflectDetailsHandler
-	manager.clientMessageHandlers[ClientMessageTypePing] = PingHandler
 }

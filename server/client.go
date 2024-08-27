@@ -82,6 +82,7 @@ const (
 	ClientMessageTypeSendReflection   = "SendReflection"
 	ClientMessageTypeSendVideoDetails = "SendVideoDetails"
 	ClientMessageTypePing             = "Ping"
+	ClientMessageTypeAttemptReconnect = "AttemptReconnect"
 )
 
 func (client *Client) GetClientMessage() (ClientMessage, error) {

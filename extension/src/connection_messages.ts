@@ -35,6 +35,7 @@ function onConnectionResponseAuthorize(action: ServerMessageDetails['Authorize']
 	localStorage.setItem(LOCALSTORAGE_PRIVATETOKEN_KEY, action.privateToken);
 
 	triggerCoreAction('SendState', { ...getState() });
+	getState().connection!.send(JSON.stringify({ actionType: 'AttemptReconnect', action: "" }));
 }
 
 function onConnectionResponseHostRoom(action: ServerMessageDetails['HostRoom']) {

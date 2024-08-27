@@ -62,6 +62,7 @@ export type ClientMessageDetails = {
 		client: Client,
 		errorMessage?: string,
 	},
+	'SwitchActiveTab': {},
 	'ShowTruePage': {
 		videoId: string,
 	},

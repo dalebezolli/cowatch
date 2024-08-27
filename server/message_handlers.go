@@ -130,6 +130,28 @@ func AuthorizeHandler(client *Client, manager *Manager, clientRequest string) []
 	}
 }
 
+func AttemptReconnectionHandler(client *Client, manager *Manager, clientRequest string) []DirectedServerMessage {
+	if client.RoomID == "" || client.Type == ClientTypeInnactive {
+		return []DirectedServerMessage{}
+	}
+
+	_, roomExists := manager.GetRegisteredRoom(client.RoomID)
+	if !roomExists {
+		return []DirectedServerMessage{}
+	}
+
+	requestJoinRoom, marshalError := json.Marshal(ClientRequestJoinRoom{
+		RoomID: client.RoomID,
+	})
+
+	if marshalError != nil {
+		logger.Error("[%s] [AttemptReconnectionHandler] Failed to marshal json: %s\n", client.PrivateToken, marshalError)
+		return []DirectedServerMessage{}
+	}
+
+	return JoinRoomHandler(client, manager, string(requestJoinRoom))
+}
+
 func HostRoomHandler(client *Client, manager *Manager, clientRequest string) []DirectedServerMessage {
 	serverResponses := make([]DirectedServerMessage, 0, 1)
 	if client == nil || manager == nil {
