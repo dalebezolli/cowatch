@@ -86,8 +86,6 @@ function reflectPlayer() {
 	state.reflectionSnapshot = currentReflectionSnapshot;
 
 	const currentVideoDetails = collectCurrentVideoDetails(state.moviePlayer);
-
-	log(LogLevel.Debug, "AttemptToSendVideoDetails", currentVideoDetails)();
 	if(
 		currentVideoDetails.title != '' &&
 		currentVideoDetails.author != '' && currentVideoDetails.authorImage != '' &&
