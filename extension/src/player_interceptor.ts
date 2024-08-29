@@ -1,4 +1,4 @@
-import { onCoreAction, triggerClientMessage, triggerCoreAction } from './events';
+import { onCoreAction, triggerClientMessage } from './events';
 import { LogLevel, log } from './log';
 import { CoreActionDetails, ReflectionSnapshot, VideoDetails, YoutubePlayer, YoutubePlayerState } from './types';
 import { sleep } from './utils';
@@ -86,7 +86,17 @@ function reflectPlayer() {
 	state.reflectionSnapshot = currentReflectionSnapshot;
 
 	const currentVideoDetails = collectCurrentVideoDetails(state.moviePlayer);
-	if(currentVideoDetails.title != '' && currentVideoDetails.title != state.videoDetails.title) {
+
+	log(LogLevel.Debug, "AttemptToSendVideoDetails", currentVideoDetails)();
+	if(
+		currentVideoDetails.title != '' &&
+		currentVideoDetails.author != '' && currentVideoDetails.authorImage != '' &&
+		currentVideoDetails.likeCount != '' && currentVideoDetails.subscriberCount != '' &&
+		currentVideoDetails.title != state.videoDetails.title && (
+			(currentVideoDetails.author != state.videoDetails.author && currentVideoDetails.authorImage != state.videoDetails.authorImage) ||
+			(currentVideoDetails.author == state.videoDetails.author && currentVideoDetails.authorImage == state.videoDetails.authorImage)
+		)
+	) {
 		state.videoDetails = currentVideoDetails;
 		triggerClientMessage('SendVideoDetails', state.videoDetails);
 	}
@@ -206,7 +216,9 @@ function collectCurrentVideoDetails(player: YoutubePlayer): VideoDetails {
 
 	const domAuthorImage = document.querySelector<HTMLImageElement>('yt-img-shadow.ytd-video-owner-renderer  > img');
 	const domSubCounter  = document.querySelector<HTMLElement>('#owner-sub-count');
-	const domLikeCounter = document.querySelector<HTMLElement>('button[title="I like this"] div:nth-of-type(2)');
+	const domLikeCounter =
+		document.querySelector('.ytd-video-description-header-renderer .YtwFactoidRendererFactoid .yt-core-attributed-string') ?? 
+		document.querySelector('.YtLikeButtonViewModelHost .yt-spec-button-shape-next__button-text-content');
 
 	if(domAuthorImage == null || domSubCounter == null || domLikeCounter == null) return videoDetails;
 
