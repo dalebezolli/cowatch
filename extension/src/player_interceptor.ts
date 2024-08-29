@@ -25,8 +25,11 @@ const state = {
 		subscriberCount: '',
 		likeCount: '',
 	} as VideoDetails,
+	latestVideo: '',
 	hasLimitedInterractivity: false,
 };
+
+type PlayerInterceptorState = typeof state
 
 intializePlayerInterceptor();
 
@@ -55,8 +58,9 @@ async function intializePlayerInterceptor() {
 }
 
 function handleState(clientState: CoreActionDetails['SendState']) {
+	state.latestVideo = clientState.videoId;
 	if(!clientState.isShowingTruePage && !state.hasLimitedInterractivity) {
-		limitInteractivity(clientState.videoId);
+		limitInteractivity(state);
 		state.hasLimitedInterractivity = !clientState.isShowingTruePage;
 	} else if(clientState.isShowingTruePage && state.hasLimitedInterractivity) {
 		triggerClientMessage('ShowTruePage', { videoId: clientState.videoId });
@@ -142,7 +146,7 @@ function syncDetails(videoDetails: CoreActionDetails['UpdateDetails']) {
 	domLikeCounter.textContent = videoDetails.likeCount;
 }
 
-function limitInteractivity(videoId: string) {
+function limitInteractivity(state: PlayerInterceptorState) {
 	function handleRefresh(event: MouseEvent) {
 		event.preventDefault();
 		event.stopPropagation();
@@ -151,7 +155,7 @@ function limitInteractivity(videoId: string) {
 		shouldRefresh = confirm('Are you sure you want to refresh?')
 
 		if(!shouldRefresh) return;
-		triggerClientMessage('ShowTruePage', { videoId });
+		triggerClientMessage('ShowTruePage', { videoId: state.latestVideo });
 	}
 
 	const refreshList = [
