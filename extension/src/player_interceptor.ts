@@ -58,6 +58,7 @@ async function intializePlayerInterceptor() {
 }
 
 function handleState(clientState: CoreActionDetails['SendState']) {
+	log(LogLevel.Info, 'Handling state:', clientState, state)();
 	state.latestVideo = clientState.videoId;
 	if(!clientState.isShowingTruePage && !state.hasLimitedInterractivity) {
 		limitInteractivity(state);
@@ -66,15 +67,16 @@ function handleState(clientState: CoreActionDetails['SendState']) {
 		triggerClientMessage('ShowTruePage', { videoId: clientState.videoId });
 	}
 
-	if(state.reflectionIntervalReference !== null && clientState.clientStatus === 'host') {
+	if(state.reflectionIntervalReference !== null && clientState.clientStatus === 'host' && clientState.isPrimaryTab == true) {
 		return;
 	}
 
-	if(state.reflectionIntervalReference == null && clientState.clientStatus === 'host') {
+	if(state.reflectionIntervalReference == null && clientState.clientStatus === 'host' && clientState.isPrimaryTab == true) {
 		state.reflectionIntervalReference = setInterval(reflectPlayer, INITIAL_REFLECTION_SNAPSHOT_INTERVAL);
+		return;
 	}
 	
-	if(state.reflectionIntervalReference !== null && clientState.clientStatus !== 'host') {
+	if(state.reflectionIntervalReference !== null && (clientState.clientStatus !== 'host' || clientState.isPrimaryTab == false)) {
 		clearInterval(state.reflectionIntervalReference);
 		state.reflectionIntervalReference = null;
 		return;
