@@ -459,7 +459,7 @@ func ReflectDetailsHandler(client *Client, manager *Manager, clientRequest strin
 	var videoDetails VideoDetails
 	errorParsingRequest := json.Unmarshal([]byte(clientRequest), &videoDetails)
 	if errorParsingRequest != nil {
-		logger.Error("[%s] [ReflectVideoDetails] Client sent bad json object: %s\n", client.IPAddress, errorParsingRequest)
+		logger.Error("[%s] [ReflectVideoDetails] Client sent bad json object: %s\n", client.PrivateToken, errorParsingRequest)
 		return []DirectedServerMessage{
 			{
 				token: client.PrivateToken,
@@ -475,7 +475,7 @@ func ReflectDetailsHandler(client *Client, manager *Manager, clientRequest strin
 
 	room, exists := manager.GetRegisteredRoom(client.RoomID)
 	if !exists {
-		logger.Info("[%s] [ReflectVideoDetails] No room found with id: %s\n", client.IPAddress, client.RoomID)
+		logger.Info("[%s] [ReflectVideoDetails] No room found with id: %s\n", client.PrivateToken, client.RoomID)
 		return []DirectedServerMessage{
 			{
 				token: client.PrivateToken,
@@ -490,7 +490,7 @@ func ReflectDetailsHandler(client *Client, manager *Manager, clientRequest strin
 	}
 
 	if client.Type != ClientTypeHost {
-		logger.Info("[%s] [ReflectVideoDetails] Client isn't a host\n", client.IPAddress)
+		logger.Info("[%s] [ReflectVideoDetails] Client isn't a host\n", client.PrivateToken)
 		return []DirectedServerMessage{
 			{
 				token: client.PrivateToken,
@@ -507,14 +507,14 @@ func ReflectDetailsHandler(client *Client, manager *Manager, clientRequest strin
 	if videoDetails.Title == "" || videoDetails.Author == "" || videoDetails.AuthorImage == "" ||
 		videoDetails.SubscriberCount == "" || videoDetails.LikeCount == "" {
 
-		logger.Info("[%s] [ReflectVideoDetails] Client sent malformed details %+v\n", client.IPAddress, videoDetails)
+		logger.Info("[%s] [ReflectVideoDetails] Client sent malformed details %+v\n", client.PrivateToken, videoDetails)
 		return nil
 	}
 	room.SaveVideoDetails(videoDetails)
 
 	serverMessageRoomDetails, serverMessageMarshalError := json.Marshal(videoDetails)
 	if serverMessageMarshalError != nil {
-		logger.Error("[%s] [ReflectVideoDetails] Bad json: %s\n", client.IPAddress, client.RoomID)
+		logger.Error("[%s] [ReflectVideoDetails] Bad json: %s\n", client.PrivateToken, client.RoomID)
 		return []DirectedServerMessage{
 			{
 				token: client.PrivateToken,
