@@ -6,6 +6,8 @@ export enum LogLevel {
 	None,
 };
 
+const GLOBAL_NAMESPACE = 'COWATCH';
+
 let global_level = LogLevel.Debug;
 
 export function setLevel(new_level: LogLevel) {
@@ -26,9 +28,9 @@ export function log(level: LogLevel, ...message: Array<any>) {
 	const namespace = new Error().stack?.split('\n')[1]?.match(/\/[a-z_A-Z]+\.js/)?.toString()?.slice(1, -3) || '';
 
 	if(namespace) {
-		return log.bind(console, `[${now}]`, `[${namespace}]`, `[${LogLevel[level]}]`, ...message);
+		return log.bind(console, `[${GLOBAL_NAMESPACE}]`, `[${now}]`, `[${namespace}]`, `[${LogLevel[level]}]`, ...message);
 	} else {
-		return log.bind(console, `[${now}]`, `[${LogLevel[level]}]`, ...message);
+		return log.bind(console, `[${GLOBAL_NAMESPACE}]`, `[${now}]`, `[${LogLevel[level]}]`, ...message);
 	}
 }
 
