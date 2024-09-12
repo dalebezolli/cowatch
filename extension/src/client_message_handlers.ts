@@ -7,7 +7,7 @@
  */
 
 import * as browser from 'webextension-polyfill';
-import { onClientMessage, triggerCoreAction } from "./events";
+import { onClientMessage, triggerClientMessage, triggerCoreAction } from "./events";
 import { LogLevel, log } from "./log";
 import { getState } from "./state";
 import { Status, ClientMessageDetails, ClientMessageType } from "./types";
@@ -25,7 +25,9 @@ const actionList = new Map<ClientMessageType, (action: ClientMessageDetails[Clie
 	['ShowTruePage', onClientShowTruePage],
 	['GetState', onClientMessageGetState],
 
-	['Authorize', onClientMessageRequestAuhtorize],
+	['ModuleStatus', onClientMessageModuleStatus],
+
+	['Authorize', onClientMessageRequestAuthorize],
 	['HostRoom', onClientMessageRequestHostRoom],
 	['JoinRoom', onClientMessageRequestJoinRoom],
 	['DisconnectRoom', onClientMessageRequestDisconnectRoom],
@@ -43,11 +45,7 @@ export function initializeClientMessageHandlers() {
 
 function onClientMessageCollectClient(action: ClientMessageDetails['CollectClient']) {
 	if(action.status === Status.ERROR) return;
-
 	getState().client = { ...action.client, publicToken: '', privateToken: '' };
-
-	log(LogLevel.Info, 'Injecting room ui...')();
-	injectRoomUI();
 }
 
 function onClientSwitchActiveTab() {
@@ -63,7 +61,59 @@ function onClientMessageGetState() {
 	triggerCoreAction('SendState', { ...getState() });
 }
 
-function onClientMessageRequestAuhtorize() {
+async function onClientMessageModuleStatus(action: ClientMessageDetails['ModuleStatus']) {
+	getState().systemStatuses[action.system] = action.status;
+
+	let systemsOk = true;
+	for(let systemOk of Object.values(getState().systemStatuses)) {
+		systemsOk &&= Status.OK === systemOk;
+	}
+
+	systemsOk &&= getState().serverStatus === 'connected';
+
+	log(LogLevel.Info,
+		'Current system statuses:', {
+		...getState().systemStatuses,
+		serverStatus: getState().serverStatus,
+		clientStatus: getState().clientStatus,
+		isPrimaryTab: getState().isPrimaryTab
+	})();
+	if(!systemsOk) return;
+
+	log(LogLevel.Info, 'Sending client to room ui.', getState().client)();
+	const { name, image, publicToken }  = getState().client;
+	triggerCoreAction('SendRoomUIClient', { name, image, publicToken });
+
+	if(!getState().isPrimaryTab) {
+		triggerCoreAction('SendRoomUISystemStatus', {
+			...getState().systemStatuses,
+			clientStatus: getState().clientStatus,
+			serverStatus: getState().serverStatus,
+			isPrimaryTab: getState().isPrimaryTab
+		})
+		return;
+	}
+
+	log(LogLevel.Info, 'Authorizing client.')();
+	if(getState().clientStatus === 'disconnected') {
+		triggerClientMessage('Authorize', {});
+		return;
+	}
+
+	triggerCoreAction('SendRoomUISystemStatus', {
+		...getState().systemStatuses,
+		clientStatus: getState().clientStatus,
+		serverStatus: getState().serverStatus,
+		isPrimaryTab: getState().isPrimaryTab
+	});
+}
+
+function onClientMessageRequestAuthorize() {
+	if(getState().isPrimaryTab == false) {
+		log(LogLevel.Error, 'This is not the primary tab!')();
+		return;
+	}
+
 	if(getState().serverStatus !== 'connected') {
 		log(LogLevel.Error, 'No server connection found!')();
 		return;
@@ -71,7 +121,9 @@ function onClientMessageRequestAuhtorize() {
 
 	const cachedToken = localStorage.getItem(LOCALSTORAGE_PRIVATETOKEN_KEY) ?? '';
 
-	getState().connection!.send(JSON.stringify({ actionType: 'Authorize', action: JSON.stringify({ ...getState().client, privateToken: cachedToken }) }));
+	const authorizationBody = { ...getState().client, privateToken: cachedToken };
+	log(LogLevel.Info, 'Authorizing with:', authorizationBody)();
+	getState().connection!.send(JSON.stringify({ actionType: 'Authorize', action: JSON.stringify(authorizationBody) }));
 }
 
 function onClientMessageRequestHostRoom() {
@@ -189,16 +241,4 @@ function onClientMessageRequestPing(action: ClientMessageDetails['Ping']) {
 			log(LogLevel.Error, `[Ping] Could not create a connection between the server`)();
 		}
 	}, worstCaseExpectedResponseTime);
-}
-
-function injectRoomUI() {
-	const domScriptRoomUI = document.createElement('script');
-	domScriptRoomUI.src = browser.runtime.getURL('./room_ui.js');
-	domScriptRoomUI.defer = true;
-	document.head.append(domScriptRoomUI);
-
-	const domLinkCSSRoomUI = document.createElement('link');
-	domLinkCSSRoomUI.href = browser.runtime.getURL('./room_ui.css');
-	domLinkCSSRoomUI.rel = 'stylesheet';
-	document.head.append(domLinkCSSRoomUI);
 }

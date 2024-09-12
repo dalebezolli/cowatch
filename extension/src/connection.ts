@@ -2,6 +2,7 @@ import { log, LogLevel } from './log';
 import { sleep } from './utils'
 import { ClientState, ResolutionStrategy, ServerMessage, ServerMessageDetails, ServerMessageType, Status } from './types';
 import { triggerCoreAction, triggerClientMessage } from './events';
+import { getState } from './state';
 
 const FAILED_CONNECTION_TOTAL_ATTEMPT = parseInt(process.env.TOTAL_ATTEMPTS);
 const FAILED_CONNECTION_REATTEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
@@ -16,14 +17,17 @@ export async function initializeConnection(clientState: ClientState) {
 	const isConnected = await attemptConnection(clientState);
 	if(!isConnected) {
 		clientState.serverStatus = 'failed';
+		triggerClientMessage('ModuleStatus', { system: 'Connection', status: Status.ERROR});
 		return;
 	}
 
 	log(LogLevel.Info, 'Successfully created connection to server.')();
 	clientState.connection!.addEventListener('message', handleConnectionMessage);
 	clientState.serverStatus = 'connected';
-	
-	window.setInterval(() => {
+	triggerClientMessage('ModuleStatus', { system: 'Connection', status: Status.OK});
+
+	clearInterval(getState().pingRequestIntervalId);
+	getState().pingRequestIntervalId = window.setInterval(() => {
 		triggerClientMessage('Ping', { timestamp: Date.now() });
 	}, PING_REQUEST_INTERVAL * 1000);
 }

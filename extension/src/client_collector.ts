@@ -27,10 +27,16 @@ async function asyncCollectUser() {
 		if(!didSucceed) await sleep(FAILED_USER_COLLECTION_REATEMPT_MS);
 	}
 
-	if(!didSucceed) log(LogLevel.Error, 'Failed to collect client')();
+	if(!didSucceed) {
+		log(LogLevel.Error, 'Failed to collect client')();
+		triggerClientMessage('CollectClient', { status: Status.ERROR, client: null });
+		triggerClientMessage('ModuleStatus', { system: 'ClientCollector', status: Status.ERROR });
+		return;
+	}
 
 	log(LogLevel.Info, 'Collected client successfully')();
-	triggerClientMessage('CollectClient', { status: Status.OK, client: client })
+	triggerClientMessage('CollectClient', { status: Status.OK, client: client });
+	triggerClientMessage('ModuleStatus', { system: 'ClientCollector', status: Status.OK });
 }
 
 function collectYoutubeClient(client: Client): boolean {
@@ -50,9 +56,8 @@ function collectYoutubeClient(client: Client): boolean {
 		clientDefinedUsername = clientDefinedUsername.trim();
 	}
 
-
 	client.name = domUsername?.textContent ?? clientDefinedUsername;
-	client.image = localStorage.getItem(LOCALSTORAGE_IMAGE_KEY) ?? domImage.getElementsByTagName('img')[0].src;
+	client.image = localStorage.getItem(LOCALSTORAGE_IMAGE_KEY) || domImage.getElementsByTagName('img')[0].src;
 
 	localStorage.setItem(LOCALSTORAGE_USERNAME_KEY, client.name);
 	localStorage.setItem(LOCALSTORAGE_IMAGE_KEY, client.image);

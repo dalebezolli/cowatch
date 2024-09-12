@@ -1,5 +1,6 @@
 import * as browser from 'webextension-polyfill';
 
+
 import { LogLevel, log } from './log';
 import { getState, initializeState } from './state';
 import { initializeConnection } from './connection';
@@ -13,6 +14,29 @@ async function onStartup() {
 	log(LogLevel.Info, 'Initializing Cowatch State...')();
 	initializeState();
 
+	log(LogLevel.Info, 'Preparing event handlers...')();
+	initializeClientMessageHandlers();
+	initializeConnectionMessages();
+
+	browser.runtime.onMessage.addListener((message) => {
+		log(LogLevel.Info, 'Background message: ', message)();
+		getState().isPrimaryTab = message.isActive;
+
+		if(!message.isActive) {
+			getState().clientStatus = 'disconnected';
+			clearInterval(getState().pingRequestIntervalId);
+			triggerCoreAction('SendPlayerInterceptorClientStatus', {
+				clientStatus: getState().clientStatus,
+				isPrimaryTab: getState().isPrimaryTab,
+				isShowingTruePage: getState().isShowingTruePage,
+				videoId: getState().videoId,
+			});
+		}
+
+		initializeConnection(getState());
+	});
+	browser.runtime.sendMessage({ action: 'GetCurrentID' });
+
 	log(LogLevel.Info, 'Creating Cowatch Server Connection...')();
 	await initializeConnection(getState());
 	if(getState().serverStatus !== 'connected') {
@@ -20,20 +44,12 @@ async function onStartup() {
 		return;
 	}
 
-	log(LogLevel.Info, 'Preparing event handlers...')();
-	initializeClientMessageHandlers();
-	initializeConnectionMessages();
+	log(LogLevel.Info, 'Injecting room ui...')();
+	injectRoomUI();
 
 	log(LogLevel.Info, 'Injecting client info collector...')();
 	collectClient();
 	connectYoutubeInterceptor();
-
-	browser.runtime.onMessage.addListener((message) => {
-		getState().isPrimaryTab = message.isActive;
-		getState().isShowingTruePage = true;
-		triggerCoreAction('SendState', { ...getState() });
-	});
-	browser.runtime.sendMessage({ action: 'GetCurrentID' });
 }
 
 function collectClient() {
@@ -48,4 +64,16 @@ function connectYoutubeInterceptor() {
 	domScriptPlayerInterceptor.src = browser.runtime.getURL('./player_interceptor.js');
 	domScriptPlayerInterceptor.defer = true;
 	document.head.append(domScriptPlayerInterceptor);
+}
+
+function injectRoomUI() {
+	const domScriptRoomUI = document.createElement('script');
+	domScriptRoomUI.src = browser.runtime.getURL('./room_ui.js');
+	domScriptRoomUI.defer = true;
+	document.head.append(domScriptRoomUI);
+
+	const domLinkCSSRoomUI = document.createElement('link');
+	domLinkCSSRoomUI.href = browser.runtime.getURL('./room_ui.css');
+	domLinkCSSRoomUI.rel = 'stylesheet';
+	document.head.append(domLinkCSSRoomUI);
 }

@@ -1,7 +1,7 @@
-import { ClientStatus, ServerMessageDetails, ServerMessageType } from './types';
+import { ClientStatus, PlayerInterceptorClientStatus, ServerMessageDetails, ServerMessageType, Status } from './types';
 
 import { getState } from './state';
-import { triggerCoreAction } from './events';
+import { triggerClientMessage, triggerCoreAction } from './events';
 import { onConnectionMessage } from './connection';
 import { log, LogLevel } from './log';
 
@@ -34,7 +34,13 @@ function onConnectionResponseAuthorize(action: ServerMessageDetails['Authorize']
 	localStorage.setItem(LOCALSTORAGE_IMAGE_KEY, action.image);
 	localStorage.setItem(LOCALSTORAGE_PRIVATETOKEN_KEY, action.privateToken);
 
-	triggerCoreAction('SendState', { ...getState() });
+	triggerClientMessage('ModuleStatus', { system: 'Connection', status: Status.OK });
+	triggerCoreAction('SendRoomUISystemStatus', {
+		...getState().systemStatuses,
+		clientStatus: getState().clientStatus,
+		serverStatus: getState().serverStatus,
+		isPrimaryTab: getState().isPrimaryTab
+	});
 	getState().connection!.send(JSON.stringify({ actionType: 'AttemptReconnect', action: "" }));
 }
 
@@ -42,7 +48,13 @@ function onConnectionResponseHostRoom(action: ServerMessageDetails['HostRoom']) 
 	getState().clientStatus = 'host';
 	getState().room = { ...action };
 
-	triggerCoreAction('SendState', { ...getState() });
+	triggerCoreAction('SendRoomUIUpdateRoom', { room: getState().room, status: getState().clientStatus });
+	triggerCoreAction('SendPlayerInterceptorClientStatus', {
+		clientStatus: getState().clientStatus,
+		isPrimaryTab: getState().isPrimaryTab,
+		isShowingTruePage: getState().isShowingTruePage,
+		videoId: getState().videoId,
+	});
 }
 
 function onConnectionResponseJoinRoom(action: ServerMessageDetails['JoinRoom']) {
@@ -53,17 +65,29 @@ function onConnectionResponseJoinRoom(action: ServerMessageDetails['JoinRoom']) 
 	getState().clientStatus = clientType;
 	getState().room = { ...action.room };
 
-	triggerCoreAction('SendState', { ...getState() });
+	triggerCoreAction('SendRoomUIUpdateRoom', { room: getState().room, status: getState().clientStatus });
+	triggerCoreAction('SendPlayerInterceptorClientStatus', {
+		clientStatus: getState().clientStatus,
+		isPrimaryTab: getState().isPrimaryTab,
+		isShowingTruePage: getState().isShowingTruePage,
+		videoId: getState().videoId,
+	});
 }
 
 function onConnectionResponseUpdateRoom(action: ServerMessageDetails['UpdateRoom']) {
 	if(getState().clientStatus === 'innactive') return;
 	getState().room = { ...action };
 
-	triggerCoreAction('SendState', { ...getState() });
+	triggerCoreAction('SendRoomUIUpdateRoom', { room: getState().room, status: getState().clientStatus });
+	triggerCoreAction('SendPlayerInterceptorClientStatus', {
+		clientStatus: getState().clientStatus,
+		isPrimaryTab: getState().isPrimaryTab,
+		isShowingTruePage: getState().isShowingTruePage,
+		videoId: getState().videoId,
+	});
 }
 
-function onConnectionResponseDisconnectRoom(action: ServerMessageDetails['DisconnectRoom']) {
+function onConnectionResponseDisconnectRoom() {
 	getState().clientStatus = 'innactive';
 	getState().room = {
 		roomID: '',
@@ -72,9 +96,13 @@ function onConnectionResponseDisconnectRoom(action: ServerMessageDetails['Discon
 	};
 	getState().isShowingTruePage = true;
 
-	triggerCoreAction('SendState', { ...getState() });
-
-
+	triggerCoreAction('SendRoomUIUpdateRoom', { room: getState().room, status: getState().clientStatus });
+	triggerCoreAction('SendPlayerInterceptorClientStatus', {
+		clientStatus: getState().clientStatus,
+		isPrimaryTab: getState().isPrimaryTab,
+		isShowingTruePage: getState().isShowingTruePage,
+		videoId: getState().videoId,
+	});
 }
 
 function onConnectionResponseReflectRoom(action: ServerMessageDetails['ReflectRoom']) {

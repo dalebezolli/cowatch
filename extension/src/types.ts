@@ -9,9 +9,12 @@ export enum Status {
 };
 
 export type ServerStatus = 'connecting' | 'connected' | 'failed';
-export type ClientStatus = 'innactive' | 'host' | 'viewer';
+export type ClientStatus = 'disconnected' | 'innactive' | 'host' | 'viewer';
 
 export type ClientState = {
+	systemStatuses: {
+		[T in System]: Status;
+	},
 	serverStatus: ServerStatus,
 	clientStatus: ClientStatus,
 	connection: WebSocket | null,
@@ -19,6 +22,7 @@ export type ClientState = {
 	pingTimestamp: Timestamp,
 	rtt: number,
 	droppedPingRequestCount: number,
+	pingRequestIntervalId: number,
 	pingTimeoutId: number,
 
 	client: AuthorizedClient | null,
@@ -54,8 +58,30 @@ export type ConnectionError = {
 	resolutionStrategy: ResolutionStrategy,
 };
 
+export type System = 'RoomUI' | 'PlayerInterceptor' | 'ClientCollector' | 'Connection';
+export type RoomUISystemStatus = {
+		[T in System]: Status;
+	} & {
+		clientStatus: ClientStatus;
+		serverStatus: ServerStatus;
+		isPrimaryTab: boolean;
+	};
+
+export type RoomUIRoomDetails = {
+	room: Room;
+	status: ClientStatus;
+};
+
+export type PlayerInterceptorClientStatus = {
+	clientStatus: ClientStatus;
+	videoId: string;
+	isShowingTruePage: boolean;
+	isPrimaryTab: boolean;
+};
+
 export type ClientMessageType = keyof ClientMessageDetails;
 export type ClientMessageDetails = {
+	'ModuleStatus': { system: System, status: Status },
 	'Authorize': {},
 	'CollectClient': {
 		status: Status,
@@ -81,6 +107,12 @@ export type ClientMessageDetails = {
 
 export type CoreActionType = keyof CoreActionDetails;
 export type CoreActionDetails = {
+	'SendRoomUIClient': Client,
+	'SendRoomUISystemStatus': RoomUISystemStatus,
+	'SendRoomUIUpdateRoom': RoomUIRoomDetails,
+
+	'SendPlayerInterceptorClientStatus': PlayerInterceptorClientStatus,
+
 	'SendState': ClientState,
 	'SendError': ConnectionError,
 	'UpdatePlayer': {},
@@ -156,6 +188,7 @@ export enum CowatchStatus {
 	Connected,
 	Options,
 	NotPrimaryTab,
+	Disconnected,
 };
 
 export type CowatchHeaderProps = {

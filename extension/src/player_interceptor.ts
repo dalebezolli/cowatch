@@ -1,6 +1,6 @@
 import { onCoreAction, triggerClientMessage } from './events';
 import { LogLevel, log } from './log';
-import { CoreActionDetails, ReflectionSnapshot, VideoDetails, YoutubePlayer, YoutubePlayerState } from './types';
+import { CoreActionDetails, ReflectionSnapshot, Status, VideoDetails, YoutubePlayer, YoutubePlayerState } from './types';
 import { sleep } from './utils';
 
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
@@ -47,18 +47,21 @@ async function intializePlayerInterceptor() {
 
 	if(!didSucceed) {
 		log(LogLevel.Error, 'Failed to initialize player interceptor')();
+		triggerClientMessage('ModuleStatus', { system: 'PlayerInterceptor', status: Status.ERROR });
+		return;
 	}
 
 	log(LogLevel.Info, 'Initialized player interceptor successfully')();
 	state.moviePlayer = moviePlayer;
 
-	onCoreAction('SendState', handleState);
+	onCoreAction('SendPlayerInterceptorClientStatus', handleState);
 	onCoreAction('UpdatePlayer', syncPlayer);
 	onCoreAction('UpdateDetails', syncDetails);
+	triggerClientMessage('ModuleStatus', { system: 'PlayerInterceptor', status: Status.OK });
 }
 
-function handleState(clientState: CoreActionDetails['SendState']) {
-	log(LogLevel.Info, 'Handling state:', clientState, state)();
+function handleState(clientState: CoreActionDetails['SendPlayerInterceptorClientStatus']) {
+	log(LogLevel.Info, 'Handle client status:', clientState, state)();
 	state.latestVideo = clientState.videoId;
 	if(!clientState.isShowingTruePage && !state.hasLimitedInterractivity) {
 		limitInteractivity(state);
@@ -75,7 +78,7 @@ function handleState(clientState: CoreActionDetails['SendState']) {
 		state.reflectionIntervalReference = setInterval(reflectPlayer, INITIAL_REFLECTION_SNAPSHOT_INTERVAL);
 		return;
 	}
-	
+
 	if(state.reflectionIntervalReference !== null && (clientState.clientStatus !== 'host' || clientState.isPrimaryTab == false)) {
 		clearInterval(state.reflectionIntervalReference);
 		state.reflectionIntervalReference = null;
