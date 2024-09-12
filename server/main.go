@@ -14,6 +14,16 @@ var ClientCleanupRoutineInterval int
 var ClientInnactivityThreshold string
 
 const EndpointReflect = "/reflect"
+const tlsPEM = "server.pem"
+const tlsKEY = "server.key"
+
+// Returns true if both TLS files exist
+func checkForTLS(pemFile, keyFile string) bool {
+	_, errPem := os.ReadFile(pemFile)
+	_, errKey := os.ReadFile(keyFile)
+
+	return errPem == nil && errKey == nil
+}
 
 func main() {
 	flag.StringVar(&port, "p", "8080", "Port that the server will run on")
@@ -23,6 +33,12 @@ func main() {
 
 	logFileName := "log_" + time.Now().Format("2006_01_02_15_04_05.000")
 	logFile, errorOpeningLogFile := os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
+
+	tlsExists := checkForTLS(tlsPEM, tlsKEY)
+	if !tlsExists {
+		logger.Error("TLS Encryption files not found. Please check that %q and %q exist.\n", tlsPEM, tlsKEY)
+		return
+	}
 
 	if errorOpeningLogFile != nil {
 		logger.Error("Failed to setup logger: %s\n", errorOpeningLogFile)
@@ -47,7 +63,7 @@ func main() {
 		}
 	}()
 
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	if err := http.ListenAndServeTLS(":"+port, "server.pem", "server.key", nil); err != nil {
 		logger.Error("Failed while serving: %s\n", err)
 	}
 }
