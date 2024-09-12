@@ -47,7 +47,7 @@ func main() {
 		}
 	}()
 
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	if err := http.ListenAndServeTLS(":"+port, "server.pem", "server.key", nil); err != nil {
 		logger.Error("Failed while serving: %s\n", err)
 	}
 }
