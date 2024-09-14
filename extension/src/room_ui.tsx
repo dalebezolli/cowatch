@@ -17,6 +17,8 @@ import {
 
 } from './room_ui.module.css';
 
+import './room_ui.css';
+
 import { LogLevel, log } from './log';
 import { onCoreAction, triggerClientMessage } from './events';
 import { CowatchContentProps, CowatchContentInitialProps, CowatchErrorProps, CowatchHeaderProps, CowatchStatus, Room, Client, CowatchContentJoinOptionsProps, CowatchContentConnectedProps, SVGIcon, IconProps, ClientState, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails } from './types';

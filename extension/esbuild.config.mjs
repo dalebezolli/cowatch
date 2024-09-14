@@ -1,3 +1,4 @@
+import { tailwindPlugin } from 'esbuild-plugin-tailwindcss'
 import * as esbuild from 'esbuild';
 import * as dotenv from 'dotenv';
 
@@ -36,7 +37,11 @@ await esbuild.build({
 	bundle: true,
 	outfile: outpath + 'room_ui.js',
 	define: definitions,
-	format: 'esm'
+	format: 'esm',
+	plugins: [
+		tailwindPlugin({
+		}),
+	]
 });
 
 await esbuild.build({
