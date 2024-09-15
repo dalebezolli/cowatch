@@ -3,7 +3,11 @@ export default {
   content: ['./src/**/*.{ts,tsx}'],
   darkMode: ['selector', '[dark=""]'],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ['Roboto', 'Arial', 'sans-serif']
+      }
+    },
   },
   plugins: [],
 }

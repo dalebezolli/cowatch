@@ -225,22 +225,3 @@ export type CowatchContentConnectedProps = {
 	onDisconnect: () => void,
 	onSettings: () => void,
 };
-
-export enum SVGIcon {
-	CheckMark,
-	XMark,
-	Group,
-	Eye,
-	ArrowLeft,
-	PhoneDisconnect,
-	Cog,
-	Broadcast,
-	Mute,
-	Kebab,
-	Error,
-};
-
-export type IconProps = {
-	icon: SVGIcon,
-	size: number
-};
