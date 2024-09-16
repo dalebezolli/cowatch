@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState, Fragment, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import './room_ui.css';
@@ -467,18 +467,26 @@ enum ButtonStyle {
 	transparentBorder,
 }
 
+enum ButtonBorderRounding {
+	roundAll,
+	roundNone,
+	roundLeft,
+	roundRight,
+}
+
 type ButtonProps = {
 	text?: string,
 	icon?: SVGIcon,
 	iconPosition?: 'left' | 'right',
 
 	style: ButtonStyle,
+	borderRounding?: ButtonBorderRounding,
 
 	onClick?: () => void
 	loadAfterClick?: boolean,
 };
 
-function Button({ text, icon, style, iconPosition, loadAfterClick, onClick }: ButtonProps) {
+function Button({ text, icon, style, borderRounding, iconPosition, loadAfterClick, onClick }: ButtonProps) {
 	const [loading, setLoading] = useState<boolean>(false);
 
 	function onClickHandler() {
@@ -491,6 +499,19 @@ function Button({ text, icon, style, iconPosition, loadAfterClick, onClick }: Bu
 		className += ' min-h-[40px] min-w-[40px]';
 	} else {
 		className += ' min-h-[38px] px-[1.6rem]';
+	}
+
+	if(borderRounding == null) borderRounding = ButtonBorderRounding.roundAll;
+	switch(borderRounding) {
+		case ButtonBorderRounding.roundAll:
+			className += ' rounded-full';
+			break;
+		case ButtonBorderRounding.roundLeft:
+			className += ' rounded-l-full';
+			break;
+		case ButtonBorderRounding.roundRight:
+			className += ' rounded-r-full';
+			break;
 	}
 
 	if(loading) icon = SVGIcon.Loading;
@@ -517,7 +538,7 @@ function Button({ text, icon, style, iconPosition, loadAfterClick, onClick }: Bu
 		<button
 			className={`
 				flex gap-1.5 items-center justify-center border font-sans cursor-pointer
-				rounded-full ${ style === ButtonStyle.transparentBorder ? 'w-full' : 'w-fit'}
+				${ style === ButtonStyle.transparentBorder ? 'w-full' : 'w-fit'}
 				${className}
 			`}
 			onClick={onClickHandler}
@@ -527,6 +548,64 @@ function Button({ text, icon, style, iconPosition, loadAfterClick, onClick }: Bu
 			{ icon && iconPosition === 'right' && <Icon icon={icon} size={24} color='#fff' className={loading ? 'animate-spin' : ''} /> }
 		</button>
 	)
+}
+
+
+type InputProps = {
+	placeholder?: string,
+	input?: string,
+	withButton?: boolean,
+	buttonText?: string,
+	icon?: SVGIcon,
+	error?: string,
+	onButtonClick?: (input: string) => void,
+};
+
+
+function Input({input, placeholder, withButton, buttonText, icon, error, onButtonClick}: InputProps) {
+	const inputRef = useRef<HTMLInputElement>();
+
+	return (
+		<div>
+			<section className='flex items-center rounded-full h-[38px]'>
+				<input
+					id='input-room-code'
+					placeholder={placeholder}
+					className={`
+						box-border h-full min-w-[180px] px-[16px]
+						flex-grow
+
+						text-[1.4rem] placeholder:text-[1.4rem]
+						border rounded-l-full ${!withButton ? 'rounded-r-full' : 'border-r-transparent'}
+						${ !error ?
+							'bg-transparent text-neutral-100 placeholder:text-neutral-500 border-neutral-600' :
+							'bg-red-950 text-red-500 border border-red-600'
+						}
+					`}
+					ref={inputRef}
+					defaultValue={input}
+				/>
+
+				{ withButton && (
+					<Button
+						text={buttonText}
+						style={!error ? ButtonStyle.default : ButtonStyle.error}
+						borderRounding={ButtonBorderRounding.roundRight}
+					onClick={() => { onButtonClick(inputRef.current.value) }}
+
+						iconPosition='left'
+						icon={icon}
+					/>
+				)}
+			</section>
+			{ error && (
+				<div className='flex items-center gap-[2px] py-[6px]'>
+					<Icon icon={SVGIcon.XMark} size={16} color='#EF4444' />
+					<p className='text-[1.4rem] text-red-500'>{error}</p>
+				</div>
+			)}
+		</div>
+	);
 }
 
 enum SVGIcon {
