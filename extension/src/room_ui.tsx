@@ -5,7 +5,7 @@ import './room_ui.css';
 
 import { LogLevel, log } from './log';
 import { onCoreAction, triggerClientMessage } from './events';
-import { CowatchContentProps, CowatchContentInitialProps, CowatchErrorProps, CowatchHeaderProps, CowatchStatus, Room, Client, CowatchContentJoinOptionsProps, CowatchContentConnectedProps, SVGIcon, IconProps, ClientState, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails } from './types';
+import { CowatchStatus, Room, Client, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails } from './types';
 import { sleep } from './utils';
 
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
@@ -52,19 +52,21 @@ function attemptToInitializeRoot(): boolean {
 }
 
 function Cowatch() {
-	const [hidden, setHidden] = React.useState(true);
-	const [open, setOpen] = React.useState(true);
-	const [errors, setErrors] = React.useState<string[]>([]);
-	const [contentStatus, setContentStatus] = React.useState<CowatchStatus>(CowatchStatus.Initial);
-	const [roomState, setRoomState] = React.useState<Room>({
+	const [hidden, setHidden] = useState(true);
+	const [open, setOpen] = useState(true);
+	const [errors, setErrors] = useState<string[]>([]);
+	const [contentStatus, setContentStatus] = useState<CowatchStatus>(CowatchStatus.Initial);
+	const [roomStartDate, setRoomStartDate] = useState<Date>(new Date());
+	const [roomName, setRoomName] = useState<string>('Really long name');
+	const [roomState, setRoomState] = useState<Room>({
 		roomID: '',
 		host: null,
 		viewers: [],
 	});
 
-	const [clientState, setClientState] = React.useState<Client>({ name: '', image: '', publicToken: '' });
+	const [clientState, setClientState] = useState<Client>({ name: '', image: '', publicToken: '' });
 
-	React.useEffect(() => {
+	useEffect(() => {
 		onCoreAction('SendRoomUIClient', handleSendClient);
 		onCoreAction('SendRoomUISystemStatus', handleSendSystemStatus);
 		onCoreAction('SendRoomUIUpdateRoom', handleUpdateRoom);
@@ -168,34 +170,148 @@ function Cowatch() {
 
 	const toggleClose = () => setOpen(!open);
 
-	if(hidden) return "";
-
-	if(!open) return <button className={cowatchButton + ' ' + cowatchButtonFull} onClick={toggleClose}>Show Room</button>
-
-	return (
-		<section id='cowatch-root' className={cowatchRoot}>
-			<CowatchHeader onPressClose={toggleClose} />
-			<CowatchError error={errors[errors.length - 1]} onClose={onCloseError} />
-			<CowatchContent
-				room={roomState}
-				client={clientState}
-				status={contentStatus}
-				onChangeStatus={setContentStatus}
-			/>
-		</section>
+	let content: JSX.Element;
+	if(hidden) {
+		content = <Fragment></Fragment>;
+	} else if(!open) {
+		content = (
+		<div className='px-[4px]'>
+			<Button text='Show Room' style={ButtonStyle.transparentBorder} onClick={toggleClose} />;
+		</div>
 	);
+	} else {
+		content = (
+			<section id='cowatch-root' className='
+				relative box-content bg-neutral-900
+				border border-neutral-600 rounded-[8px]
+				font-sans text-neutral-100
+				overflow-clip
+			'>
+				<CowatchHeader isConnected={contentStatus === CowatchStatus.Connected} roomTitle={roomName} roomStartDate={roomStartDate} onPressClose={toggleClose} />
+
+				<Button text='Connect' icon={SVGIcon.Cog} style={ButtonStyle.default} onClick={() => {
+					setContentStatus((prevStatus) => prevStatus === CowatchStatus.Connected ? CowatchStatus.Initial : CowatchStatus.Connected)
+				}} />
+
+				<Button text='Add +10h' icon={SVGIcon.Cog} style={ButtonStyle.default} onClick={() => {
+					setRoomStartDate((prevDate) => {
+						prevDate.setHours(prevDate.getHours() - 10);
+						return prevDate;
+					})
+				}} />
+
+				<Input
+					input={roomName}
+					placeholder='Room name'
+					withButton={true}
+					buttonText='Change'
+					icon={SVGIcon.Cog}
+					onButtonClick={(name) => setRoomName(name) }
+				/>
+			</section>
+		);
+	}
+
+	return content;
 }
 
-function CowatchHeader({ onPressClose }: CowatchHeaderProps) {
+export type CowatchHeaderProps = {
+	isConnected: boolean,
+	roomTitle?: string,
+	roomStartDate?: Date,
+	onPressClose: () => void,
+}
+
+function CowatchHeader({ isConnected, roomTitle, roomStartDate, onPressClose }: CowatchHeaderProps) {
+	let [currentDate, setCurrentDate] = useState(new Date());
+	let scrollInterval = useRef<number>();
+	let titleContainerRef = useCallback((node: HTMLDivElement) => {
+		clearInterval(scrollInterval.current);
+		if(node == null) return;
+
+		(node.children[0] as HTMLParagraphElement).style.setProperty('--pos', '0px');
+		while(node.children.length > 1) {
+			node.lastChild.remove();
+		}
+
+		let isOverflowing = node.scrollWidth > node.clientWidth;
+		if(isOverflowing) {
+			const TITLE_SEPARATOR = 16;
+			if(node.children.length === 1) {
+				let secondNode = node.children[0].cloneNode() as HTMLParagraphElement;
+				secondNode.style.setProperty('--pos', TITLE_SEPARATOR + 'px');
+				secondNode.textContent = node.children[0].textContent;
+				node.appendChild(secondNode);
+			}
+
+			scrollInterval.current = window.setInterval(() => {
+				for(let i = 0; i < node.children.length; i++) {
+					const child = node.children[i] as HTMLParagraphElement;
+
+					let currPos = parseInt(child.style.getPropertyValue('--pos').replace('px', ''));
+					if(i == 0 && currPos === -1 * child.scrollWidth) {
+						currPos = child.scrollWidth + TITLE_SEPARATOR * 2;
+					}
+
+					if(i == 1 && currPos === -1 * child.scrollWidth * 2 - TITLE_SEPARATOR) {
+						currPos = 0 + TITLE_SEPARATOR;
+					}
+
+					child.style.setProperty('--pos', (currPos - 1) + 'px');
+				}
+			}, 30);
+		} else {
+			clearInterval(scrollInterval.current);
+			scrollInterval == undefined;
+		}
+	}, [roomTitle]);
+
+	useEffect(() => {
+		const timerInterval = setInterval(() => setCurrentDate(new Date()), 1000);
+
+		() => clearInterval(timerInterval);
+	}, []);
+
+	let timeDifference = Math.abs(currentDate.getTime() - roomStartDate.getTime());
+	let seconds = Math.floor(timeDifference / 1000);
+	let minutes = Math.floor(seconds / 60);
+	let hours = Math.floor(minutes / 60);
+
+	let displaySeconds = ((seconds % 60) < 10 ? '0' : '') + seconds % 60;
+	let displayMinutes = ((minutes % 60) < 10 ? '0' : '') + minutes % 60;
+	let displayHours   = (hours < 10 ? '0' : '') + hours;
+
+	const moduleTitle = isConnected ? 'cw' : 'cowatch';
+	const roomTitleElements = isConnected && roomTitle && (
+		<Fragment>
+			<div className='w-[1px] h-[18px] bg-neutral-200'></div>
+			<div ref={titleContainerRef} className='overflow-hidden text-nowrap flex'>
+				<p className='text-[1.4rem] text-neutral-500' style={{transform : 'translateX(var(--pos))'}} >{roomTitle}</p>
+			</div>
+		</Fragment>
+	);
+	const roomTimeElements = isConnected && roomStartDate && (
+		<Fragment>
+			<p className='text-[1.4rem] text-neutral-500'>
+				{displayHours}:{displayMinutes}:{displaySeconds}
+			</p>
+		</Fragment>
+	);
+
 	return (
-		<header className={cowatchHeader}>
-			<h2 className={cowatchTitle}>cowatch</h2>
-			<button
-				className={cowatchButtonRound + ' ' + cowatchFlexPushRight}
-				onClick={onPressClose}
-			>
-				<Icon icon={SVGIcon.XMark} size={28} />
-			</button>
+		<header className='
+			relative z-10
+			pt-[0.8rem] pr-[0.8rem] pb-[2.4rem] pl-[2.4rem]
+
+			flex items-center gap-[16px]
+			bg-neutral-900
+		'>
+			<p className='text-[1.6rem] text-neutral-100'>{moduleTitle}</p>
+			{roomTitleElements}
+			<div className='ml-auto flex items-center gap-[8px]'>
+				{roomTimeElements}
+				<Button icon={SVGIcon.XMark} style={ButtonStyle.transparent} onClick={onPressClose} />
+			</div>
 		</header>
 	);
 }

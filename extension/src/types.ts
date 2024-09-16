@@ -191,10 +191,6 @@ export enum CowatchStatus {
 	Disconnected,
 };
 
-export type CowatchHeaderProps = {
-	onPressClose: () => void,
-}
-
 export type CowatchErrorProps = {
 	error?: string,
 	onClose: () => void,
