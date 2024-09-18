@@ -5,7 +5,7 @@ import './room_ui.css';
 
 import { LogLevel, log } from './log';
 import { onCoreAction, triggerClientMessage } from './events';
-import { CowatchStatus, Room, Client, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails } from './types';
+import { Room, Client, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails } from './types';
 import { sleep } from './utils';
 
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
@@ -51,11 +51,22 @@ function attemptToInitializeRoot(): boolean {
 	return true;
 }
 
+enum CowatchStatus {
+	Home,
+	HostOptions,
+	JoinOptions,
+	Loading,
+	Connected,
+	Options,
+	NotPrimaryTab,
+	Disconnected,
+};
+
 function Cowatch() {
 	const [hidden, setHidden] = useState(true);
 	const [open, setOpen] = useState(true);
 	const [errors, setErrors] = useState<string[]>([]);
-	const [contentStatus, setContentStatus] = useState<CowatchStatus>(CowatchStatus.Initial);
+	const [contentStatus, setContentStatus] = useState<CowatchStatus>(CowatchStatus.Home);
 	const [roomStartDate, setRoomStartDate] = useState<Date>(new Date());
 	const [roomName, setRoomName] = useState<string>('Really long name');
 	const [roomState, setRoomState] = useState<Room>({
@@ -78,7 +89,7 @@ function Cowatch() {
 
 	function handleUpdateRoom(roomDetails: RoomUIRoomDetails) {
 		if(roomDetails.status === 'innactive' || roomDetails.status === 'disconnected') {
-			setContentStatus(CowatchStatus.Initial);
+			setContentStatus(CowatchStatus.Home);
 			return;
 		}
 
@@ -96,22 +107,22 @@ function Cowatch() {
 		});
 
 		if(connectionError.resolutionStrategy === 'returnToInitial') {
-			setContentStatus(CowatchStatus.Initial);
+			setContentStatus(CowatchStatus.Home);
 		}
 
 		if(connectionError.resolutionStrategy === 'stayOnCurrentView') {
 			switch(connectionError.actionType) {
 				case 'HostRoom':
-					setContentStatus(CowatchStatus.Initial);
+					setContentStatus(CowatchStatus.Home);
 					break;
 				case 'JoinRoom':
-					setContentStatus(CowatchStatus.Join);
+					setContentStatus(CowatchStatus.JoinOptions);
 					break;
 				case 'UpdateRoom':
 					setContentStatus(CowatchStatus.Connected);
 					break;
 				case 'DisconnectRoom':
-					setContentStatus(CowatchStatus.Initial);
+					setContentStatus(CowatchStatus.Home);
 					break;
 				case 'ReflectRoom':
 					setContentStatus(CowatchStatus.Connected);
@@ -161,7 +172,7 @@ function Cowatch() {
 		}
 
 		log(LogLevel.Info, 'Client connected and ready. Displaying UI...', status)();
-		setContentStatus(CowatchStatus.Initial);
+		setContentStatus(CowatchStatus.Home);
 	}
 
 	function onCloseError() {
@@ -188,26 +199,7 @@ function Cowatch() {
 				overflow-clip
 			'>
 				<CowatchHeader isConnected={contentStatus === CowatchStatus.Connected} roomTitle={roomName} roomStartDate={roomStartDate} onPressClose={toggleClose} />
-
-				<Button text='Connect' icon={SVGIcon.Cog} style={ButtonStyle.default} onClick={() => {
-					setContentStatus((prevStatus) => prevStatus === CowatchStatus.Connected ? CowatchStatus.Initial : CowatchStatus.Connected)
-				}} />
-
-				<Button text='Add +10h' icon={SVGIcon.Cog} style={ButtonStyle.default} onClick={() => {
-					setRoomStartDate((prevDate) => {
-						prevDate.setHours(prevDate.getHours() - 10);
-						return prevDate;
-					})
-				}} />
-
-				<Input
-					input={roomName}
-					placeholder='Room name'
-					withButton={true}
-					buttonText='Change'
-					icon={SVGIcon.Cog}
-					onButtonClick={(name) => setRoomName(name) }
-				/>
+				<CowatchContent room={roomState} client={clientState} status={contentStatus} onChangeStatus={setContentStatus} />
 			</section>
 		);
 	}
@@ -316,37 +308,26 @@ function CowatchHeader({ isConnected, roomTitle, roomStartDate, onPressClose }: 
 	);
 }
 
-function CowatchError({ error, onClose }: CowatchErrorProps) {
-	if(!error) return;
+// function CowatchError({ error, onClose }: CowatchErrorProps) {
+// 	if(!error) return;
+//
+// 	return (
+// 		<div className={cowatchError} onClick={onClose}>
+// 			<Icon icon={SVGIcon.Error} size={18} />
+// 			<p>{error}</p>
+// 		</div>
+// 	);
+// }
 
-	return (
-		<div className={cowatchError} onClick={onClose}>
-			<Icon icon={SVGIcon.Error} size={18} />
-			<p>{error}</p>
-		</div>
-	);
-}
+export type CowatchContentProps = {
+	room: Room,
+	client: Client,
+	status: CowatchStatus,
+	onChangeStatus: (status: CowatchStatus) => void,
+};
 
 function CowatchContent({ room, client, status, onChangeStatus }: CowatchContentProps) {
 	let selectedContent: React.ReactElement;
-	
-	function onInitial() {
-		onChangeStatus(CowatchStatus.Initial);
-	}
-
-	function onRequestHost() {
-		onChangeStatus(CowatchStatus.Loading);
-		triggerClientMessage('HostRoom', {});
-	}
-
-	function onRequestJoinOptions() {
-		onChangeStatus(CowatchStatus.Join);
-	}
-
-	function onRequestJoin(roomID: string) {
-		onChangeStatus(CowatchStatus.Loading);
-		triggerClientMessage('JoinRoom', { roomID: roomID });
-	}
 
 	function onRequestDisconnect() {
 		onChangeStatus(CowatchStatus.Loading);
@@ -357,223 +338,235 @@ function CowatchContent({ room, client, status, onChangeStatus }: CowatchContent
 		onChangeStatus(CowatchStatus.Options);
 	}
 
-	function onSwitchActiveInstance() {
-		triggerClientMessage('SwitchActiveTab', {});
-	}
-
 	switch(status) {
-		case CowatchStatus.Initial:
-			selectedContent = <CowatchContentInitial client={client} onHost={onRequestHost} onJoin={onRequestJoinOptions} />;
-			break;
-		case CowatchStatus.Join:
-			selectedContent = <CowatchContentJoinOptions client={client} onJoin={onRequestJoin} onBack={onInitial} />;
+		case CowatchStatus.Home:
+			selectedContent = <CowatchContentHome
+				client={client}
+				onHost={() => onChangeStatus(CowatchStatus.HostOptions)}
+				onJoin={() => onChangeStatus(CowatchStatus.JoinOptions)}
+			/>;
 			break;
 		case CowatchStatus.HostOptions:
-			selectedContent = <CowatchContentHostOptions />;
+			selectedContent = <CowatchContentHostOptions
+				client={client}
+				onHost={() => {
+					onChangeStatus(CowatchStatus.Loading);
+					triggerClientMessage('HostRoom', {});
+				}}
+				onBack={() => onChangeStatus(CowatchStatus.Home)}
+			/>;
+			break;
+		case CowatchStatus.JoinOptions:
+			selectedContent = <CowatchContentJoinOptions
+				client={client}
+				onJoin={(roomID) => {
+					onChangeStatus(CowatchStatus.Loading);
+					triggerClientMessage('JoinRoom', { roomID });
+				}}
+				onBack={() => onChangeStatus(CowatchStatus.Home)}
+			/>;
 			break;
 		case CowatchStatus.Options:
-			selectedContent = <CowatchContentOptions />;
+			selectedContent = <div></div>;
+			// selectedContent = <CowatchContentOptions />;
 			break;
 		case CowatchStatus.Connected:
 			selectedContent = <CowatchContentConnected client={client} room={room} onDisconnect={onRequestDisconnect} onSettings={onSettings} />;
 			break;
 		case CowatchStatus.NotPrimaryTab:
-			selectedContent = (
-				<section className={cowatchContentFlexCenter}>
-					<p>Another cowatch is active, switch to this one?</p>
-					<button
-						className={cowatchButton + ' ' + cowatchButtonPrimary}
-						onClick={onSwitchActiveInstance}
-					>
-						Switch
-					</button>
-				</section>
-			);
+			selectedContent = <CowatchContentSwitchTab
+				onSwitchActiveTab={() => triggerClientMessage('SwitchActiveTab', {})}
+			/>
 			break;
 		case CowatchStatus.Disconnected:
 			selectedContent = (
-				<section className={cowatchContentFlexCenter}>
-					<p>Could not reach server ...</p>
+				<section className='box-border h-full py-[64px] flex gap-[24px] flex-col justify-start items-center'>
+					<p className='text-[1.6rem]'>Failed to reach server...</p>
 				</section>
 			);
 			break;
 		case CowatchStatus.Loading:
 			selectedContent = (
-				<section className={cowatchContentFlexCenter}>
-					<p>Loading ...</p>
+				<section className='box-border h-full py-[64px] flex gap-[24px] flex-col justify-start items-center'>
+					<p className='text-[1.6rem]'>Loading...</p>
 				</section>
 			)
 			break;
 	}
 
 	return (
-		<div className={cowatchContent}>
+		<div className='h-[340px]'>
 			{selectedContent}
 		</div>
 	);
 }
 
-function CowatchContentInitial({ client, onHost, onJoin }: CowatchContentInitialProps) {
+export type CowatchContentInitialProps = {
+	client: Client,
+	onHost: () => void,
+	onJoin: () => void,
+};
+
+function CowatchContentHome({ client, onHost, onJoin }: CowatchContentInitialProps) {
 	return (
-		<section className={cowatchContentFlexCenter}>
-			<div className={cowatchIconPrompt}>
-				<img className={cowatchIconPromptIcon} src={client.image} />
-				<p>Start by hosting or joining a room</p>
+		<section className='box-border h-full py-[64px] flex gap-[24px] flex-col justify-start items-center'>
+			<div className='flex gap-[8px] items-center'>
+				<div className='w-[32px] h-[32px] rounded-full relative'>
+					<img className='w-[32px] rounded-full z-10 absolute top-0 left-0' src={client.image} />
+					<div className='w-[32px] h-[32px] rounded-full bg-neutral-600 animate-pulse absolute top-0 left-0'></div>
+				</div>
+				<p className='text-[1.6rem]'>Start by hosting or joining a room</p>
 			</div>
 
-			<section className={cowatchButtonContainer}>
-				<button
-					onClick={onHost}
-					className={cowatchButton + ' ' + cowatchButtonPrimary}
-				>
-					<Icon icon={SVGIcon.Group} size={24} />
-					Host
-				</button>
-
-				<button
-					onClick={onJoin}
-					className={cowatchButton + ' ' + cowatchButtonPrimary}
-				>
-					<Icon icon={SVGIcon.Eye} size={24} />
-					Join
-				</button>
+			<section className='flex gap-[16px] items-center'>
+				<Button text='Host' icon={SVGIcon.Group} style={ButtonStyle.default} onClick={onHost} />
+				<Button text='Join' icon={SVGIcon.Eye} style={ButtonStyle.default} onClick={onJoin} />
 			</section>
 		</section>
 	);
 }
+
+type CowatchContentSwitchTabProps = {
+	onSwitchActiveTab: () => void
+};
+
+function CowatchContentSwitchTab({ onSwitchActiveTab }: CowatchContentSwitchTabProps) {
+	return (
+		<section className='box-border h-full py-[64px] flex gap-[24px] flex-col justify-start items-center'>
+			<p className='text-[1.6rem]'>Another cowatch is active, switch to this one?</p>
+
+			<Button text='Switch' style={ButtonStyle.default} onClick={onSwitchActiveTab} />
+		</section>
+	)
+}
+
+type CowatchContentHostOptionsProps = {
+	client: Client,
+	onHost: (roomName: string) => void,
+	onBack: () => void,
+}
+
+function CowatchContentHostOptions({ client, onHost, onBack }: CowatchContentHostOptionsProps) {
+	return (
+		<section className='box-border h-full pt-[64px] pb-[16px] flex gap-[24px] flex-col justify-start items-center'>
+			<div className='flex gap-[8px] items-center'>
+				<div className='w-[32px] h-[32px] rounded-full relative'>
+					<img className='w-[32px] rounded-full z-10 absolute top-0 left-0' src={client.image} />
+					<div className='w-[32px] h-[32px] rounded-full bg-neutral-600 animate-pulse absolute top-0 left-0'></div>
+				</div>
+				<p className='text-[1.6rem]'>Tell me the name of your room</p>
+			</div>
+
+			<Input placeholder='Really cool study session' onButtonClick={onHost} withButton={true} buttonText='Host' icon={SVGIcon.Group} />
+
+			<div className='w-full mt-auto px-[0.8rem] flex justify-end'>
+				<Button text='Go Back' style={ButtonStyle.transparent} onClick={onBack} />
+			</div>
+		</section>
+	);
+}
+
+type CowatchContentJoinOptionsProps = {
+	client: Client,
+	onJoin: (roomID: string) => void,
+	onBack: () => void,
+};
 
 function CowatchContentJoinOptions({ client, onJoin, onBack }: CowatchContentJoinOptionsProps) {
-	const subRoomIDRef = React.useRef<HTMLInputElement>();
-
 	return (
-		<section className={cowatchContentFlexCenter}>
-			<div className={cowatchIconPrompt}>
-				<img className={cowatchIconPromptIcon} src={client.image} />
-				<p>Type room's ID</p>
+		<section className='box-border h-full pt-[64px] pb-[16px] flex gap-[24px] flex-col justify-start items-center'>
+			<div className='flex gap-[8px] items-center'>
+				<div className='w-[32px] h-[32px] rounded-full relative'>
+					<img className='w-[32px] rounded-full z-10 absolute top-0 left-0' src={client.image} />
+					<div className='w-[32px] h-[32px] rounded-full bg-neutral-600 animate-pulse absolute top-0 left-0'></div>
+				</div>
+				<p className='text-[1.6rem]'>Type room's ID</p>
 			</div>
 
-			<section className={cowatchInputButtonContainer}>
-				<input id='input-room-code' placeholder='eg. 42o6N' className={cowatchInput} ref={subRoomIDRef} />
-				<button
-					onClick={() => { onJoin(subRoomIDRef.current.value) }}
-					className={cowatchButton + ' ' + cowatchButtonPrimary + ' ' + cowatchButtonNoBrLeft}
-					>
-					<Icon icon={SVGIcon.Eye} size={24} />
-					Join
-				</button>
-			</section>
+			<Input placeholder='3o0bZ' onButtonClick={onJoin} withButton={true} buttonText='Join' icon={SVGIcon.Eye} />
 
-			<div className={cowatchContentBackContainer}>
-				<button
-					onClick={onBack}
-					className={cowatchButton + ' ' + cowatchButtonShadow}
-					>
-					Go Back
-				</button>
+			<div className='w-full mt-auto px-[0.8rem] flex justify-end'>
+				<Button text='Go Back' style={ButtonStyle.transparent} onClick={onBack} />
 			</div>
 		</section>
 	);
 }
 
-function CowatchContentHostOptions() {
-	return (
-		<section className={cowatchContentFlexCenter}>
-			<p>Host options</p>
-
-			<div onClick={() => null} className={cowatchContentBackContainer}>
-				<button className={cowatchButton + ' ' + cowatchButtonShadow}>
-					Go Back
-				</button>
-			</div>
-		</section>
-	);
-}
+type CowatchContentConnectedProps = {
+	client: Client,
+	room: Room,
+	onDisconnect: () => void,
+	onSettings: () => void,
+};
 
 function CowatchContentConnected({ client, room, onDisconnect, onSettings }: CowatchContentConnectedProps) {
 	return (
-		<section className={cowatchContentConnected}>
-			<ul className={cowatchContentJoinlistContainer} >
+		<section className='h-full flex flex-col'>
+			<ul className='w-full grow overflow-y-scroll'>
 				{
 					room.host ? (
-						<li key={room.host.name} className={cowatchContentClientContainer}>
-							<img src={room.host.image} className={cowatchCOntentClientIcon} />
+						<li key={room.host.name} className='flex items-center gap-[16px] px-[24px] py-[4px] text-[1.4rem]'>
+							<img src={room.host.image} className='w-[24px] rounded-full' />
 							{room.host.name}
-
-							<button className={cowatchButtonRound + ' ' + cowatchFlexPushRight}>
-								<Icon icon={SVGIcon.Kebab} size={18} />
-							</button>
 						</li>
 					) : null
 				}
 
 				{
 					room.viewers.length ? room.viewers.map(client => (
-					<li key={client.name} className={cowatchContentClientContainer}>
-							<img src={client.image} className={cowatchCOntentClientIcon} />
+					<li key={client.name} className='flex items-center gap-[16px] px-[24px] py-[4px] text-[1.4rem]'>
+							<img src={client.image} className='w-[24px] rounded-full' />
 							{client.name}
-
-							<button className={cowatchButtonRound + ' ' + cowatchFlexPushRight}>
-								<Icon icon={SVGIcon.Kebab} size={18} />
-							</button>
 						</li>
 						)) :
 					null
 				}
 			</ul>
 
-			<section className={cowatchContentConnectedClient}>
-				<section className={cowatchContentConnectedClientDetails}>
-					<img src={client.image} className={cowatchContentConnectedClientDetailsIcon} />
-					<div className={cowatchContentConnectedClientDetailsText}>
-						<p className={cowatchContentConnectedClientDetailsUsername}>{client.name}</p>
-						<div className={cowatchContentConnectedClientDetailsRoom}><Icon icon={SVGIcon.Group} size={16} /> <p>{room.roomID}</p></div>
+			<section className='pt-[8px] pr-[8px] pb-[12px] pl-[24px] flex bg-neutral-800'>
+				<section className='flex gap-[8px]'>
+					<img src={client.image} className='w-[42px] h-[42px] rounded-full' />
+					<div className='flex flex-col gap-[4px]'>
+						<p className='text-[1.6rem] bold'>{client.name}</p>
+						<div className='flex gap-[2px] text-neutral-500'><Icon icon={SVGIcon.Group} color='#B9B9B9' size={16} /> <p className='text-[1.4rem]'>{room.roomID}</p></div>
 					</div>
 				</section>
 
 
-				<button
-					onClick={onDisconnect}
-					className={cowatchButtonRound + ' ' + cowatchFlexPushRight}
-					>
-					<Icon icon={SVGIcon.PhoneDisconnect} size={24} />
-				</button>
-				<button
-					onClick={() => null}
-					className={cowatchButtonRound}
-					>
-					<Icon icon={SVGIcon.Cog} size={24} />
-				</button>
+				<div className='w-full flex items-center justify-end'>
+					<Button icon={SVGIcon.PhoneDisconnect} style={ButtonStyle.transparent} onClick={onDisconnect} />
+					<Button icon={SVGIcon.Cog} style={ButtonStyle.transparent} />
+				</div>
 			</section>
 		</section>
 	);
 }
 
-function CowatchContentOptions() {
-	return (
-		<section className={cowatchContentConnected}>
-			<ul className={cowatchContentJoinlistContainer} >
-			</ul>
-
-			<section>
-				<button
-					onClick={() => null}
-					className={cowatchButton + ' ' + cowatchButtonSuccess}
-					>
-					<Icon icon={SVGIcon.CheckMark} size={24} />
-					Save
-				</button>
-				<button
-					onClick={() => null}
-					className={cowatchButton + ' ' + cowatchButtonError}
-					>
-					<Icon icon={SVGIcon.XMark} size={24} />
-					Exit
-				</button>
-			</section>
-		</section>
-	);
-}
-
+// function CowatchContentOptions() {
+// 	return (
+// 		<section className={cowatchContentConnected}>
+// 			<ul className={cowatchContentJoinlistContainer} >
+// 			</ul>
+//
+// 			<section>
+// 				<button
+// 					onClick={() => null}
+// 					className={cowatchButton + ' ' + cowatchButtonSuccess}
+// 					>
+// 					<Icon icon={SVGIcon.CheckMark} size={24} />
+// 					Save
+// 				</button>
+// 				<button
+// 					onClick={() => null}
+// 					className={cowatchButton + ' ' + cowatchButtonError}
+// 					>
+// 					<Icon icon={SVGIcon.XMark} size={24} />
+// 					Exit
+// 				</button>
+// 			</section>
+// 		</section>
+// 	);
+// }
 
 enum ButtonStyle {
 	default,
@@ -612,7 +605,7 @@ function Button({ text, icon, style, borderRounding, iconPosition, loadAfterClic
 
 	let className = '';
 	if(text == null) {
-		className += ' min-h-[40px] min-w-[40px]';
+		className += ' min-h-[40px] min-w-[40px] h-[40px] w-[40px]';
 	} else {
 		className += ' min-h-[38px] px-[1.6rem]';
 	}

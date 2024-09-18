@@ -180,33 +180,9 @@ export enum YoutubePlayerState {
     VideoCued = 5,
 }
 
-export enum CowatchStatus {
-	Initial,
-	HostOptions,
-	Join,
-	Loading,
-	Connected,
-	Options,
-	NotPrimaryTab,
-	Disconnected,
-};
-
 export type CowatchErrorProps = {
 	error?: string,
 	onClose: () => void,
-};
-
-export type CowatchContentProps = {
-	room: Room,
-	client: Client,
-	status: CowatchStatus,
-	onChangeStatus: (status: CowatchStatus) => void,
-};
-
-export type CowatchContentInitialProps = {
-	client: Client,
-	onHost: () => void,
-	onJoin: () => void,
 };
 
 export type CowatchContentJoinOptionsProps = {
