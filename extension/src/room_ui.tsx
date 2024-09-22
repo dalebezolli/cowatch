@@ -5,7 +5,7 @@ import './room_ui.css';
 
 import { LogLevel, log } from './log';
 import { onCoreAction, triggerClientMessage } from './events';
-import { Room, Client, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails } from './types';
+import { Room, Client, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails, ServerStatus } from './types';
 import { sleep } from './utils';
 
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
@@ -411,10 +411,7 @@ function CowatchContentHome({ client, onHost, onJoin }: CowatchContentInitialPro
 	return (
 		<section className='box-border h-full py-[64px] flex gap-[24px] flex-col justify-start items-center'>
 			<div className='flex gap-[8px] items-center'>
-				<div className='w-[32px] h-[32px] rounded-full relative'>
-					<img className='w-[32px] rounded-full z-10 absolute top-0 left-0' src={client.image} />
-					<div className='w-[32px] h-[32px] rounded-full bg-neutral-600 animate-pulse absolute top-0 left-0'></div>
-				</div>
+				<ImageDisplay iconUrl={client.image} size='32px' />
 				<p className='text-[1.6rem]'>Start by hosting or joining a room</p>
 			</div>
 
@@ -450,10 +447,7 @@ function CowatchContentHostOptions({ client, onHost, onBack }: CowatchContentHos
 	return (
 		<section className='box-border h-full pt-[64px] pb-[16px] flex gap-[24px] flex-col justify-start items-center'>
 			<div className='flex gap-[8px] items-center'>
-				<div className='w-[32px] h-[32px] rounded-full relative'>
-					<img className='w-[32px] rounded-full z-10 absolute top-0 left-0' src={client.image} />
-					<div className='w-[32px] h-[32px] rounded-full bg-neutral-600 animate-pulse absolute top-0 left-0'></div>
-				</div>
+				<ImageDisplay iconUrl={client.image} size='32px' />
 				<p className='text-[1.6rem]'>Tell me the name of your room</p>
 			</div>
 
@@ -476,10 +470,7 @@ function CowatchContentJoinOptions({ client, onJoin, onBack }: CowatchContentJoi
 	return (
 		<section className='box-border h-full pt-[64px] pb-[16px] flex gap-[24px] flex-col justify-start items-center'>
 			<div className='flex gap-[8px] items-center'>
-				<div className='w-[32px] h-[32px] rounded-full relative'>
-					<img className='w-[32px] rounded-full z-10 absolute top-0 left-0' src={client.image} />
-					<div className='w-[32px] h-[32px] rounded-full bg-neutral-600 animate-pulse absolute top-0 left-0'></div>
-				</div>
+				<ImageDisplay iconUrl={client.image} size='32px' />
 				<p className='text-[1.6rem]'>Type room's ID</p>
 			</div>
 
@@ -506,7 +497,7 @@ function CowatchContentConnected({ client, room, onDisconnect, onSettings }: Cow
 				{
 					room.host ? (
 						<li key={room.host.name} className='flex items-center gap-[16px] px-[24px] py-[4px] text-[1.4rem]'>
-							<img src={room.host.image} className='w-[24px] rounded-full' />
+							<ImageDisplay iconUrl={room.host.image} size='24px' />
 							{room.host.name}
 						</li>
 					) : null
@@ -515,7 +506,7 @@ function CowatchContentConnected({ client, room, onDisconnect, onSettings }: Cow
 				{
 					room.viewers.length ? room.viewers.map(client => (
 					<li key={client.name} className='flex items-center gap-[16px] px-[24px] py-[4px] text-[1.4rem]'>
-							<img src={client.image} className='w-[24px] rounded-full' />
+							<ImageDisplay iconUrl={client.image} size='24px' />
 							{client.name}
 						</li>
 						)) :
@@ -523,23 +514,148 @@ function CowatchContentConnected({ client, room, onDisconnect, onSettings }: Cow
 				}
 			</ul>
 
-			<section className='pt-[8px] pr-[8px] pb-[12px] pl-[24px] flex bg-neutral-800'>
-				<section className='flex gap-[8px]'>
-					<img src={client.image} className='w-[42px] h-[42px] rounded-full' />
-					<div className='flex flex-col gap-[4px]'>
-						<p className='text-[1.6rem] bold'>{client.name}</p>
-						<div className='flex gap-[2px] text-neutral-500'><Icon icon={SVGIcon.Group} color='#B9B9B9' size={16} /> <p className='text-[1.4rem]'>{room.roomID}</p></div>
-					</div>
-				</section>
-
-
-				<div className='w-full flex items-center justify-end'>
-					<Button icon={SVGIcon.PhoneDisconnect} style={ButtonStyle.transparent} onClick={onDisconnect} />
-					<Button icon={SVGIcon.Cog} style={ButtonStyle.transparent} />
-				</div>
-			</section>
+			<ConnectedActionHUD client={client} room={room} connectionStatus={{ status: 'connected', avgPing: 32, latestPing: 305 }} onDisconnect={onDisconnect} />
 		</section>
 	);
+}
+
+type ConnectedActionHUDProps = {
+	client: Client,
+	room: Room,
+	connectionStatus: { status: ServerStatus, avgPing: number, latestPing: number },
+	onDisconnect: () => void,
+};
+
+function ConnectedActionHUD({client, room, connectionStatus, onDisconnect}: ConnectedActionHUDProps) {
+	const refCopy = useRef<HTMLSpanElement>();
+	async function copyRoomID() {
+		try {
+			await navigator.clipboard.write([
+				new ClipboardItem({ 'text/plain': room.roomID })
+			]);
+			if(refCopy.current !== null) {
+				refCopy.current.lastChild.textContent = 'Copied!';
+				refCopy.current.setAttribute('data-copied', 'true');
+			}
+		} catch(err) {
+			log(LogLevel.Error, 'Failed to copy to clipboard:', err)();
+				refCopy.current.setAttribute('data-copied', 'false');
+		}
+	}
+
+	function resetCopyButton() {
+		if(refCopy.current !== null) {
+			refCopy.current.lastChild.textContent = 'Copy';
+			refCopy.current.setAttribute('data-copied', 'false');
+		}
+	}
+
+	let userIconColor = '#14EF63';
+	let avgPingColor = 'text-green-400';
+	let latestPingColor = 'text-green-400';
+	let statusMessage = 'Connected';
+
+	if(connectionStatus.status == 'failed' || connectionStatus.avgPing >= 350) {
+		statusMessage = 'Disconnected';
+		userIconColor = '#F21818';
+		avgPingColor = 'text-red-400';
+	} else if(connectionStatus.avgPing >= 200) {
+		userIconColor = '#FACC15';
+		avgPingColor = 'text-yello-400';
+	}
+
+	if(connectionStatus.latestPing >= 350) {
+		latestPingColor = 'text-red-400';
+	} else if(connectionStatus.latestPing >= 200) {
+		latestPingColor = 'text-yellow-400';
+	}
+
+	return (
+		<section className='pr-[8px] py-[12px] pl-[24px] flex bg-neutral-800'>
+			<section className='flex items-center gap-[16px]'>
+				<div className='group relative'>
+					<ImageDisplay iconUrl={client.image} size='34px' style={{
+						boxShadow: `0 0 0 2px #262626, 0 0 0 5px ${userIconColor}`
+					}} />
+					<div className='absolute pl-[32px] z-10 bottom-[-4px] left-[12px] invisible group-hover:visible'>
+						<div className='px-[14px] py-[12px] w-max bg-neutral-700 rounded-[4px]'>
+							<p className='text-[1.4rem] font-bold text-neutral-100 pb-[8px]'>{statusMessage}</p>
+							<p className='text-[1.4rem] text-neutral-400'>
+								Latest Ping:&nbsp;
+								<span className={`text-[1.4rem] ${latestPingColor}`}>
+									{connectionStatus.latestPing ? connectionStatus.latestPing + 'ms' : '---'}
+								</span>
+							</p>
+							<p className='text-[1.4rem] text-neutral-400'>
+								Average Ping:&nbsp;
+								<span className={`text-[1.4rem] ${avgPingColor}`}>
+									{connectionStatus.avgPing ? connectionStatus.avgPing + 'ms' : '---'}
+								</span>
+							</p>
+						</div>
+					</div>
+				</div>
+
+				<div className='flex flex-col gap-[2px]'>
+					<p className='text-[1.6rem] bold'>{client.name}</p>
+
+					<button className='
+						relative pt-[2px]
+
+						flex gap-[2px]
+						text-neutral-500 hover:text-neutral-200 text-[1.4rem]
+						border-none cursor-pointer
+
+						transition-all
+						
+						group'
+						onClick={copyRoomID}
+						onMouseOut={resetCopyButton}
+					>
+						<Icon icon={SVGIcon.Group} className='h-[16px] stroke-neutral-500 group-hover:stroke-neutral-200 transition-colors' />
+						{room.roomID}
+						<span
+							ref={refCopy}
+							data-copied='false'
+							className='
+							ml-[6px] -translate-y-[15%]
+							px-[8px] py-[2px]
+							flex gap-[2px] items-center
+							bg-green-300
+							text-neutral-800 rounded-[4px]
+
+							data-[copied="true"]:animate-bounce transition-colors
+
+							invisible group-hover:visible
+						'>
+							<Icon icon={SVGIcon.Copy} className='h-[12px] w-[12px] stroke-neutral-800 fill-neutral-800' /><span>Copy</span>
+						</span>
+					</button>
+				</div>
+			</section>
+
+
+			<div className='w-full flex items-center justify-end'>
+				<Button icon={SVGIcon.PhoneDisconnect} style={ButtonStyle.transparent} onClick={onDisconnect} />
+				<Button icon={SVGIcon.Cog} style={ButtonStyle.transparent} />
+			</div>
+		</section>
+	);
+}
+
+type ImageDisplayProps = {
+	iconUrl: string,
+	size: string,
+	style?: React.CSSProperties,
+};
+
+function ImageDisplay({ iconUrl, size, style }: ImageDisplayProps) {
+	return (
+		<div className='rounded-full relative' style={{ width: size, height: size, ...style }}>
+			<img className='rounded-full z-10 absolute top-0 left-0' style={{ width: size, height: size }} src={iconUrl} />
+			<div className='rounded-full bg-neutral-600 animate-pulse absolute top-0 left-0' style={{ width: size, height: size }}></div>
+		</div>
+	)
 }
 
 // function CowatchContentOptions() {
@@ -652,9 +768,9 @@ function Button({ text, icon, style, borderRounding, iconPosition, loadAfterClic
 			`}
 			onClick={onClickHandler}
 		>
-			{ icon && (iconPosition == null || iconPosition === 'left') && <Icon icon={icon} size={24} color='#fff' className={loading ? 'animate-spin' : ''} /> }
+			{ icon && (iconPosition == null || iconPosition === 'left') && <Icon icon={icon} className={`aspect-square w-[24px] stroke-white fill-white ${loading ? 'animate-spin' : ''}`} /> }
 			{ text && <p className='font-bold text-[1.4rem]'>{ text }</p> }
-			{ icon && iconPosition === 'right' && <Icon icon={icon} size={24} color='#fff' className={loading ? 'animate-spin' : ''} /> }
+			{ icon && iconPosition === 'right' && <Icon icon={icon} className={`aspect-square w-[24px] stroke-white fill-white ${loading ? 'animate-spin' : ''}`} /> }
 		</button>
 	)
 }
@@ -709,7 +825,7 @@ function Input({input, placeholder, withButton, buttonText, icon, error, onButto
 			</section>
 			{ error && (
 				<div className='flex items-center gap-[2px] py-[6px]'>
-					<Icon icon={SVGIcon.XMark} size={16} color='#EF4444' />
+					<Icon icon={SVGIcon.XMark} size={16} className='aspect-square w-[16px] stroke-red-500' />
 					<p className='text-[1.4rem] text-red-500'>{error}</p>
 				</div>
 			)}
@@ -730,60 +846,61 @@ enum SVGIcon {
 	Kebab,
 	Error,
 	Loading,
+	Copy,
 };
 
 type IconProps = {
 	icon: SVGIcon,
-	size: number,
+	size?: number,
 	color?: string,
 	className?: string,
 };
 
 function Icon({ icon, size, color, className }: IconProps) {
-	let dom_icon: React.ReactElement;
+	let domIcon: React.ReactElement;
 
 	switch(icon) {
 		case SVGIcon.CheckMark:
-			dom_icon = (
+			domIcon = (
 				<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 					<path d="M1 13.6L7.28571 20L23 4" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
 				</svg>
 			);
 			break;
 		case SVGIcon.XMark:
-			dom_icon = (
-				<svg className={className} width={size} height={size} viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
-					<path d='M6.7583 17.2426L12.0009 12M12.0009 12L17.2435 6.75735M12.0009 12L6.7583 6.75735M12.0009 12L17.2435 17.2426' stroke={color} strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round' />
+			domIcon = (
+				<svg className={className} viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+					<path d='M6.7583 17.2426L12.0009 12M12.0009 12L17.2435 6.75735M12.0009 12L6.7583 6.75735M12.0009 12L17.2435 17.2426' fill='none' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round' />
 				</svg>
 			);
 			break;
 		case SVGIcon.Group:
-			dom_icon = (
-				<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<path d="M1 20V19C1 15.134 4.13401 12 8 12C11.866 12 15 15.134 15 19V20" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-					<path d="M13 14C13 11.2386 15.2386 9 18 9C20.7614 9 23 11.2386 23 14V14.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-					<path d="M8 12C10.2091 12 12 10.2091 12 8C12 5.79086 10.2091 4 8 4C5.79086 4 4 5.79086 4 8C4 10.2091 5.79086 12 8 12Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-					<path d="M18 9C19.6569 9 21 7.65685 21 6C21 4.34315 19.6569 3 18 3C16.3431 3 15 4.34315 15 6C15 7.65685 16.3431 9 18 9Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+			domIcon = (
+				<svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M1 20V19C1 15.134 4.13401 12 8 12C11.866 12 15 15.134 15 19V20" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M13 14C13 11.2386 15.2386 9 18 9C20.7614 9 23 11.2386 23 14V14.5" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M8 12C10.2091 12 12 10.2091 12 8C12 5.79086 10.2091 4 8 4C5.79086 4 4 5.79086 4 8C4 10.2091 5.79086 12 8 12Z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M18 9C19.6569 9 21 7.65685 21 6C21 4.34315 19.6569 3 18 3C16.3431 3 15 4.34315 15 6C15 7.65685 16.3431 9 18 9Z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
 				</svg>
 			);
 			break;
 		case SVGIcon.Eye:
-			dom_icon = (
-				<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<path d="M3 13C6.6 5 17.4 5 21 13" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-					<path d="M12 17C10.3431 17 9 15.6569 9 14C9 12.3431 10.3431 11 12 11C13.6569 11 15 12.3431 15 14C15 15.6569 13.6569 17 12 17Z" fill={color} stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+			domIcon = (
+				<svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M3 13C6.6 5 17.4 5 21 13" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M12 17C10.3431 17 9 15.6569 9 14C9 12.3431 10.3431 11 12 11C13.6569 11 15 12.3431 15 14C15 15.6569 13.6569 17 12 17Z" fill="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
 				</svg>
 			);
 			break;
 		case SVGIcon.ArrowLeft:
-			dom_icon = (
+			domIcon = (
 				<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 					<path d="M23 12H1M1 12L11.3889 2M1 12L11.3889 22" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
 				</svg>
 			);
 			break;
 		case SVGIcon.PhoneDisconnect:
-			dom_icon = (
+			domIcon = (
 				<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 					<path d="M8.77964 8.5L9.26995 5.8699L7.81452 2H4.0636C2.93605 2 2.04804 2.93086 2.2164 4.04576C2.50361 5.94771 3.17338 8.90701 4.72526 11.7468M10.9413 13.5C11.778 14.244 12.7881 14.8917 14 15.5L18.1182 14.702L22 16.1812V19.7655C22 20.9575 20.9679 21.8664 19.8031 21.613C16.9734 20.9974 11.9738 19.506 8.22388 16.1812" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
 					<path d="M21 3L3 21" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -791,7 +908,7 @@ function Icon({ icon, size, color, className }: IconProps) {
 			);
 			break;
 		case SVGIcon.Cog:
-			dom_icon = (
+			domIcon = (
 				<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 					<path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
 					<path d="M19.6224 10.3954L18.5247 7.7448L20 6L18 4L16.2647 5.48295L13.5578 4.36974L12.9353 2H10.981L10.3491 4.40113L7.70441 5.51596L6 4L4 6L5.45337 7.78885L4.3725 10.4463L2 11V13L4.40111 13.6555L5.51575 16.2997L4 18L6 20L7.79116 18.5403L10.397 19.6123L11 22H13L13.6045 19.6132L16.2551 18.5155C16.6969 18.8313 18 20 18 20L20 18L18.5159 16.2494L19.6139 13.598L21.9999 12.9772L22 11L19.6224 10.3954Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -799,7 +916,7 @@ function Icon({ icon, size, color, className }: IconProps) {
 			);
 			break;
 		case SVGIcon.Broadcast:
-			dom_icon = (
+			domIcon = (
 				<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 					<path d="M17.5 8C17.5 8 19 9.5 19 12C19 14.5 17.5 16 17.5 16" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
 					<path d="M20.5 5C20.5 5 23 7.5 23 12C23 16.5 20.5 19 20.5 19" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -810,7 +927,7 @@ function Icon({ icon, size, color, className }: IconProps) {
 			);
 			break;
 		case SVGIcon.Mute:
-			dom_icon = (
+			domIcon = (
 				<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 					<path d="M18 14L20.0005 12M20.0005 12L22 10M20.0005 12L18 10M20.0005 12L22 14" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
 					<path d="M2 13.8571V10.1429C2 9.03829 2.89543 8.14286 4 8.14286H6.9C7.09569 8.14286 7.28708 8.08544 7.45046 7.97772L13.4495 4.02228C14.1144 3.5839 15 4.06075 15 4.85714V19.1429C15 19.9392 14.1144 20.4161 13.4495 19.9777L7.45046 16.0223C7.28708 15.9146 7.09569 15.8571 6.9 15.8571H4C2.89543 15.8571 2 14.9617 2 13.8571Z" stroke={color} strokeWidth="1.5" />
@@ -818,7 +935,7 @@ function Icon({ icon, size, color, className }: IconProps) {
 			);
 			break;
 		case SVGIcon.Kebab:
-			dom_icon = (
+			domIcon = (
 				<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 					<path d="M12 5H12.0001" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
 					<path d="M12 12H12.0001" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -827,31 +944,41 @@ function Icon({ icon, size, color, className }: IconProps) {
 			);
 			break;
 		case SVGIcon.Error:
-			dom_icon = (
-				<svg className={className} width={size} height={size} viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+			domIcon = (
+				<svg className={className} viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
 					<g clip-path="url(#clip0_149_598)">
-						<path d="M9 5.25V9.75" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-						<path d="M9 12.7575L9.0075 12.7492" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-						<path d="M9 16.5C13.1421 16.5 16.5 13.1421 16.5 9C16.5 4.85786 13.1421 1.5 9 1.5C4.85786 1.5 1.5 4.85786 1.5 9C1.5 13.1421 4.85786 16.5 9 16.5Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+						<path d="M9 5.25V9.75" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+						<path d="M9 12.7575L9.0075 12.7492" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+						<path d="M9 16.5C13.1421 16.5 16.5 13.1421 16.5 9C16.5 4.85786 13.1421 1.5 9 1.5C4.85786 1.5 1.5 4.85786 1.5 9C1.5 13.1421 4.85786 16.5 9 16.5Z" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
 					</g>
 					<defs>
 						<clipPath id="clip0_149_598">
-							<rect width="18" height="18" fill={color} />
+							<rect width="18" height="18" stroke="none" />
 						</clipPath>
 					</defs>
 				</svg>
 			);
 			break;
 		case SVGIcon.Loading:
-			dom_icon = (
+			domIcon = (
 				<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 					<path d="M10.6992 3.25391C10.8945 3.91406 10.5195 4.61328 9.85938 4.80859C6.75781 5.73438 4.5 8.60547 4.5 12C4.5 16.1406 7.85938 19.5 12 19.5C16.1406 19.5 19.5 16.1406 19.5 12C19.5 8.60547 17.2422 5.73438 14.1445 4.80859C13.4844 4.61328 13.1055 3.91406 13.3047 3.25391C13.5039 2.59375 14.1992 2.21484 14.8594 2.41406C18.9883 3.64453 22 7.46875 22 12C22 17.5234 17.5234 22 12 22C6.47656 22 2 17.5234 2 12C2 7.46875 5.01172 3.64453 9.14453 2.41406C9.80469 2.21875 10.5039 2.59375 10.6992 3.25391Z" fill={color} />
 				</svg>
 			);
 			break;
+		case SVGIcon.Copy:
+			domIcon = (
+				<svg className={className} viewBox="0 0 24 24">
+					<g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5">
+						<path fill="none" d="M22.2 23H8.8a.8.8 0 0 1-.8-.8V8.8c0-.4.4-.8.8-.8h13.4c.4 0 .8.4.8.8v13.4c0 .4-.4.8-.8.8Z"/>
+						<path fill="none" d="M16 7.8v-6c0-.4-.4-.8-.8-.8H1.8c-.4 0-.8.4-.8.8v13.4c0 .4.4.8.8.8h6"/>
+					</g>
+				</svg>
+			);
+			break;
 		default:
-			dom_icon = <div></div>
+			domIcon = <div></div>
 	}
 
-	return dom_icon;
+	return domIcon;
 }

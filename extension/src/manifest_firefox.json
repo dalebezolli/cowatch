@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "cowatch",
   "version": "0.0.5",
-  "permissions": ["webNavigation", "scripting", "tabs"],
+  "permissions": ["webNavigation", "scripting", "tabs", "clipboardWrite"],
   "browser_specific_settings": {
     "gecko": {
       "id": "cowatch@gmail.com"

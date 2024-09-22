@@ -7,6 +7,10 @@ export default {
       fontFamily: {
         sans: ['Roboto', 'Arial', 'sans-serif']
       },
+      colors: {
+        'green-300': '#14EF63',
+        'red-400': '#F21818'
+      },
       keyframes: {
         scroll: {
           '0%': { transform: 'translateX(110%)' },
