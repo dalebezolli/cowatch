@@ -496,26 +496,35 @@ function CowatchContentConnected({ client, room, onDisconnect, onSettings }: Cow
 			<ul className='w-full grow overflow-y-scroll'>
 				{
 					room.host ? (
-						<li key={room.host.name} className='flex items-center gap-[16px] px-[24px] py-[4px] text-[1.4rem]'>
-							<ImageDisplay iconUrl={room.host.image} size='24px' />
-							{room.host.name}
-						</li>
+						<ConnectedClientListItem client={room.host} isHost={true} isConnected={true} />
 					) : null
 				}
 
 				{
 					room.viewers.length ? room.viewers.map(client => (
-					<li key={client.name} className='flex items-center gap-[16px] px-[24px] py-[4px] text-[1.4rem]'>
-							<ImageDisplay iconUrl={client.image} size='24px' />
-							{client.name}
-						</li>
-						)) :
-					null
+						<ConnectedClientListItem client={client} isHost={false} isConnected={true} />
+					)) : null
 				}
 			</ul>
 
 			<ConnectedActionHUD client={client} room={room} connectionStatus={{ status: 'connected', avgPing: 32, latestPing: 305 }} onDisconnect={onDisconnect} />
 		</section>
+	);
+}
+
+type ConnectedClientListItemProps = {
+	client: Client,
+	isHost: boolean,
+	isConnected: boolean,
+};
+
+function ConnectedClientListItem({ client, isHost, isConnected }: ConnectedClientListItemProps) {
+	return (
+		<li key={client.name} className={`flex items-center gap-[16px] px-[24px] py-[4px] text-[1.4rem] ${ isConnected ? '' : 'opacity-60'}`}>
+			<ImageDisplay iconUrl={client.image} size='24px' />
+			{client.name}
+			{ isHost && <Icon icon={SVGIcon.Connected} className='w-[16px] h-[16px]' /> }
+		</li>
 	);
 }
 
@@ -768,9 +777,9 @@ function Button({ text, icon, style, borderRounding, iconPosition, loadAfterClic
 			`}
 			onClick={onClickHandler}
 		>
-			{ icon && (iconPosition == null || iconPosition === 'left') && <Icon icon={icon} className={`aspect-square w-[24px] stroke-white fill-white ${loading ? 'animate-spin' : ''}`} /> }
+			{ icon && (iconPosition == null || iconPosition === 'left') && <Icon icon={icon} className={`aspect-square w-[24px] ${loading ? 'animate-spin' : ''}`} /> }
 			{ text && <p className='font-bold text-[1.4rem]'>{ text }</p> }
-			{ icon && iconPosition === 'right' && <Icon icon={icon} className={`aspect-square w-[24px] stroke-white fill-white ${loading ? 'animate-spin' : ''}`} /> }
+			{ icon && iconPosition === 'right' && <Icon icon={icon} className={`aspect-square w-[24px] ${loading ? 'animate-spin' : ''}`} /> }
 		</button>
 	)
 }
@@ -847,6 +856,7 @@ enum SVGIcon {
 	Error,
 	Loading,
 	Copy,
+	Connected,
 };
 
 type IconProps = {
@@ -877,17 +887,17 @@ function Icon({ icon, size, color, className }: IconProps) {
 		case SVGIcon.Group:
 			domIcon = (
 				<svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<path d="M1 20V19C1 15.134 4.13401 12 8 12C11.866 12 15 15.134 15 19V20" strokeWidth="1.5" strokeLinecap="round" />
-					<path d="M13 14C13 11.2386 15.2386 9 18 9C20.7614 9 23 11.2386 23 14V14.5" strokeWidth="1.5" strokeLinecap="round" />
-					<path d="M8 12C10.2091 12 12 10.2091 12 8C12 5.79086 10.2091 4 8 4C5.79086 4 4 5.79086 4 8C4 10.2091 5.79086 12 8 12Z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-					<path d="M18 9C19.6569 9 21 7.65685 21 6C21 4.34315 19.6569 3 18 3C16.3431 3 15 4.34315 15 6C15 7.65685 16.3431 9 18 9Z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M1 20V19C1 15.134 4.13401 12 8 12C11.866 12 15 15.134 15 19V20" stroke='white' strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M13 14C13 11.2386 15.2386 9 18 9C20.7614 9 23 11.2386 23 14V14.5" stroke='white' strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M8 12C10.2091 12 12 10.2091 12 8C12 5.79086 10.2091 4 8 4C5.79086 4 4 5.79086 4 8C4 10.2091 5.79086 12 8 12Z" stroke='white' strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M18 9C19.6569 9 21 7.65685 21 6C21 4.34315 19.6569 3 18 3C16.3431 3 15 4.34315 15 6C15 7.65685 16.3431 9 18 9Z" stroke='white' strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
 				</svg>
 			);
 			break;
 		case SVGIcon.Eye:
 			domIcon = (
 				<svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<path d="M3 13C6.6 5 17.4 5 21 13" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M3 13C6.6 5 17.4 5 21 13" fill="none" strokeWidth="1.5" stroke="white" strokeLinecap="round" strokeLinejoin="round" />
 					<path d="M12 17C10.3431 17 9 15.6569 9 14C9 12.3431 10.3431 11 12 11C13.6569 11 15 12.3431 15 14C15 15.6569 13.6569 17 12 17Z" fill="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
 				</svg>
 			);
@@ -902,16 +912,16 @@ function Icon({ icon, size, color, className }: IconProps) {
 		case SVGIcon.PhoneDisconnect:
 			domIcon = (
 				<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<path d="M8.77964 8.5L9.26995 5.8699L7.81452 2H4.0636C2.93605 2 2.04804 2.93086 2.2164 4.04576C2.50361 5.94771 3.17338 8.90701 4.72526 11.7468M10.9413 13.5C11.778 14.244 12.7881 14.8917 14 15.5L18.1182 14.702L22 16.1812V19.7655C22 20.9575 20.9679 21.8664 19.8031 21.613C16.9734 20.9974 11.9738 19.506 8.22388 16.1812" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-					<path d="M21 3L3 21" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M8.77964 8.5L9.26995 5.8699L7.81452 2H4.0636C2.93605 2 2.04804 2.93086 2.2164 4.04576C2.50361 5.94771 3.17338 8.90701 4.72526 11.7468M10.9413 13.5C11.778 14.244 12.7881 14.8917 14 15.5L18.1182 14.702L22 16.1812V19.7655C22 20.9575 20.9679 21.8664 19.8031 21.613C16.9734 20.9974 11.9738 19.506 8.22388 16.1812" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M21 3L3 21" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
 				</svg>
 			);
 			break;
 		case SVGIcon.Cog:
 			domIcon = (
-				<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-					<path d="M19.6224 10.3954L18.5247 7.7448L20 6L18 4L16.2647 5.48295L13.5578 4.36974L12.9353 2H10.981L10.3491 4.40113L7.70441 5.51596L6 4L4 6L5.45337 7.78885L4.3725 10.4463L2 11V13L4.40111 13.6555L5.51575 16.2997L4 18L6 20L7.79116 18.5403L10.397 19.6123L11 22H13L13.6045 19.6132L16.2551 18.5155C16.6969 18.8313 18 20 18 20L20 18L18.5159 16.2494L19.6139 13.598L21.9999 12.9772L22 11L19.6224 10.3954Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+				<svg className={className} stroke="white" width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					<path d="M19.6224 10.3954L18.5247 7.7448L20 6L18 4L16.2647 5.48295L13.5578 4.36974L12.9353 2H10.981L10.3491 4.40113L7.70441 5.51596L6 4L4 6L5.45337 7.78885L4.3725 10.4463L2 11V13L4.40111 13.6555L5.51575 16.2997L4 18L6 20L7.79116 18.5403L10.397 19.6123L11 22H13L13.6045 19.6132L16.2551 18.5155C16.6969 18.8313 18 20 18 20L20 18L18.5159 16.2494L19.6139 13.598L21.9999 12.9772L22 11L19.6224 10.3954Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
 				</svg>
 			);
 			break;
@@ -973,6 +983,15 @@ function Icon({ icon, size, color, className }: IconProps) {
 						<path fill="none" d="M22.2 23H8.8a.8.8 0 0 1-.8-.8V8.8c0-.4.4-.8.8-.8h13.4c.4 0 .8.4.8.8v13.4c0 .4-.4.8-.8.8Z"/>
 						<path fill="none" d="M16 7.8v-6c0-.4-.4-.8-.8-.8H1.8c-.4 0-.8.4-.8.8v13.4c0 .4.4.8.8.8h6"/>
 					</g>
+				</svg>
+			);
+			break;
+		case SVGIcon.Connected:
+			domIcon = (
+				<svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M6.5 14C7.32845 14 8 13.3284 8 12.5C8 11.6716 7.32845 11 6.5 11C5.67155 11 5 11.6716 5 12.5C5 13.3284 5.67155 14 6.5 14Z" fill="#0BE147" stroke="#0BE147" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+					<path d="M11 7C11 7 13 9.0625 13 12.5C13 15.9375 11 18 11 18" stroke="#0BE147" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+					<path d="M17 2C17 2 20 5.75 20 12.5C20 19.25 17 23 17 23" stroke="#0BE147" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 				</svg>
 			);
 			break;
