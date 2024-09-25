@@ -126,7 +126,7 @@ function onClientMessageRequestAuthorize() {
 	getState().connection!.send(JSON.stringify({ actionType: 'Authorize', action: JSON.stringify(authorizationBody) }));
 }
 
-function onClientMessageRequestHostRoom() {
+function onClientMessageRequestHostRoom(action: ClientMessageDetails['HostRoom']) {
 	if(getState().serverStatus !== 'connected') {
 		log(LogLevel.Error, 'No server connection found!')();
 		return;
@@ -137,7 +137,7 @@ function onClientMessageRequestHostRoom() {
 		return;
 	}
 
-	getState().connection!.send(JSON.stringify({ actionType: 'HostRoom', action: '' }));
+	getState().connection!.send(JSON.stringify({ actionType: 'HostRoom', action: JSON.stringify(action) }));
 }
 
 function onClientMessageRequestJoinRoom(action: ClientMessageDetails['JoinRoom']) {

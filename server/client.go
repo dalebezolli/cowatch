@@ -128,6 +128,9 @@ const (
 	ServerErrorMessageInternalServerError = "Internal server error."
 	ServerErrorMessageBadJson             = "Bad request, please upgrade your extension to a newer version"
 
+	ServerErrorMessageShortRoomName = "The room name must be 3 characters or more."
+	ServerErrorMessageLongRoomName  = "The room name must be 50 characters or less."
+
 	ServerErrorMessageNoRoom   = "The room you're trying to join doesn't exist"
 	ServerErrorMessageFullRoom = "The room you're trying to join is full"
 

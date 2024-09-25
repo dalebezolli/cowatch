@@ -17,7 +17,7 @@ export function initializeState() {
 		pingTimestamp: 0,
 		rtt: 0,
 		droppedPingRequestCount: 0,
-		pingRequestTimeoutId: 0,
+		pingRequestIntervalId: 0,
 		pingTimeoutId: 0,
 
 		client: null,

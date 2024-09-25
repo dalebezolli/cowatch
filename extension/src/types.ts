@@ -48,9 +48,14 @@ export type Room = {
 	roomID: string,
 	host: Client,
 	viewers: Client[],
+	settings: RoomSettings,
 };
 
-export type ResolutionStrategy = 'returnToInitial' | 'stayOnCurrentView';
+export type RoomSettings = {
+	name: string,
+};
+
+export type ResolutionStrategy = 'returnToInitial' | 'stayOnCurrentView' | 'displayOnInput';
 
 export type ConnectionError = {
 	error: string,
@@ -93,7 +98,7 @@ export type ClientMessageDetails = {
 		videoId: string,
 	},
 	'GetState': {},
-	'HostRoom': {},
+	'HostRoom': RoomSettings,
 	'JoinRoom': {
 		roomID: string,
 	},

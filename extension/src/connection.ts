@@ -44,6 +44,10 @@ function handleConnectionMessage(event: MessageEvent<string>) {
 		log(LogLevel.Error, `[ServerMessage:${messageData.actionType}]`, messageData.errorMessage)();
 		let resolutionStrategy: ResolutionStrategy = 'returnToInitial';
 
+		if(messageData.actionType === 'HostRoom' && messageData.errorMessage.startsWith('The room name')) {
+			resolutionStrategy = 'displayOnInput';
+		}
+
 		if(messageData.actionType === 'JoinRoom') {
 			resolutionStrategy = 'stayOnCurrentView';
 		}

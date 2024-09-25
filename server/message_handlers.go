@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/cowatch/logger"
@@ -154,6 +155,24 @@ func AttemptReconnectionHandler(client *Client, manager *Manager, clientRequest 
 
 func HostRoomHandler(client *Client, manager *Manager, clientRequest string) []DirectedServerMessage {
 	serverResponses := make([]DirectedServerMessage, 0, 1)
+
+	var requestRoomSettings RoomSettings
+	errorParsingMessage := json.Unmarshal([]byte(clientRequest), &requestRoomSettings)
+	if errorParsingMessage != nil {
+		logger.Error("[%s] [HostRoom] Client sent bad json object: %s\n", client.PrivateToken, errorParsingMessage)
+		serverResponses = append(serverResponses, DirectedServerMessage{
+			token: client.PrivateToken,
+			message: ServerMessage{
+				MessageType:    ServerMessageTypeHostRoom,
+				MessageDetails: nil,
+				Status:         ServerMessageStatusError,
+				ErrorMessage:   ServerErrorMessageBadJson,
+			},
+		})
+
+		return serverResponses
+	}
+
 	if client == nil || manager == nil {
 		logger.Error("[Unspecified] [HostRoom] Failed to specify a client or manager for the current host room handler.\n")
 		return []DirectedServerMessage{
@@ -173,7 +192,53 @@ func HostRoomHandler(client *Client, manager *Manager, clientRequest string) []D
 		serverResponses = append(serverResponses, manager.disconnectClientFromRoom(client)...)
 	}
 
-	room, errNewRoom := NewRoom(manager.GenerateUniqueRoomID(), client)
+	requestRoomSettings.Name = strings.Trim(requestRoomSettings.Name, " ")
+	if len(requestRoomSettings.Name) < 3 {
+		logger.Warn("[%s] [HostRoom] Expected room name to be > 3 chars but got %q %d\n", client.PrivateToken, requestRoomSettings.Name, len(requestRoomSettings.Name))
+		return []DirectedServerMessage{
+			{
+				token: client.PrivateToken,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeHostRoom,
+					MessageDetails: nil,
+					Status:         ServerMessageStatusError,
+					ErrorMessage:   ServerErrorMessageShortRoomName,
+				},
+			},
+		}
+	}
+
+	if len(requestRoomSettings.Name) > 50 {
+		logger.Warn("[%s] [HostRoom] Expected room name to be < 50 chars but got %q %d\n", client.PrivateToken, requestRoomSettings.Name, len(requestRoomSettings.Name))
+		return []DirectedServerMessage{
+			{
+				token: client.PrivateToken,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeHostRoom,
+					MessageDetails: nil,
+					Status:         ServerMessageStatusError,
+					ErrorMessage:   ServerErrorMessageLongRoomName,
+				},
+			},
+		}
+	}
+
+	if len(requestRoomSettings.Name) == 0 {
+		logger.Warn("[%s] [HostRoom] Expected room name to be > 3 chars but got %q %d\n", client.PrivateToken, requestRoomSettings.Name, len(requestRoomSettings.Name))
+		return []DirectedServerMessage{
+			{
+				token: client.PrivateToken,
+				message: ServerMessage{
+					MessageType:    ServerMessageTypeHostRoom,
+					MessageDetails: nil,
+					Status:         ServerMessageStatusError,
+					ErrorMessage:   ServerErrorMessageLongRoomName,
+				},
+			},
+		}
+	}
+
+	room, errNewRoom := NewRoom(manager.GenerateUniqueRoomID(), client, requestRoomSettings)
 	if errNewRoom != nil {
 		logger.Error("[%s] [HostRoom] Failed to create a room: %s\n", client.PrivateToken, errNewRoom)
 		return []DirectedServerMessage{

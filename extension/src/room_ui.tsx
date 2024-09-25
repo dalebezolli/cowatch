@@ -66,13 +66,14 @@ function Cowatch() {
 	const [hidden, setHidden] = useState(true);
 	const [open, setOpen] = useState(true);
 	const [errors, setErrors] = useState<string[]>([]);
+	const [hostError, setHostError] = useState<string>();
 	const [contentStatus, setContentStatus] = useState<CowatchStatus>(CowatchStatus.Home);
 	const [roomStartDate, setRoomStartDate] = useState<Date>(new Date());
-	const [roomName, setRoomName] = useState<string>('Really long name');
 	const [roomState, setRoomState] = useState<Room>({
 		roomID: '',
 		host: null,
 		viewers: [],
+		settings: { name: '' },
 	});
 
 	const [clientState, setClientState] = useState<Client>({ name: '', image: '', publicToken: '' });
@@ -98,6 +99,12 @@ function Cowatch() {
 	}
 
 	function handleConnectionError(connectionError: ConnectionError) {
+		log(LogLevel.Info, 'Manage ui error:', connectionError)();
+		if(connectionError.resolutionStrategy === 'displayOnInput' && connectionError.actionType === 'HostRoom') {
+			setHostError(connectionError.error);
+			return;
+		}
+
 		setErrors(prevError => {
 			if(connectionError.error === prevError[prevError.length - 1]) {
 				return prevError;
@@ -198,8 +205,8 @@ function Cowatch() {
 				font-sans text-neutral-100
 				overflow-clip
 			'>
-				<CowatchHeader isConnected={contentStatus === CowatchStatus.Connected} roomTitle={roomName} roomStartDate={roomStartDate} onPressClose={toggleClose} />
-				<CowatchContent room={roomState} client={clientState} status={contentStatus} onChangeStatus={setContentStatus} />
+				<CowatchHeader isConnected={contentStatus === CowatchStatus.Connected} roomTitle={roomState.settings.name} roomStartDate={roomStartDate} onPressClose={toggleClose} />
+				<CowatchContent room={roomState} client={clientState} status={contentStatus} onChangeStatus={setContentStatus} hostError={hostError} />
 			</section>
 		);
 	}
@@ -323,10 +330,11 @@ export type CowatchContentProps = {
 	room: Room,
 	client: Client,
 	status: CowatchStatus,
+	hostError: string,
 	onChangeStatus: (status: CowatchStatus) => void,
 };
 
-function CowatchContent({ room, client, status, onChangeStatus }: CowatchContentProps) {
+function CowatchContent({ room, client, status, hostError, onChangeStatus }: CowatchContentProps) {
 	let selectedContent: React.ReactElement;
 
 	function onRequestDisconnect() {
@@ -349,10 +357,8 @@ function CowatchContent({ room, client, status, onChangeStatus }: CowatchContent
 		case CowatchStatus.HostOptions:
 			selectedContent = <CowatchContentHostOptions
 				client={client}
-				onHost={() => {
-					onChangeStatus(CowatchStatus.Loading);
-					triggerClientMessage('HostRoom', {});
-				}}
+				hostError={hostError}
+				onHost={(name) => triggerClientMessage('HostRoom', { name })}
 				onBack={() => onChangeStatus(CowatchStatus.Home)}
 			/>;
 			break;
@@ -439,11 +445,29 @@ function CowatchContentSwitchTab({ onSwitchActiveTab }: CowatchContentSwitchTabP
 
 type CowatchContentHostOptionsProps = {
 	client: Client,
+	hostError: string,
 	onHost: (roomName: string) => void,
 	onBack: () => void,
 }
 
-function CowatchContentHostOptions({ client, onHost, onBack }: CowatchContentHostOptionsProps) {
+function CowatchContentHostOptions({ client, hostError, onHost, onBack }: CowatchContentHostOptionsProps) {
+	const [error, setError] = useState<string>('');
+
+	function onAttemptHost(input: string) {
+		if(input.trim().length < 3) {
+			setError('The room name must be 3 characters or more.');
+			return;
+		}
+
+		if(input.trim().length > 50) {
+			setError('The room name must be 50 characters or less.');
+			return;
+		}
+
+		setError('');
+		onHost(input.trim());
+	}
+
 	return (
 		<section className='box-border h-full pt-[64px] pb-[16px] flex gap-[24px] flex-col justify-start items-center'>
 			<div className='flex gap-[8px] items-center'>
@@ -451,7 +475,7 @@ function CowatchContentHostOptions({ client, onHost, onBack }: CowatchContentHos
 				<p className='text-[1.6rem]'>Tell me the name of your room</p>
 			</div>
 
-			<Input placeholder='Really cool study session' onButtonClick={onHost} withButton={true} buttonText='Host' icon={SVGIcon.Group} />
+			<Input placeholder='Really cool study session' error={hostError || error} onButtonClick={onAttemptHost} withButton={true} buttonText='Host' icon={SVGIcon.Group} />
 
 			<div className='w-full mt-auto px-[0.8rem] flex justify-end'>
 				<Button text='Go Back' style={ButtonStyle.transparent} onClick={onBack} />
@@ -810,10 +834,10 @@ function Input({input, placeholder, withButton, buttonText, icon, error, onButto
 						flex-grow
 
 						text-[1.4rem] placeholder:text-[1.4rem]
-						border rounded-l-full ${!withButton ? 'rounded-r-full' : 'border-r-transparent'}
+						border rounded-l-full ${!withButton ? 'rounded-r-full' : ''}
 						${ !error ?
-							'bg-transparent text-neutral-100 placeholder:text-neutral-500 border-neutral-600' :
-							'bg-red-950 text-red-500 border border-red-600'
+							'bg-transparent text-neutral-100 placeholder:text-neutral-500 border-neutral-700' :
+							'bg-red-950 text-red-500 border border-red-800'
 						}
 					`}
 					ref={inputRef}
@@ -880,7 +904,7 @@ function Icon({ icon, size, color, className }: IconProps) {
 		case SVGIcon.XMark:
 			domIcon = (
 				<svg className={className} viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
-					<path d='M6.7583 17.2426L12.0009 12M12.0009 12L17.2435 6.75735M12.0009 12L6.7583 6.75735M12.0009 12L17.2435 17.2426' fill='none' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round' />
+					<path d='M6.7583 17.2426L12.0009 12M12.0009 12L17.2435 6.75735M12.0009 12L6.7583 6.75735M12.0009 12L17.2435 17.2426' stroke='white' fill='none' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round' />
 				</svg>
 			);
 			break;
@@ -979,7 +1003,7 @@ function Icon({ icon, size, color, className }: IconProps) {
 		case SVGIcon.Copy:
 			domIcon = (
 				<svg className={className} viewBox="0 0 24 24">
-					<g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5">
+					<g fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">
 						<path fill="none" d="M22.2 23H8.8a.8.8 0 0 1-.8-.8V8.8c0-.4.4-.8.8-.8h13.4c.4 0 .8.4.8.8v13.4c0 .4-.4.8-.8.8Z"/>
 						<path fill="none" d="M16 7.8v-6c0-.4-.4-.8-.8-.8H1.8c-.4 0-.8.4-.8.8v13.4c0 .4.4.8.8.8h6"/>
 					</g>
@@ -989,9 +1013,9 @@ function Icon({ icon, size, color, className }: IconProps) {
 		case SVGIcon.Connected:
 			domIcon = (
 				<svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<path d="M6.5 14C7.32845 14 8 13.3284 8 12.5C8 11.6716 7.32845 11 6.5 11C5.67155 11 5 11.6716 5 12.5C5 13.3284 5.67155 14 6.5 14Z" fill="#0BE147" stroke="#0BE147" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-					<path d="M11 7C11 7 13 9.0625 13 12.5C13 15.9375 11 18 11 18" stroke="#0BE147" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-					<path d="M17 2C17 2 20 5.75 20 12.5C20 19.25 17 23 17 23" stroke="#0BE147" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+					<path d="M6.5 14C7.32845 14 8 13.3284 8 12.5C8 11.6716 7.32845 11 6.5 11C5.67155 11 5 11.6716 5 12.5C5 13.3284 5.67155 14 6.5 14Z" fill="#0BE147" stroke="#0BE147" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+					<path d="M11 7C11 7 13 9.0625 13 12.5C13 15.9375 11 18 11 18" stroke="#0BE147" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+					<path d="M17 2C17 2 20 5.75 20 12.5C20 19.25 17 23 17 23" stroke="#0BE147" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
 				</svg>
 			);
 			break;

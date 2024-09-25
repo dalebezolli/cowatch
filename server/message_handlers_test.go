@@ -404,7 +404,7 @@ func TestUpdateRoomClientsWithLatestChange(t *testing.T) {
 		hostClient := NewClient(mockManager.GenerateToken())
 
 		roomID := mockManager.GenerateUniqueRoomID()
-		testRoom, _ := NewRoom(roomID, hostClient)
+		testRoom, _ := NewRoom(roomID, hostClient, RoomSettings{Name: "Test"})
 
 		receivedChanges := updateRoomClientsWithLatestChanges(*testRoom)
 
@@ -452,7 +452,7 @@ func TestUpdateRoomClientsWithLatestChange(t *testing.T) {
 		viewer2Client := NewClient(mockManager.GenerateToken())
 
 		roomID := mockManager.GenerateUniqueRoomID()
-		testRoom, _ := NewRoom(roomID, hostClient)
+		testRoom, _ := NewRoom(roomID, hostClient, RoomSettings{Name: "Test"})
 
 		testRoom.Viewers = append(testRoom.Viewers, viewer1Client)
 		testRoom.Viewers = append(testRoom.Viewers, viewer2Client)
@@ -522,7 +522,7 @@ func TestJoinRoomHandler(t *testing.T) {
 		mockManager := NewManager(mockConnectionManager)
 
 		mockHost := NewClient(mockManager.GenerateToken())
-		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost)
+		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost, RoomSettings{Name: "Test"})
 		mockManager.RegisterRoom(mockRoom)
 
 		mockViewer := NewClient(mockManager.GenerateToken())
@@ -587,7 +587,7 @@ func TestJoinRoomHandler(t *testing.T) {
 		mockManager := NewManager(mockConnectionManager)
 
 		mockHost := NewClient(mockManager.GenerateToken())
-		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost)
+		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost, RoomSettings{Name: "Test"})
 		mockManager.RegisterRoom(mockRoom)
 		mockRoom.VideoDetails = VideoDetails{
 			Title:           "Title",
@@ -705,7 +705,7 @@ func TestJoinRoomHandler(t *testing.T) {
 		mockManager := NewManager(mockConnectionManager)
 
 		mockHost := NewClient(mockManager.GenerateToken())
-		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost)
+		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost, RoomSettings{Name: "Test"})
 		for i := 0; i < 10; i++ {
 			mockRoom.Viewers = append(mockRoom.Viewers, mockHost)
 		}
@@ -770,7 +770,7 @@ func TestDisconnectRoomHandler(t *testing.T) {
 		mockManager := NewManager(mockConnectionManager)
 
 		mockHost := NewClient(mockManager.GenerateToken())
-		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost)
+		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost, RoomSettings{Name: "Test"})
 		mockManager.RegisterRoom(mockRoom)
 
 		mockViewer := NewClient(mockManager.GenerateToken())
@@ -832,7 +832,7 @@ func TestDisconnectRoomHandler(t *testing.T) {
 		mockManager := NewManager(mockConnectionManager)
 
 		mockHost := NewClient(mockManager.GenerateToken())
-		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost)
+		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost, RoomSettings{Name: "Test"})
 		mockManager.RegisterRoom(mockRoom)
 
 		mockHost.RoomID = mockRoom.RoomID
@@ -874,7 +874,7 @@ func TestDisconnectRoomHandler(t *testing.T) {
 		mockManager := NewManager(mockConnectionManager)
 
 		mockHost := NewClient(mockManager.GenerateToken())
-		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost)
+		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost, RoomSettings{Name: "Test"})
 		mockManager.RegisterRoom(mockRoom)
 
 		mockViewer := NewClient(mockManager.GenerateToken())

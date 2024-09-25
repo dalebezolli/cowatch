@@ -11,11 +11,16 @@ type Room struct {
 	VideoDetails VideoDetails
 	Host         *Client
 	Viewers      []*Client
+	Settings     RoomSettings
+}
+
+type RoomSettings = struct {
+	Name string `json:"name"`
 }
 
 var ErrRoomHasNoHost = errors.New("There's no host for the new room")
 
-func NewRoom(roomID RoomID, host *Client) (*Room, error) {
+func NewRoom(roomID RoomID, host *Client, settings RoomSettings) (*Room, error) {
 	if host == nil {
 		return nil, ErrRoomHasNoHost
 	}
@@ -29,8 +34,9 @@ func NewRoom(roomID RoomID, host *Client) (*Room, error) {
 			SubscriberCount: "",
 			LikeCount:       "",
 		},
-		Host:    host,
-		Viewers: make([]*Client, 0, DEFAULT_ROOM_SIZE),
+		Host:     host,
+		Viewers:  make([]*Client, 0, DEFAULT_ROOM_SIZE),
+		Settings: settings,
 	}, nil
 }
 
@@ -57,9 +63,10 @@ func (room *Room) SaveVideoDetails(vidoeDetails VideoDetails) {
 }
 
 type RoomRecord struct {
-	RoomID  RoomID         `json:"roomID"`
-	Host    ClientRecord   `json:"host"`
-	Viewers []ClientRecord `json:"viewers"`
+	RoomID   RoomID         `json:"roomID"`
+	Host     ClientRecord   `json:"host"`
+	Viewers  []ClientRecord `json:"viewers"`
+	Settings RoomSettings   `json:"settings"`
 }
 
 // Calculates only the necessary data to be sent to a request
@@ -74,9 +81,10 @@ func (room *Room) GetFilteredRoom() RoomRecord {
 	}
 
 	filteredRoom = RoomRecord{
-		RoomID:  room.RoomID,
-		Host:    filteredHost,
-		Viewers: filteredViewers,
+		RoomID:   room.RoomID,
+		Host:     filteredHost,
+		Viewers:  filteredViewers,
+		Settings: room.Settings,
 	}
 
 	return filteredRoom
