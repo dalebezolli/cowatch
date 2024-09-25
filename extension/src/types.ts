@@ -146,7 +146,7 @@ export type ServerMessageDetails = {
 
 export type ServerMessage = {
 	actionType: ServerMessageType,
-	action: string,
+	action: any,
 	status: Status,
 	errorMessage: string,
 };

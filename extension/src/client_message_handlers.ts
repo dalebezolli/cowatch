@@ -33,8 +33,6 @@ const actionList = new Map<ClientMessageType, (action: ClientMessageDetails[Clie
 	['DisconnectRoom', onClientMessageRequestDisconnectRoom],
 	['SendReflection', onClientMessageRequestReflection],
 	['SendVideoDetails', onClientMessageRequestVideoDetails],
-
-	['Ping', onClientMessageRequestPing],
 ]);
 
 export function initializeClientMessageHandlers() {
@@ -69,8 +67,6 @@ async function onClientMessageModuleStatus(action: ClientMessageDetails['ModuleS
 		systemsOk &&= Status.OK === systemOk;
 	}
 
-	systemsOk &&= getState().serverStatus === 'connected';
-
 	log(LogLevel.Info,
 		'Current system statuses:', {
 		...getState().systemStatuses,
@@ -84,20 +80,9 @@ async function onClientMessageModuleStatus(action: ClientMessageDetails['ModuleS
 	const { name, image, publicToken }  = getState().client;
 	triggerCoreAction('SendRoomUIClient', { name, image, publicToken });
 
-	if(!getState().isPrimaryTab) {
-		triggerCoreAction('SendRoomUISystemStatus', {
-			...getState().systemStatuses,
-			clientStatus: getState().clientStatus,
-			serverStatus: getState().serverStatus,
-			isPrimaryTab: getState().isPrimaryTab
-		})
-		return;
-	}
-
-	log(LogLevel.Info, 'Authorizing client.')();
-	if(getState().clientStatus === 'disconnected') {
+	if(getState().clientStatus === 'disconnected' && getState().serverStatus === 'connected') {
+		log(LogLevel.Info, 'Authorizing client.')();
 		triggerClientMessage('Authorize', {});
-		return;
 	}
 
 	triggerCoreAction('SendRoomUISystemStatus', {
@@ -204,41 +189,4 @@ function onClientMessageRequestVideoDetails(action: ClientMessageDetails['SendVi
 	}
 
 	getState().connection!.send(JSON.stringify({ actionType: 'SendVideoDetails', action: JSON.stringify({ ...action }) }));
-}
-
-function onClientMessageRequestPing(action: ClientMessageDetails['Ping']) {
-	if(getState().serverStatus !== 'connected') {
-		log(LogLevel.Error, 'No server connection found!')();
-		return;
-	}
-
-	if(!getState().client) {
-		log(LogLevel.Error, 'No client setup before privileged action, aborting...')();
-		return;
-	}
-
-	getState().pingTimestamp = action.timestamp;
-
-	let worstCaseExpectedResponseTime: number;
-	if(getState().rtt === 0) {
-		worstCaseExpectedResponseTime = 10 * 1000;
-	} else {
-		worstCaseExpectedResponseTime = EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER * getState().rtt;
-	}
-
-	getState().connection!.send(JSON.stringify({ actionType: 'Ping', action: JSON.stringify({ ...action }) }));
-	log(LogLevel.Debug, "Expected response time (ms):", worstCaseExpectedResponseTime)();
-	getState().pingTimeoutId = window.setTimeout(() => {
-		getState().droppedPingRequestCount++;
-		log(LogLevel.Warn, `[Ping] Request ${getState().droppedPingRequestCount} failed to get a response`)();
-
-		if(getState().droppedPingRequestCount >= TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST) {
-			triggerCoreAction('SendError', {
-				error: 'Server could not be reached',
-				actionType: 'Pong',
-				resolutionStrategy: 'returnToInitial'
-			});
-			log(LogLevel.Error, `[Ping] Could not create a connection between the server`)();
-		}
-	}, worstCaseExpectedResponseTime);
 }

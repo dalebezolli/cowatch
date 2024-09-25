@@ -1,35 +1,84 @@
 import { log, LogLevel } from './log';
 import { sleep } from './utils'
-import { ClientState, ResolutionStrategy, ServerMessage, ServerMessageDetails, ServerMessageType, Status } from './types';
+import { ClientState, ResolutionStrategy, ServerMessage, ServerMessageDetails, ServerMessageType, Status, Timestamp } from './types';
 import { triggerCoreAction, triggerClientMessage } from './events';
-import { getState } from './state';
+import { timeStamp } from 'console';
 
-const FAILED_CONNECTION_TOTAL_ATTEMPT = parseInt(process.env.TOTAL_ATTEMPTS);
 const FAILED_CONNECTION_REATTEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
 const COWATCH_OWL_SERVER_WEBSOCKET = `${process.env.ADDRESS_OWL}/${process.env.ENDPOINT_WS_OWL}`;
+const EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER = parseInt(process.env.EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER);
+const TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST = parseInt(process.env.TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST);
 const PING_REQUEST_INTERVAL = parseInt(process.env.PING_REQUEST_INTERVAL);
 
 const eventCallbacks = new Map<ServerMessageType, (action: ServerMessageDetails[ServerMessageType]) => void>();
 
 export async function initializeConnection(clientState: ClientState) {
-	clientState.serverStatus = 'connecting';
+	if(clientState.serverStatus === 'connecting' || clientState.serverStatus === 'connected') return;
 
-	const isConnected = await attemptConnection(clientState);
-	if(!isConnected) {
-		clientState.serverStatus = 'failed';
-		triggerClientMessage('ModuleStatus', { system: 'Connection', status: Status.ERROR});
-		return;
-	}
-
-	log(LogLevel.Info, 'Successfully created connection to server.')();
-	clientState.connection!.addEventListener('message', handleConnectionMessage);
-	clientState.serverStatus = 'connected';
 	triggerClientMessage('ModuleStatus', { system: 'Connection', status: Status.OK});
+	let tenRTTChunk = [];
+	let averageRTT = Infinity;
+	let rtt = Infinity;
 
-	clearInterval(getState().pingRequestIntervalId);
-	getState().pingRequestIntervalId = window.setInterval(() => {
-		triggerClientMessage('Ping', { timestamp: Date.now() });
-	}, PING_REQUEST_INTERVAL * 1000);
+	while(true) {
+		tenRTTChunk = [];
+		averageRTT = Infinity;
+		rtt = Infinity;
+
+		clientState.serverStatus = 'connecting';
+		triggerClientMessage('ModuleStatus', { system: 'Connection', status: Status.OK});
+
+		log(LogLevel.Info, 'Successfully established connection to server.')();
+		let connection = await attemptConnection();
+
+		clientState.serverStatus = 'connected';
+		clientState.connection = connection;
+		clientState.connection.addEventListener('message', handleConnectionMessage);
+
+		triggerClientMessage('ModuleStatus', { system: 'Connection', status: Status.OK});
+
+		let droppedRequests = 0;
+		while(droppedRequests < TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST && clientState.serverStatus === 'connected') {
+			let startTime = Date.now();
+			clientState.connection.send(JSON.stringify({ actionType: 'Ping', action: JSON.stringify({ timeStamp: startTime }) }));
+			log(LogLevel.Info, `[Ping] Pinging server`)();
+
+			let pongResponse = await new Promise<{ status: Status, endTime: Timestamp }>((resolve, _) => {
+				let timeout = 0;
+				clientState.connection.addEventListener('message', event => {
+					const messageData = JSON.parse(event.data) as ServerMessage;
+					if(messageData.actionType !== 'Pong') return;
+
+					const details = messageData.action as ServerMessageDetails[typeof messageData.actionType];
+
+					clearTimeout(timeout);
+					resolve({status: Status.OK, endTime: details.timestamp });
+				});
+
+				timeout = window.setTimeout(() => {
+					return resolve({ status: Status.ERROR, endTime: Infinity });
+				}, EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER * ((averageRTT === Infinity) ? 1000 : averageRTT));
+			});
+
+			log(LogLevel.Debug, 'Status:', pongResponse)();
+			if(pongResponse.status === Status.ERROR) {
+				log(LogLevel.Warn, `[Ping] Failed to get a pong response in time (failed ${droppedRequests + 1} times)`)();
+				droppedRequests++;
+				continue;
+			}
+
+			droppedRequests = 0;
+			rtt = Math.abs(pongResponse.endTime - startTime);
+
+			tenRTTChunk.push(rtt);
+			if(tenRTTChunk.length > 10) tenRTTChunk.shift();
+			averageRTT = Math.round(tenRTTChunk.reduce((acc, curr) => acc + curr, 0) / tenRTTChunk.length);
+
+			log(LogLevel.Debug, 'RTT:', {rtt, averageRTT, tenRTTChunk})();
+
+			await sleep(PING_REQUEST_INTERVAL * 1000);
+		}
+	}
 }
 
 export function onConnectionMessage(messageType: ServerMessageType, messageCallback: (action: ServerMessageDetails[ServerMessageType]) => void){
@@ -65,15 +114,18 @@ function handleConnectionMessage(event: MessageEvent<string>) {
 	}
 	
 	const eventDetails = messageData.action as ServerMessageDetails[typeof messageData.actionType];
-	eventCallbacks.get(messageData.actionType)(eventDetails);
+	let callback = eventCallbacks.get(messageData.actionType);
+
+	if(callback == null) return;
+	callback(eventDetails);
 }
 
-async function attemptConnection(clientState: ClientState): Promise<boolean> {
-	let connection: WebSocket | null = null;
+async function attemptConnection(): Promise<WebSocket> {
+	let connection: WebSocket = null;
 	let isConnected = false;
 	let connectionAttempt = 0;
 
-	while(connectionAttempt < FAILED_CONNECTION_TOTAL_ATTEMPT && !isConnected) {
+	while(!isConnected) {
 		log(LogLevel.Info, `Attempting to establish connnection to server (Attempt ${connectionAttempt + 1})`)();
 
 		try {
@@ -91,6 +143,5 @@ async function attemptConnection(clientState: ClientState): Promise<boolean> {
 		}
 	}
 
-	clientState.connection = connection;
-	return isConnected;
+	return connection;
 }

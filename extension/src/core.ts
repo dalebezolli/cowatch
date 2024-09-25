@@ -31,6 +31,8 @@ async function onStartup() {
 				isShowingTruePage: getState().isShowingTruePage,
 				videoId: getState().videoId,
 			});
+
+			return;
 		}
 
 		initializeConnection(getState());
@@ -38,11 +40,7 @@ async function onStartup() {
 	browser.runtime.sendMessage({ action: 'GetCurrentID' });
 
 	log(LogLevel.Info, 'Creating Cowatch Server Connection...')();
-	await initializeConnection(getState());
-	if(getState().serverStatus !== 'connected') {
-		log(LogLevel.Error, 'Failed to establish connection with the server. Either the service is down or you\'re running an outdated version of the extension.')();
-		return;
-	}
+	initializeConnection(getState());
 
 	log(LogLevel.Info, 'Injecting room ui...')();
 	injectRoomUI();
@@ -71,6 +69,7 @@ function injectRoomUI() {
 	domScriptRoomUI.src = browser.runtime.getURL('./room_ui.js');
 	domScriptRoomUI.defer = true;
 	document.head.append(domScriptRoomUI);
+	log(LogLevel.Info, 'Testing...')();
 
 	const domLinkCSSRoomUI = document.createElement('link');
 	domLinkCSSRoomUI.href = browser.runtime.getURL('./room_ui.css');

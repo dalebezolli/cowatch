@@ -17,7 +17,6 @@ const actionList = new Map<ServerMessageType, (action: ServerMessageDetails[Serv
 	['DisconnectRoom', onConnectionResponseDisconnectRoom],
 	['ReflectRoom', onConnectionResponseReflectRoom],
 	['ReflectVideoDetails', onConnectionResponseReflectVideoDetails],
-	['Pong', onConnectionResponsePong],
 ]);
 
 export function initializeConnectionMessages() {
@@ -93,6 +92,9 @@ function onConnectionResponseDisconnectRoom() {
 		roomID: '',
 		host: null,
 		viewers: [],
+		settings: {
+			name: '',
+		},
 	};
 	getState().isShowingTruePage = true;
 
@@ -120,14 +122,4 @@ function onConnectionResponseReflectRoom(action: ServerMessageDetails['ReflectRo
 function onConnectionResponseReflectVideoDetails(action: ServerMessageDetails['ReflectVideoDetails']) {
 	if(getState().clientStatus != 'viewer') return;
 	triggerCoreAction('UpdateDetails', action);
-}
-
-function onConnectionResponsePong(action: ServerMessageDetails['Pong']) {
-	getState().rtt = Math.abs(action.timestamp - getState().pingTimestamp);
-	clearTimeout(getState().pingTimeoutId);
-
-	getState().pingTimestamp = 0;
-	getState().pingTimeoutId = 0;
-	getState().droppedPingRequestCount = 0;
-	log(LogLevel.Info, `RTT: ${getState().rtt}`)();
 }

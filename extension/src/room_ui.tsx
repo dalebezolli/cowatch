@@ -150,7 +150,6 @@ function Cowatch() {
 	}
 
 	function handleSendSystemStatus(status: RoomUISystemStatus) {
-		setHidden(false);
 		log(LogLevel.Info, 'Managing system status:', status)();
 		let ok = true;
 
@@ -163,20 +162,23 @@ function Cowatch() {
 			handleError('Internal System Error.');
 			return;
 		}
+		log(LogLevel.Info, 'Modules injected...')();
 
+		setHidden(false);
 		ok &&= status.isPrimaryTab;
 		if(!ok) {
 			setContentStatus(CowatchStatus.NotPrimaryTab);
 			return;
 		}
+		log(LogLevel.Info, 'Tab is primary...')();
 
 		ok &&= status.serverStatus == 'connected';
-		ok &&= status.clientStatus != 'disconnected';
 		if(!ok) {
 			log(LogLevel.Error, 'Client not connected yet', status)();
 			setContentStatus(CowatchStatus.Disconnected);
 			return;
 		}
+		log(LogLevel.Info, 'Client established connection with server')();
 
 		log(LogLevel.Info, 'Client connected and ready. Displaying UI...', status)();
 		setContentStatus(CowatchStatus.Home);

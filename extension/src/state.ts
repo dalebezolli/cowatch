@@ -10,7 +10,7 @@ export function initializeState() {
 			PlayerInterceptor: Status.ERROR,
 			Connection: Status.ERROR,
 		},
-		serverStatus: 'connecting',
+		serverStatus: 'failed',
 		clientStatus: 'disconnected',
 		connection: null,
 
