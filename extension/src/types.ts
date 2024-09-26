@@ -63,6 +63,12 @@ export type ConnectionError = {
 	resolutionStrategy: ResolutionStrategy,
 };
 
+export type ConnectionStatus = {
+	connection: ServerStatus,
+	latestPing: number,
+	averagePing: number,
+};
+
 export type System = 'RoomUI' | 'PlayerInterceptor' | 'ClientCollector' | 'Connection';
 export type RoomUISystemStatus = {
 		[T in System]: Status;
@@ -115,6 +121,7 @@ export type CoreActionDetails = {
 	'SendRoomUIClient': Client,
 	'SendRoomUISystemStatus': RoomUISystemStatus,
 	'SendRoomUIUpdateRoom': RoomUIRoomDetails,
+	'SendRoomUIPingDetails': ConnectionStatus,
 
 	'SendPlayerInterceptorClientStatus': PlayerInterceptorClientStatus,
 

@@ -12,8 +12,6 @@ import { LogLevel, log } from "./log";
 import { getState } from "./state";
 import { Status, ClientMessageDetails, ClientMessageType } from "./types";
 
-const EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER = parseInt(process.env.EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER);
-const TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST = parseInt(process.env.TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST);
 const LOCALSTORAGE_PRIVATETOKEN_KEY = 'cowatch_token';
 
 /**

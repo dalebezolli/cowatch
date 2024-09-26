@@ -1,12 +1,12 @@
 import * as browser from 'webextension-polyfill';
 
-
 import { LogLevel, log } from './log';
 import { getState, initializeState } from './state';
 import { initializeConnection } from './connection';
 import { initializeConnectionMessages } from './connection_messages';
 import { initializeClientMessageHandlers } from './client_message_handlers';
-import { triggerCoreAction } from './events';
+import { triggerClientMessage, triggerCoreAction } from './events';
+import { Status } from './types';
 
 onStartup();
 
@@ -24,6 +24,7 @@ async function onStartup() {
 
 		if(!message.isActive) {
 			getState().clientStatus = 'disconnected';
+			getState().serverStatus = 'failed';
 			clearInterval(getState().pingRequestIntervalId);
 			triggerCoreAction('SendPlayerInterceptorClientStatus', {
 				clientStatus: getState().clientStatus,
@@ -31,16 +32,14 @@ async function onStartup() {
 				isShowingTruePage: getState().isShowingTruePage,
 				videoId: getState().videoId,
 			});
-
-			return;
 		}
 
-		initializeConnection(getState());
+		if(getState().serverStatus === 'failed') {
+			log(LogLevel.Info, 'Creating Cowatch Server Connection...')();
+			initializeConnection(getState());
+		}
 	});
 	browser.runtime.sendMessage({ action: 'GetCurrentID' });
-
-	log(LogLevel.Info, 'Creating Cowatch Server Connection...')();
-	initializeConnection(getState());
 
 	log(LogLevel.Info, 'Injecting room ui...')();
 	injectRoomUI();

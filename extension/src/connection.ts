@@ -2,34 +2,32 @@ import { log, LogLevel } from './log';
 import { sleep } from './utils'
 import { ClientState, ResolutionStrategy, ServerMessage, ServerMessageDetails, ServerMessageType, Status, Timestamp } from './types';
 import { triggerCoreAction, triggerClientMessage } from './events';
-import { timeStamp } from 'console';
 
 const FAILED_CONNECTION_REATTEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
 const COWATCH_OWL_SERVER_WEBSOCKET = `${process.env.ADDRESS_OWL}/${process.env.ENDPOINT_WS_OWL}`;
 const EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER = parseInt(process.env.EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER);
+const MAX_PING_TIMEOUT_MS = 3000;
 const TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST = parseInt(process.env.TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST);
 const PING_REQUEST_INTERVAL = parseInt(process.env.PING_REQUEST_INTERVAL);
 
 const eventCallbacks = new Map<ServerMessageType, (action: ServerMessageDetails[ServerMessageType]) => void>();
 
 export async function initializeConnection(clientState: ClientState) {
+	log(LogLevel.Info, 'Attempting to initialize server connection.', clientState)();
 	if(clientState.serverStatus === 'connecting' || clientState.serverStatus === 'connected') return;
 
-	triggerClientMessage('ModuleStatus', { system: 'Connection', status: Status.OK});
 	let tenRTTChunk = [];
-	let averageRTT = Infinity;
-	let rtt = Infinity;
+	let averageRTT = -1;
+	let rtt = -1;
 
-	while(true) {
+	while(clientState.isPrimaryTab) {
 		tenRTTChunk = [];
-		averageRTT = Infinity;
-		rtt = Infinity;
-
+		averageRTT = -1;
+		rtt = -1;
 		clientState.serverStatus = 'connecting';
-		triggerClientMessage('ModuleStatus', { system: 'Connection', status: Status.OK});
 
-		log(LogLevel.Info, 'Successfully established connection to server.')();
 		let connection = await attemptConnection();
+		log(LogLevel.Info, 'Successfully established connection to server.')();
 
 		clientState.serverStatus = 'connected';
 		clientState.connection = connection;
@@ -41,7 +39,7 @@ export async function initializeConnection(clientState: ClientState) {
 		while(droppedRequests < TOTAL_DROPPED_PING_REQUESTS_BEFORE_CONNECTION_LOST && clientState.serverStatus === 'connected') {
 			let startTime = Date.now();
 			clientState.connection.send(JSON.stringify({ actionType: 'Ping', action: JSON.stringify({ timeStamp: startTime }) }));
-			log(LogLevel.Info, `[Ping] Pinging server`)();
+			log(LogLevel.Info, `[Ping] ${startTime}`)();
 
 			let pongResponse = await new Promise<{ status: Status, endTime: Timestamp }>((resolve, _) => {
 				let timeout = 0;
@@ -56,13 +54,13 @@ export async function initializeConnection(clientState: ClientState) {
 				});
 
 				timeout = window.setTimeout(() => {
-					return resolve({ status: Status.ERROR, endTime: Infinity });
-				}, EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER * ((averageRTT === Infinity) ? 1000 : averageRTT));
+					return resolve({ status: Status.ERROR, endTime: -1 });
+				}, getPongTimeout(averageRTT));
 			});
 
-			log(LogLevel.Debug, 'Status:', pongResponse)();
+			log(LogLevel.Info, `[Pong] ${pongResponse?.endTime ?? -1}`)();
 			if(pongResponse.status === Status.ERROR) {
-				log(LogLevel.Warn, `[Ping] Failed to get a pong response in time (failed ${droppedRequests + 1} times)`)();
+				log(LogLevel.Warn, `[Ping] Failed to get a pong response before ${getPongTimeout(averageRTT)} (failed ${droppedRequests + 1} times)`)();
 				droppedRequests++;
 				continue;
 			}
@@ -75,10 +73,14 @@ export async function initializeConnection(clientState: ClientState) {
 			averageRTT = Math.round(tenRTTChunk.reduce((acc, curr) => acc + curr, 0) / tenRTTChunk.length);
 
 			log(LogLevel.Debug, 'RTT:', {rtt, averageRTT, tenRTTChunk})();
+			triggerCoreAction('SendRoomUIPingDetails', { connection: clientState.serverStatus, averagePing: averageRTT, latestPing: rtt });
 
 			await sleep(PING_REQUEST_INTERVAL * 1000);
 		}
 	}
+
+	clientState.serverStatus = 'failed';
+	triggerClientMessage('ModuleStatus', { system: 'Connection', status: Status.OK});
 }
 
 export function onConnectionMessage(messageType: ServerMessageType, messageCallback: (action: ServerMessageDetails[ServerMessageType]) => void){
@@ -144,4 +146,8 @@ async function attemptConnection(): Promise<WebSocket> {
 	}
 
 	return connection;
+}
+
+function getPongTimeout(avgRTT: number): number {
+	return Math.max(EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER * avgRTT, MAX_PING_TIMEOUT_MS);
 }

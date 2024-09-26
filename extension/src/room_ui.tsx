@@ -5,7 +5,7 @@ import './room_ui.css';
 
 import { LogLevel, log } from './log';
 import { onCoreAction, triggerClientMessage } from './events';
-import { Room, Client, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails, ServerStatus } from './types';
+import { Room, Client, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails, ServerStatus, ConnectionStatus } from './types';
 import { sleep } from './utils';
 
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
@@ -68,6 +68,7 @@ function Cowatch() {
 	const [errors, setErrors] = useState<string[]>([]);
 	const [hostError, setHostError] = useState<string>();
 	const [contentStatus, setContentStatus] = useState<CowatchStatus>(CowatchStatus.Home);
+	const [pingDetails, setPingDetails] = useState<ConnectionStatus>({ connection: 'connecting', latestPing: 0, averagePing: 0 });
 	const [roomStartDate, setRoomStartDate] = useState<Date>(new Date());
 	const [roomState, setRoomState] = useState<Room>({
 		roomID: '',
@@ -80,6 +81,7 @@ function Cowatch() {
 
 	useEffect(() => {
 		onCoreAction('SendRoomUIClient', handleSendClient);
+		onCoreAction('SendRoomUIPingDetails', handleConnectionStatus);
 		onCoreAction('SendRoomUISystemStatus', handleSendSystemStatus);
 		onCoreAction('SendRoomUIUpdateRoom', handleUpdateRoom);
 		onCoreAction('SendError', handleConnectionError);
@@ -149,6 +151,11 @@ function Cowatch() {
 		setClientState(client);
 	}
 
+	function handleConnectionStatus(status: ConnectionStatus) {
+		setPingDetails(status);
+	}
+
+
 	function handleSendSystemStatus(status: RoomUISystemStatus) {
 		log(LogLevel.Info, 'Managing system status:', status)();
 		let ok = true;
@@ -173,6 +180,7 @@ function Cowatch() {
 		log(LogLevel.Info, 'Tab is primary...')();
 
 		ok &&= status.serverStatus == 'connected';
+		ok &&= status.clientStatus == 'disconnected' || status.clientStatus == 'innactive';
 		if(!ok) {
 			log(LogLevel.Error, 'Client not connected yet', status)();
 			setContentStatus(CowatchStatus.Disconnected);
@@ -208,7 +216,7 @@ function Cowatch() {
 				overflow-clip
 			'>
 				<CowatchHeader isConnected={contentStatus === CowatchStatus.Connected} roomTitle={roomState.settings.name} roomStartDate={roomStartDate} onPressClose={toggleClose} />
-				<CowatchContent room={roomState} client={clientState} status={contentStatus} onChangeStatus={setContentStatus} hostError={hostError} />
+				<CowatchContent room={roomState} client={clientState} status={contentStatus} pingDetails={pingDetails} onChangeStatus={setContentStatus} hostError={hostError} />
 			</section>
 		);
 	}
@@ -333,10 +341,11 @@ export type CowatchContentProps = {
 	client: Client,
 	status: CowatchStatus,
 	hostError: string,
+	pingDetails: ConnectionStatus, 
 	onChangeStatus: (status: CowatchStatus) => void,
 };
 
-function CowatchContent({ room, client, status, hostError, onChangeStatus }: CowatchContentProps) {
+function CowatchContent({ room, client, status, hostError, pingDetails, onChangeStatus }: CowatchContentProps) {
 	let selectedContent: React.ReactElement;
 
 	function onRequestDisconnect() {
@@ -379,7 +388,7 @@ function CowatchContent({ room, client, status, hostError, onChangeStatus }: Cow
 			// selectedContent = <CowatchContentOptions />;
 			break;
 		case CowatchStatus.Connected:
-			selectedContent = <CowatchContentConnected client={client} room={room} onDisconnect={onRequestDisconnect} onSettings={onSettings} />;
+			selectedContent = <CowatchContentConnected client={client} room={room} pingDetails={pingDetails} onDisconnect={onRequestDisconnect} onSettings={onSettings} />;
 			break;
 		case CowatchStatus.NotPrimaryTab:
 			selectedContent = <CowatchContentSwitchTab
@@ -389,7 +398,7 @@ function CowatchContent({ room, client, status, hostError, onChangeStatus }: Cow
 		case CowatchStatus.Disconnected:
 			selectedContent = (
 				<section className='box-border h-full py-[64px] flex gap-[24px] flex-col justify-start items-center'>
-					<p className='text-[1.6rem]'>Failed to reach server...</p>
+					<p className='text-[1.6rem]'>Connecting to server</p>
 				</section>
 			);
 			break;
@@ -512,11 +521,12 @@ function CowatchContentJoinOptions({ client, onJoin, onBack }: CowatchContentJoi
 type CowatchContentConnectedProps = {
 	client: Client,
 	room: Room,
+	pingDetails: ConnectionStatus,
 	onDisconnect: () => void,
 	onSettings: () => void,
 };
 
-function CowatchContentConnected({ client, room, onDisconnect, onSettings }: CowatchContentConnectedProps) {
+function CowatchContentConnected({ client, room, pingDetails, onDisconnect, onSettings }: CowatchContentConnectedProps) {
 	return (
 		<section className='h-full flex flex-col'>
 			<ul className='w-full grow overflow-y-scroll'>
@@ -533,7 +543,11 @@ function CowatchContentConnected({ client, room, onDisconnect, onSettings }: Cow
 				}
 			</ul>
 
-			<ConnectedActionHUD client={client} room={room} connectionStatus={{ status: 'connected', avgPing: 32, latestPing: 305 }} onDisconnect={onDisconnect} />
+			<ConnectedActionHUD
+				client={client} room={room}
+				connectionStatus={{ status: pingDetails.connection, avgPing: pingDetails.averagePing, latestPing: pingDetails.latestPing }}
+				onDisconnect={onDisconnect}
+			/>
 		</section>
 	);
 }
@@ -618,13 +632,13 @@ function ConnectedActionHUD({client, room, connectionStatus, onDisconnect}: Conn
 							<p className='text-[1.4rem] text-neutral-400'>
 								Latest Ping:&nbsp;
 								<span className={`text-[1.4rem] ${latestPingColor}`}>
-									{connectionStatus.latestPing ? connectionStatus.latestPing + 'ms' : '---'}
+									{connectionStatus.status === 'connected' ? connectionStatus.latestPing + 'ms' : '---'}
 								</span>
 							</p>
 							<p className='text-[1.4rem] text-neutral-400'>
 								Average Ping:&nbsp;
 								<span className={`text-[1.4rem] ${avgPingColor}`}>
-									{connectionStatus.avgPing ? connectionStatus.avgPing + 'ms' : '---'}
+									{connectionStatus.status === 'connected' ? connectionStatus.avgPing + 'ms' : '---'}
 								</span>
 							</p>
 						</div>
