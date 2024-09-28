@@ -8,6 +8,7 @@ import { onCoreAction, triggerClientMessage } from './events';
 import { Room, Client, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails, ServerStatus, ConnectionStatus } from './types';
 import { sleep } from './utils';
 import { transcode } from 'buffer';
+import { join } from 'path';
 
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
 const FAILED_INITIALIZATION_REATEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
@@ -68,6 +69,7 @@ function Cowatch() {
 	const [open, setOpen] = useState(true);
 	const [errors, setErrors] = useState<string[]>([]);
 	const [hostError, setHostError] = useState<string>();
+	const [joinError, setJoinError] = useState<string>();
 	const [contentStatus, setContentStatus] = useState<CowatchStatus>(CowatchStatus.Home);
 	const [pingDetails, setPingDetails] = useState<ConnectionStatus>({ connection: 'connecting', latestPing: 0, averagePing: 0 });
 	const [roomStartDate, setRoomStartDate] = useState<Date>(new Date());
@@ -105,6 +107,11 @@ function Cowatch() {
 		log(LogLevel.Info, 'Manage ui error:', connectionError)();
 		if(connectionError.resolutionStrategy === 'displayOnInput' && connectionError.actionType === 'HostRoom') {
 			setHostError(connectionError.error);
+			return;
+		}
+
+		if(connectionError.resolutionStrategy === 'displayOnInput' && connectionError.actionType === 'JoinRoom') {
+			setJoinError(connectionError.error);
 			return;
 		}
 
@@ -217,7 +224,7 @@ function Cowatch() {
 				overflow-clip
 			'>
 				<CowatchHeader isConnected={contentStatus === CowatchStatus.Connected} roomTitle={roomState.settings.name} roomStartDate={roomStartDate} onPressClose={toggleClose} />
-				<CowatchContent room={roomState} client={clientState} status={contentStatus} pingDetails={pingDetails} onChangeStatus={setContentStatus} hostError={hostError} />
+				<CowatchContent room={roomState} client={clientState} status={contentStatus} pingDetails={pingDetails} onChangeStatus={setContentStatus} hostError={hostError} joinError={joinError} />
 			</section>
 		);
 	}
@@ -342,11 +349,12 @@ export type CowatchContentProps = {
 	client: Client,
 	status: CowatchStatus,
 	hostError: string,
+	joinError: string,
 	pingDetails: ConnectionStatus, 
 	onChangeStatus: (status: CowatchStatus) => void,
 };
 
-function CowatchContent({ room, client, status, hostError, pingDetails, onChangeStatus }: CowatchContentProps) {
+function CowatchContent({ room, client, status, hostError, joinError, pingDetails, onChangeStatus }: CowatchContentProps) {
 	let selectedContent: React.ReactElement;
 
 	function onRequestDisconnect() {
@@ -377,10 +385,8 @@ function CowatchContent({ room, client, status, hostError, pingDetails, onChange
 		case CowatchStatus.JoinOptions:
 			selectedContent = <CowatchContentJoinOptions
 				client={client}
-				onJoin={(roomID) => {
-					onChangeStatus(CowatchStatus.Loading);
-					triggerClientMessage('JoinRoom', { roomID });
-				}}
+				joinError={joinError}
+				onJoin={(roomID) => triggerClientMessage('JoinRoom', { roomID })}
 				onBack={() => onChangeStatus(CowatchStatus.Home)}
 			/>;
 			break;
@@ -498,11 +504,12 @@ function CowatchContentHostOptions({ client, hostError, onHost, onBack }: Cowatc
 
 type CowatchContentJoinOptionsProps = {
 	client: Client,
+	joinError: string,
 	onJoin: (roomID: string) => void,
 	onBack: () => void,
 };
 
-function CowatchContentJoinOptions({ client, onJoin, onBack }: CowatchContentJoinOptionsProps) {
+function CowatchContentJoinOptions({ client, joinError, onJoin, onBack }: CowatchContentJoinOptionsProps) {
 	return (
 		<section className='box-border h-full pt-[64px] pb-[16px] flex gap-[24px] flex-col justify-start items-center'>
 			<div className='flex gap-[8px] items-center'>
@@ -510,7 +517,7 @@ function CowatchContentJoinOptions({ client, onJoin, onBack }: CowatchContentJoi
 				<p className='text-[1.6rem]'>Type room's ID</p>
 			</div>
 
-			<Input placeholder='3o0bZ' onButtonClick={onJoin} onConfirm={onJoin} withButton={true} buttonText='Join' icon={SVGIcon.Eye} />
+			<Input placeholder='3o0bZ' onButtonClick={onJoin} onConfirm={onJoin} error={joinError} withButton={true} buttonText='Join' icon={SVGIcon.Eye}  />
 
 			<div className='w-full mt-auto px-[0.8rem] flex justify-end'>
 				<Button text='Go Back' style={ButtonStyle.transparent} onClick={onBack} />

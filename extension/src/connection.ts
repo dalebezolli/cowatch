@@ -99,8 +99,8 @@ function handleConnectionMessage(event: MessageEvent<string>) {
 			resolutionStrategy = 'displayOnInput';
 		}
 
-		if(messageData.actionType === 'JoinRoom') {
-			resolutionStrategy = 'stayOnCurrentView';
+		if(messageData.actionType === 'JoinRoom' && messageData.errorMessage.startsWith('The room')) {
+			resolutionStrategy = 'displayOnInput';
 		}
 
 		if(messageData.actionType === 'ReflectRoom') {
