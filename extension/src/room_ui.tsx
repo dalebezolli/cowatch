@@ -1,4 +1,4 @@
-import { useEffect, useState, Fragment, useRef, useCallback } from 'react';
+import { useEffect, useState, Fragment, useRef, useCallback, KeyboardEventHandler } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import './room_ui.css';
@@ -487,7 +487,7 @@ function CowatchContentHostOptions({ client, hostError, onHost, onBack }: Cowatc
 				<p className='text-[1.6rem]'>Tell me the name of your room</p>
 			</div>
 
-			<Input placeholder='Really cool study session' error={hostError || error} onButtonClick={onAttemptHost} withButton={true} buttonText='Host' icon={SVGIcon.Group} />
+			<Input placeholder='Really cool study session' error={hostError || error} onButtonClick={onAttemptHost} onConfirm={onAttemptHost} withButton={true} buttonText='Host' icon={SVGIcon.Group} />
 
 			<div className='w-full mt-auto px-[0.8rem] flex justify-end'>
 				<Button text='Go Back' style={ButtonStyle.transparent} onClick={onBack} />
@@ -510,7 +510,7 @@ function CowatchContentJoinOptions({ client, onJoin, onBack }: CowatchContentJoi
 				<p className='text-[1.6rem]'>Type room's ID</p>
 			</div>
 
-			<Input placeholder='3o0bZ' onButtonClick={onJoin} withButton={true} buttonText='Join' icon={SVGIcon.Eye} />
+			<Input placeholder='3o0bZ' onButtonClick={onJoin} onConfirm={onJoin} withButton={true} buttonText='Join' icon={SVGIcon.Eye} />
 
 			<div className='w-full mt-auto px-[0.8rem] flex justify-end'>
 				<Button text='Go Back' style={ButtonStyle.transparent} onClick={onBack} />
@@ -837,11 +837,17 @@ type InputProps = {
 	icon?: SVGIcon,
 	error?: string,
 	onButtonClick?: (input: string) => void,
+	onConfirm?: (input: string) => void,
 };
 
 
-function Input({input, placeholder, withButton, buttonText, icon, error, onButtonClick}: InputProps) {
+function Input({input, placeholder, withButton, buttonText, icon, error, onButtonClick, onConfirm}: InputProps) {
 	const inputRef = useRef<HTMLInputElement>();
+
+	function onHandleCheckConfirm(event: React.KeyboardEvent<HTMLInputElement>) {
+		if(event.key !== 'Enter') return;
+		if(onConfirm) onConfirm(inputRef.current.value);
+	}
 
 	return (
 		<div>
@@ -862,6 +868,7 @@ function Input({input, placeholder, withButton, buttonText, icon, error, onButto
 					`}
 					ref={inputRef}
 					defaultValue={input}
+					onKeyUp={onHandleCheckConfirm}
 				/>
 
 				{ withButton && (
