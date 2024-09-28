@@ -95,6 +95,7 @@ function onConnectionResponseDisconnectRoom() {
 		settings: {
 			name: '',
 		},
+		createdAt: -1,
 	};
 	getState().isShowingTruePage = true;
 

@@ -5,7 +5,7 @@ import './room_ui.css';
 
 import { LogLevel, log } from './log';
 import { onCoreAction, triggerClientMessage } from './events';
-import { Room, Client, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails, ServerStatus, ConnectionStatus } from './types';
+import { Room, Client, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails, ServerStatus, ConnectionStatus, Timestamp } from './types';
 import { sleep } from './utils';
 import { transcode } from 'buffer';
 import { join } from 'path';
@@ -72,12 +72,12 @@ function Cowatch() {
 	const [joinError, setJoinError] = useState<string>();
 	const [contentStatus, setContentStatus] = useState<CowatchStatus>(CowatchStatus.Home);
 	const [pingDetails, setPingDetails] = useState<ConnectionStatus>({ connection: 'connecting', latestPing: 0, averagePing: 0 });
-	const [roomStartDate, setRoomStartDate] = useState<Date>(new Date());
 	const [roomState, setRoomState] = useState<Room>({
 		roomID: '',
 		host: null,
 		viewers: [],
 		settings: { name: '' },
+		createdAt: -1,
 	});
 
 	const [clientState, setClientState] = useState<Client>({ name: '', image: '', publicToken: '' });
@@ -223,7 +223,7 @@ function Cowatch() {
 				font-sans text-neutral-100
 				overflow-clip
 			'>
-				<CowatchHeader isConnected={contentStatus === CowatchStatus.Connected} roomTitle={roomState.settings.name} roomStartDate={roomStartDate} onPressClose={toggleClose} />
+				<CowatchHeader isConnected={contentStatus === CowatchStatus.Connected} roomTitle={roomState.settings.name} roomStartDate={roomState.createdAt} onPressClose={toggleClose} />
 				<CowatchContent room={roomState} client={clientState} status={contentStatus} pingDetails={pingDetails} onChangeStatus={setContentStatus} hostError={hostError} joinError={joinError} />
 			</section>
 		);
@@ -235,7 +235,7 @@ function Cowatch() {
 export type CowatchHeaderProps = {
 	isConnected: boolean,
 	roomTitle?: string,
-	roomStartDate?: Date,
+	roomStartDate?: Timestamp,
 	onPressClose: () => void,
 }
 
@@ -289,14 +289,15 @@ function CowatchHeader({ isConnected, roomTitle, roomStartDate, onPressClose }: 
 		() => clearInterval(timerInterval);
 	}, []);
 
-	let timeDifference = Math.abs(currentDate.getTime() - roomStartDate.getTime());
-	let seconds = Math.floor(timeDifference / 1000);
+	let timeDifference = Math.abs(Math.floor(currentDate.getTime() / 1000) - roomStartDate);
+	let seconds = timeDifference;
 	let minutes = Math.floor(seconds / 60);
 	let hours = Math.floor(minutes / 60);
 
 	let displaySeconds = ((seconds % 60) < 10 ? '0' : '') + seconds % 60;
 	let displayMinutes = ((minutes % 60) < 10 ? '0' : '') + minutes % 60;
 	let displayHours   = (hours < 10 ? '0' : '') + hours;
+
 
 	const moduleTitle = isConnected ? 'cw' : 'cowatch';
 	const roomTitleElements = isConnected && roomTitle && (

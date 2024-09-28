@@ -1,6 +1,9 @@
 package main
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 const DEFAULT_ROOM_SIZE = 10
 
@@ -11,6 +14,7 @@ type Room struct {
 	VideoDetails VideoDetails
 	Host         *Client
 	Viewers      []*Client
+	CreatedAt    Timestamp
 	Settings     RoomSettings
 }
 
@@ -34,9 +38,10 @@ func NewRoom(roomID RoomID, host *Client, settings RoomSettings) (*Room, error) 
 			SubscriberCount: "",
 			LikeCount:       "",
 		},
-		Host:     host,
-		Viewers:  make([]*Client, 0, DEFAULT_ROOM_SIZE),
-		Settings: settings,
+		Host:      host,
+		Viewers:   make([]*Client, 0, DEFAULT_ROOM_SIZE),
+		CreatedAt: Timestamp(time.Now().Unix()),
+		Settings:  settings,
 	}, nil
 }
 
@@ -63,10 +68,11 @@ func (room *Room) SaveVideoDetails(vidoeDetails VideoDetails) {
 }
 
 type RoomRecord struct {
-	RoomID   RoomID         `json:"roomID"`
-	Host     ClientRecord   `json:"host"`
-	Viewers  []ClientRecord `json:"viewers"`
-	Settings RoomSettings   `json:"settings"`
+	RoomID    RoomID         `json:"roomID"`
+	Host      ClientRecord   `json:"host"`
+	Viewers   []ClientRecord `json:"viewers"`
+	Settings  RoomSettings   `json:"settings"`
+	CreatedAt Timestamp      `json:"createdAt"`
 }
 
 // Calculates only the necessary data to be sent to a request
@@ -81,10 +87,11 @@ func (room *Room) GetFilteredRoom() RoomRecord {
 	}
 
 	filteredRoom = RoomRecord{
-		RoomID:   room.RoomID,
-		Host:     filteredHost,
-		Viewers:  filteredViewers,
-		Settings: room.Settings,
+		RoomID:    room.RoomID,
+		Host:      filteredHost,
+		Viewers:   filteredViewers,
+		Settings:  room.Settings,
+		CreatedAt: room.CreatedAt,
 	}
 
 	return filteredRoom

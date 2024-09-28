@@ -32,6 +32,9 @@ export type ClientState = {
 	isPrimaryTab: boolean,
 }
 
+/**
+ * Unix timestamp stored in seconds
+ */
 export type Timestamp = number;
 
 export type Client = {
@@ -49,6 +52,7 @@ export type Room = {
 	host: Client,
 	viewers: Client[],
 	settings: RoomSettings,
+	createdAt: Timestamp,
 };
 
 export type RoomSettings = {
