@@ -857,7 +857,7 @@ function Input({input, placeholder, withButton, buttonText, icon, error, onButto
 						border rounded-l-full ${!withButton ? 'rounded-r-full' : ''}
 						${ !error ?
 							'bg-transparent text-neutral-100 placeholder:text-neutral-500 border-neutral-700' :
-							'bg-red-950 text-red-500 border border-red-800'
+							'bg-red-950 text-red-500 border border-red-800 placeholder:text-red-700'
 						}
 					`}
 					ref={inputRef}
