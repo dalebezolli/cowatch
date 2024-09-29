@@ -1,4 +1,4 @@
-import { useEffect, useState, Fragment, useRef, useCallback, KeyboardEventHandler } from 'react';
+import { useEffect, useState, Fragment, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import './room_ui.css';
@@ -7,8 +7,6 @@ import { LogLevel, log } from './log';
 import { onCoreAction, triggerClientMessage } from './events';
 import { Room, Client, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails, ServerStatus, ConnectionStatus, Timestamp } from './types';
 import { sleep } from './utils';
-import { transcode } from 'buffer';
-import { join } from 'path';
 
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
 const FAILED_INITIALIZATION_REATEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
@@ -218,9 +216,9 @@ function Cowatch() {
 	} else {
 		content = (
 			<section id='cowatch-root' className='
-				relative box-content bg-neutral-900
-				border border-neutral-600 rounded-[8px]
-				font-sans text-neutral-100
+				relative box-content dark:bg-neutral-900 bg-white
+				border dark:border-neutral-600 border-neutral-200 rounded-[8px]
+				font-sans dark:text-neutral-100 text-neutral-800
 				overflow-clip
 			'>
 				<CowatchHeader isConnected={contentStatus === CowatchStatus.Connected} roomTitle={roomState.settings.name} roomStartDate={roomState.createdAt} onPressClose={toggleClose} />
@@ -302,7 +300,7 @@ function CowatchHeader({ isConnected, roomTitle, roomStartDate, onPressClose }: 
 	const moduleTitle = isConnected ? 'cw' : 'cowatch';
 	const roomTitleElements = isConnected && roomTitle && (
 		<Fragment>
-			<div className='w-[1px] h-[18px] bg-neutral-200'></div>
+			<div className='w-[1px] h-[18px] dark:bg-neutral-200 bg-neutral-800'></div>
 			<div ref={titleContainerRef} className='overflow-hidden text-nowrap flex'>
 				<p className='text-[1.4rem] text-neutral-500' style={{transform : 'translateX(var(--pos))'}} >{roomTitle}</p>
 			</div>
@@ -322,9 +320,9 @@ function CowatchHeader({ isConnected, roomTitle, roomStartDate, onPressClose }: 
 			pt-[0.8rem] pr-[0.8rem] pb-[2.4rem] pl-[2.4rem]
 
 			flex items-center gap-[16px]
-			bg-neutral-900
+			dark:bg-neutral-900 bg-white
 		'>
-			<p className='text-[1.6rem] text-neutral-100'>{moduleTitle}</p>
+			<p className='text-[1.6rem] dark:text-neutral-100 text-neutral-800'>{moduleTitle}</p>
 			{roomTitleElements}
 			<div className='ml-auto flex items-center gap-[8px]'>
 				{roomTimeElements}
@@ -572,7 +570,7 @@ function ConnectedClientListItem({ client, isHost, isConnected }: ConnectedClien
 		<li key={client.name} className={`flex items-center gap-[16px] px-[24px] py-[4px] text-[1.4rem] ${ isConnected ? '' : 'opacity-60'}`}>
 			<ImageDisplay iconUrl={client.image} size='24px' />
 			{client.name}
-			{ isHost && <Icon icon={SVGIcon.Connected} size={16} strokeColor='stroke-green-300' /> }
+			{ isHost && <Icon icon={SVGIcon.Connected} size={16} strokeColor='dark:stroke-green-300 stroke-green-500' /> }
 		</li>
 	);
 }
@@ -628,17 +626,19 @@ function ConnectedActionHUD({client, room, connectionStatus, onDisconnect}: Conn
 		latestPingColor = 'text-yellow-400';
 	}
 
+	const isDarkTheme = document.getElementsByTagName('HTML')[0].attributes.getNamedItem('dark') != null;
+
 	return (
-		<section className='pr-[8px] py-[12px] pl-[24px] flex bg-neutral-800'>
+		<section className='pr-[8px] py-[12px] pl-[24px] flex dark:bg-neutral-800 bg-neutral-100'>
 			<section className='flex items-center gap-[16px]'>
 				<div className='group relative'>
 					<ImageDisplay iconUrl={client.image} size='34px' style={{
-						boxShadow: `0 0 0 2px #262626, 0 0 0 5px ${userIconColor}`
+						boxShadow: `0 0 0 2px ${isDarkTheme ? '#262626' : '#F5F5F5'} , 0 0 0 5px ${userIconColor}`
 					}} />
 					<div className='absolute pl-[32px] z-10 bottom-[-4px] left-[12px] invisible group-hover:visible'>
-						<div className='px-[14px] py-[12px] w-max bg-neutral-700 rounded-[4px]'>
-							<p className='text-[1.4rem] font-bold text-neutral-100 pb-[8px]'>{statusMessage}</p>
-							<p className='text-[1.4rem] text-neutral-400'>
+						<div className='px-[14px] py-[12px] w-max dark:bg-neutral-700 bg-neutral-200 rounded-[4px]'>
+							<p className='text-[1.4rem] font-bold dark:text-neutral-100 text-neutral-800 pb-[8px]'>{statusMessage}</p>
+							<p className='text-[1.4rem] text-neutral-400'> 
 								Latest Ping:&nbsp;
 								<span className={`text-[1.4rem] ${latestPingColor}`}>
 									{connectionStatus.status === 'connected' ? connectionStatus.latestPing + 'ms' : '---'}
@@ -661,7 +661,7 @@ function ConnectedActionHUD({client, room, connectionStatus, onDisconnect}: Conn
 						relative pt-[2px]
 
 						flex gap-[2px]
-						text-neutral-500 hover:text-neutral-200 text-[1.4rem]
+						text-neutral-500 dark:hover:text-neutral-200 hover:text-neutral-800 text-[1.4rem]
 						border-none cursor-pointer
 
 						transition-all
@@ -670,7 +670,7 @@ function ConnectedActionHUD({client, room, connectionStatus, onDisconnect}: Conn
 						onClick={copyRoomID}
 						onMouseOut={resetCopyButton}
 					>
-						<Icon icon={SVGIcon.Group} size={16} strokeColor='stroke-neutral-500 group-hover:stroke-neutral-200' className='transition-colors' />
+						<Icon icon={SVGIcon.Group} size={16} strokeColor='stroke-neutral-500 dark:group-hover:stroke-neutral-200 group-hover:stroke-neutral-800 transition-colors' />
 						{room.roomID}
 						<span
 							ref={refCopy}
@@ -711,7 +711,7 @@ function ImageDisplay({ iconUrl, size, style }: ImageDisplayProps) {
 	return (
 		<div className='rounded-full relative' style={{ width: size, height: size, ...style }}>
 			<img className='rounded-full z-10 absolute top-0 left-0' style={{ width: size, height: size }} src={iconUrl} />
-			<div className='rounded-full bg-neutral-600 animate-pulse absolute top-0 left-0' style={{ width: size, height: size }}></div>
+			<div className='rounded-full dark:bg-neutral-600 bg-neutral-400 animate-pulse absolute top-0 left-0' style={{ width: size, height: size }}></div>
 		</div>
 	)
 }
@@ -799,17 +799,27 @@ function Button({ text, icon, style, borderRounding, iconPosition, loadAfterClic
 
 	if(loading) icon = SVGIcon.Loading;
 
-	let fillColor = 'fill-neutral-200';
-	let strokeColor = 'stroke-neutral-200';
+	let fillColor = (style === ButtonStyle.success || style === ButtonStyle.error) ? 'fill-neutral-200' : 'dark:fill-neutral-200 fill-neutral-800';
+	let strokeColor = (style === ButtonStyle.success || style === ButtonStyle.error) ? 'stroke-neutral-200' : 'dark:stroke-neutral-200 stroke-neutral-800';
 	switch(style) {
 		case ButtonStyle.transparent:
-			className += ' bg-transparent hover:bg-neutral-700 focus:bg-neutral-600 text-neutral-200 border-transparent';
+			className += `
+bg-transparent dark:text-neutral-200 dark:hover:bg-neutral-700 dark:focus:bg-neutral-600 border-transparent 
+text-neutral-800 hover:bg-neutral-200 focus:bg-neutral-300
+`;
 			break;
 		case ButtonStyle.transparentBorder:
-			className += ' bg-transparent hover:bg-neutral-700 focus:bg-neutral-600 text-neutral-200 border-neutral-600';
+			className += `
+bg-transparent dark:text-neutral-200 dark:hover:bg-neutral-700 dark:focus:bg-neutral-600
+text-neutral-800 hover:bg-neutral-200 focus:bg-neutral-300
+dark:border-neutral-600 border-neutral-200
+`;
 			break;
 		case ButtonStyle.default:
-			className += ' bg-neutral-700 hover:bg-neutral-600 focus:bg-neutral-500 text-neutral-200 border-transparent';
+			className += `
+dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:focus:bg-neutral-500 dark:text-neutral-200 border-transparent
+bg-neutral-100 hover:bg-neutral-200 focus:bg-neutral-300 text-neutral-800
+`;
 			break;
 		case ButtonStyle.success:
 			className += ' bg-green-800 hover:bg-green-600 focus:bg-green-500 text-neutral-200 border-transparent';
@@ -870,8 +880,8 @@ function Input({input, placeholder, withButton, buttonText, icon, error, onButto
 						text-[1.4rem] placeholder:text-[1.4rem]
 						border rounded-l-full ${!withButton ? 'rounded-r-full' : ''}
 						${ !error ?
-							'bg-transparent text-neutral-100 placeholder:text-neutral-500 border-neutral-700' :
-							'bg-red-950 text-red-500 border border-red-800 placeholder:text-red-700'
+							'bg-transparent dark:text-neutral-100 placeholder:text-neutral-500 dark:border-neutral-700 text-neutral-800 border-neutral-100' :
+							'border dark:bg-red-950 border-red-800 dark:text-red-400 dark:placeholder:text-red-700 bg-red-300 text-red-700 placeholder:text-red-400'
 						}
 					`}
 					ref={inputRef}
