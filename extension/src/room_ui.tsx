@@ -33,22 +33,64 @@ async function initializeRoot() {
 }
 
 function attemptToInitializeRoot(): boolean {
-	const rootContainer = document.getElementById('secondary-inner');
+	const containerOfContainerCowatchVideoDesktopRoot = document.getElementById('secondary-inner');
+	const containerOfContainerCowatchHeaderButtonsRoot = document.querySelector('#center');
 
-	if(rootContainer == null) {
-		return false;
-	}
+	if(containerOfContainerCowatchVideoDesktopRoot == null || containerOfContainerCowatchHeaderButtonsRoot == null) return false;
 
-	const cowatchContainer = document.createElement('div');
-	cowatchContainer.id = 'cowatch-container';
-	cowatchContainer.style.marginBottom = '8px';
-	rootContainer.prepend(cowatchContainer);
+	const containerCowatchVideoDesktop = document.createElement('div');
+	containerCowatchVideoDesktop.id = 'cowatch-container';
+	containerCowatchVideoDesktop.style.marginBottom = '8px';
+	containerOfContainerCowatchVideoDesktopRoot.prepend(containerCowatchVideoDesktop);
 
-	const cowatchRoot = createRoot(cowatchContainer);
+	const cowatchVideoDesktopRoot = createRoot(containerCowatchVideoDesktop);
 
-	cowatchRoot.render(<Cowatch />);
+	const containerCowatchHeaderButton = document.createElement('div');
+	containerCowatchHeaderButton.style.position = 'relative';
+	containerCowatchHeaderButton.id = 'cowatch-header';
+	containerOfContainerCowatchHeaderButtonsRoot.append(containerCowatchHeaderButton);
+	const cowatchHeaderRoot = createRoot(containerCowatchHeaderButton);
+
+	cowatchVideoDesktopRoot.render(<Cowatch />);
+	cowatchHeaderRoot.render(<HeaderCowatch />);
 
 	return true;
+}
+
+function HeaderCowatch() {
+	const [hidden, setHidden] = useState<boolean>(true);
+
+	useEffect(() => {
+		window.addEventListener('keyup', onESC);
+		return () => window.removeEventListener('keyup', onESC);
+	}, []);
+
+	function onToggle() {
+		setHidden(!hidden);
+	}
+
+	function onESC(event: KeyboardEvent) {
+		if(event.key !== 'Escape') return;
+		setHidden(true);
+	}
+
+	return (
+		<Fragment>
+			<div className='ml-[12px] relative z-50'>
+				<div className='relative z-10'>
+					<Button style={ButtonStyle.default} text='cw' onClick={onToggle} />
+				</div>
+				<div id='cowatch-header' className='absolute top-[42px] right-0 overflow-hidden rounded-[8px]' style={{
+					width: '340px',
+					height: hidden ? '0px' : 'initial',
+					boxShadow: hidden ? '' : '0 0 200px 10px #000'
+				}}>
+					<Cowatch />
+				</div>
+			</div>
+			{ !hidden && <div className='fixed z-10 top-0 left-0 w-[100vw] h-[150vh] bg-transparent' tabIndex={-1} onClick={onToggle}></div>}
+		</Fragment>
+	);
 }
 
 enum CowatchStatus {
