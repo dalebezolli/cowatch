@@ -5,5 +5,5 @@ export async function sleep(ms: number) {
 }
 
 export function getCurrentVideoId() {
-	return (location.href.split('=')[1] ?? '').split('&')[0];
+	return (location.href.split('watch?v=')[1] ?? '').split('&')[0];
 }
