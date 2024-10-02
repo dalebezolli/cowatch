@@ -94,10 +94,10 @@ function reflectPlayer() {
 	if(
 		currentVideoDetails.title != '' &&
 		currentVideoDetails.author != '' && currentVideoDetails.authorImage != '' &&
-		currentVideoDetails.likeCount != '' && currentVideoDetails.subscriberCount != '' &&
-		currentVideoDetails.title != state.videoDetails.title && (
-			(currentVideoDetails.author != state.videoDetails.author && currentVideoDetails.authorImage != state.videoDetails.authorImage) ||
-			(currentVideoDetails.author == state.videoDetails.author && currentVideoDetails.authorImage == state.videoDetails.authorImage)
+		currentVideoDetails.likeCount != '' && currentVideoDetails.subscriberCount != '' && (
+			currentVideoDetails.title != state.videoDetails.title ||
+			currentVideoDetails.author != state.videoDetails.author ||
+			currentVideoDetails.authorImage != state.videoDetails.authorImage
 		)
 	) {
 		state.videoDetails = currentVideoDetails;
@@ -137,26 +137,32 @@ function syncPlayer(reflection: ReflectionSnapshot) {
 	}
 }
 
+let syncIntervalID = 0;
+const DETAIL_SYNC_TIME_MS = 2000;
 function syncDetails(videoDetails: CoreActionDetails['UpdateDetails']) {
-	const domWebsiteTitle = document.querySelector<HTMLTitleElement>('head title');
-	const domVideoTitle   = document.querySelector<HTMLParagraphElement>('#above-the-fold #title yt-formatted-string');
-	const domAuthorName   = document.querySelector<HTMLLinkElement>('#above-the-fold #channel-name a');
-	const domAuthorImage  = document.querySelector<HTMLImageElement>('yt-img-shadow.ytd-video-owner-renderer  > img');
-	const domSubCounter   = document.querySelector<HTMLElement>('#owner-sub-count');
-	const domLikeCounter  = document.querySelector<HTMLElement>('button[title="I like this"] div:nth-of-type(2)');
-	log(LogLevel.Warn, 'Details:', domVideoTitle, videoDetails)();
+	clearInterval(syncIntervalID);
+	syncIntervalID = window.setInterval(() => {
+		const domWebsiteTitle = document.querySelector<HTMLTitleElement>('head title');
+		const domVideoTitle   = document.querySelector<HTMLParagraphElement>('#above-the-fold #title yt-formatted-string');
+		const domAuthorName   = document.querySelector<HTMLLinkElement>('#above-the-fold #channel-name a');
+		const domAuthorImage  = document.querySelector<HTMLImageElement>('yt-img-shadow.ytd-video-owner-renderer  > img');
+		const domSubCounter   = document.querySelector<HTMLElement>('#owner-sub-count');
+		const domLikeCounter  = document.querySelector<HTMLElement>('button[title="I like this"] div:nth-of-type(2)');
+		log(LogLevel.Warn, 'Details:', domVideoTitle, videoDetails)();
 
-	if(
-		domWebsiteTitle == null || domVideoTitle == null || domAuthorName == null || 
-		domAuthorImage == null || domSubCounter == null || domLikeCounter == null
-	) return;
-
-	domWebsiteTitle.textContent = videoDetails.title + ' - YouTube';
-	domVideoTitle.textContent = videoDetails.title;
-	domAuthorName.textContent = videoDetails.author;
-	domAuthorImage.src = videoDetails.authorImage;
-	domSubCounter.textContent = videoDetails.subscriberCount;
-	domLikeCounter.textContent = videoDetails.likeCount;
+		if(
+			domWebsiteTitle == null || domVideoTitle == null || domAuthorName == null || 
+			domAuthorImage == null || domSubCounter == null || domLikeCounter == null
+		) return;
+		
+		domWebsiteTitle.textContent = videoDetails.title + ' - YouTube';
+		domVideoTitle.style.display = 'initial'; // Sometimes YouTube forgets it has to display it, potentially I'm triggering a bug with some behavior of the extension
+		domVideoTitle.textContent = videoDetails.title;
+		domAuthorName.textContent = videoDetails.author;
+		domAuthorImage.src = videoDetails.authorImage;
+		domSubCounter.textContent = videoDetails.subscriberCount;
+		domLikeCounter.textContent = videoDetails.likeCount;
+	}, DETAIL_SYNC_TIME_MS);
 }
 
 function limitInteractivity(state: PlayerInterceptorState) {
