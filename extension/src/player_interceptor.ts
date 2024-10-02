@@ -126,6 +126,7 @@ function syncPlayer(reflection: ReflectionSnapshot) {
 			case YoutubePlayerState.Playing:
 				state.moviePlayer.playVideo();
 				break;
+			case YoutubePlayerState.VideoCued:
 			case YoutubePlayerState.Unstarted:
 			case YoutubePlayerState.Paused:
 				state.moviePlayer.pauseVideo();
