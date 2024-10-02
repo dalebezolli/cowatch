@@ -628,16 +628,20 @@ function ConnectedActionHUD({client, room, connectionStatus, onDisconnect}: Conn
 	const refCopy = useRef<HTMLSpanElement>();
 	async function copyRoomID() {
 		try {
-			await navigator.clipboard.write([
-				new ClipboardItem({ 'text/plain': room.roomID })
-			]);
-			if(refCopy.current !== null) {
-				refCopy.current.lastChild.textContent = 'Copied!';
-				refCopy.current.setAttribute('data-copied', 'true');
-			}
+			let copyArea = document.createElement('textarea');
+			copyArea.textContent = room.roomID;
+			copyArea.style.opacity = '0';
+			document.body.append(copyArea);
+
+			copyArea.select();
+			document.execCommand('copy');
+			document.body.removeChild(copyArea);
+
+			refCopy.current.lastChild.textContent = 'Copied!';
+			refCopy.current.setAttribute('data-copied', 'true');
 		} catch(err) {
 			log(LogLevel.Error, 'Failed to copy to clipboard:', err)();
-				refCopy.current.setAttribute('data-copied', 'false');
+			refCopy.current.setAttribute('data-copied', 'false');
 		}
 	}
 
