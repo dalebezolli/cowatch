@@ -1,9 +1,8 @@
-import { ClientStatus, PlayerInterceptorClientStatus, ServerMessageDetails, ServerMessageType, Status } from './types';
+import { ClientStatus, ServerMessageDetails, ServerMessageType, Status } from './types';
 
 import { getState } from './state';
 import { triggerClientMessage, triggerCoreAction } from './events';
 import { onConnectionMessage } from './connection';
-import { log, LogLevel } from './log';
 
 const LOCALSTORAGE_USERNAME_KEY = 'cowatch_username';
 const LOCALSTORAGE_IMAGE_KEY = 'cowatch_image';
@@ -112,11 +111,16 @@ function onConnectionResponseReflectRoom(action: ServerMessageDetails['ReflectRo
 	const currentURL = `https://youtube.com/watch?v=${getState().videoId}`;
 	const newURL = `https://youtube.com/watch?v=${action.id}`;
 	if(currentURL != newURL) {
-		getState().videoId = action.id;
 		getState().isShowingTruePage = false;
 		triggerCoreAction('SendState', { ...getState() });
 	}
 
+	triggerCoreAction('SendPlayerInterceptorClientStatus', {
+		clientStatus: getState().clientStatus,
+		isPrimaryTab: getState().isPrimaryTab,
+		isShowingTruePage: getState().isShowingTruePage,
+		videoId: action.id,
+	});
 	triggerCoreAction('UpdatePlayer', action);
 }
 
