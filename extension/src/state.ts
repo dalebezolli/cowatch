@@ -1,4 +1,5 @@
 import { ClientState, Status } from "./types";
+import { getCurrentVideoId } from "./utils";
 
 let clientState: ClientState;
 
@@ -21,7 +22,7 @@ export function initializeState() {
 		pingTimeoutId: 0,
 
 		client: null,
-		videoId: (location.href.split('=')[1] ?? '').split('&')[0],
+		videoId: getCurrentVideoId(),
 		room: null,
 		isShowingTruePage: true,
 		isPrimaryTab: false,

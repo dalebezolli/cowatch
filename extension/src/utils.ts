@@ -3,3 +3,7 @@ export async function sleep(ms: number) {
 		setTimeout(() => resolve(null), ms)
 	});
 }
+
+export function getCurrentVideoId() {
+	return (location.href.split('=')[1] ?? '').split('&')[0];
+}

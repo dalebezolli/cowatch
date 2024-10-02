@@ -1,7 +1,7 @@
 import { onCoreAction, triggerClientMessage } from './events';
 import { LogLevel, log } from './log';
 import { CoreActionDetails, ReflectionSnapshot, Status, VideoDetails, YoutubePlayer, YoutubePlayerState } from './types';
-import { sleep } from './utils';
+import { getCurrentVideoId, sleep } from './utils';
 
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
 const FAILED_INITIALIZATION_REATEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
@@ -63,11 +63,12 @@ async function intializePlayerInterceptor() {
 function handleState(clientState: CoreActionDetails['SendPlayerInterceptorClientStatus']) {
 	log(LogLevel.Info, 'Handle client status:', clientState, state)();
 	state.latestVideo = clientState.videoId;
-	if(!clientState.isShowingTruePage && !state.hasLimitedInterractivity) {
+
+	if(clientState.clientStatus == 'viewer' && getCurrentVideoId().length === 0 || clientState.isShowingTruePage && state.hasLimitedInterractivity) {
+		triggerClientMessage('ShowTruePage', { videoId: clientState.videoId });
+	} else if(!clientState.isShowingTruePage && !state.hasLimitedInterractivity) {
 		limitInteractivity(state);
 		state.hasLimitedInterractivity = !clientState.isShowingTruePage;
-	} else if(clientState.isShowingTruePage && state.hasLimitedInterractivity) {
-		triggerClientMessage('ShowTruePage', { videoId: clientState.videoId });
 	}
 
 	if(state.reflectionIntervalReference !== null && clientState.clientStatus === 'host' && clientState.isPrimaryTab == true) {
