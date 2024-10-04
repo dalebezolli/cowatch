@@ -4,6 +4,7 @@ import { getState } from './state';
 import { triggerClientMessage, triggerCoreAction } from './events';
 import { onConnectionMessage } from './connection';
 
+const SERVER_VERSION = process.env.SERVER_VERSION;
 const LOCALSTORAGE_USERNAME_KEY = 'cowatch_username';
 const LOCALSTORAGE_IMAGE_KEY = 'cowatch_image';
 const LOCALSTORAGE_PRIVATETOKEN_KEY = 'cowatch_token';
@@ -39,7 +40,7 @@ function onConnectionResponseAuthorize(action: ServerMessageDetails['Authorize']
 		serverStatus: getState().serverStatus,
 		isPrimaryTab: getState().isPrimaryTab
 	});
-	getState().connection!.send(JSON.stringify({ actionType: 'AttemptReconnect', action: "" }));
+	getState().connection!.send(JSON.stringify({ version: SERVER_VERSION, actionType: 'AttemptReconnect', action: "" }));
 }
 
 function onConnectionResponseHostRoom(action: ServerMessageDetails['HostRoom']) {

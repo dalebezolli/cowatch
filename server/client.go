@@ -63,8 +63,9 @@ func NewClient(privateToken Token) *Client {
 
 type ClientMessageType string
 type ClientMessage struct {
-	MessageType ClientMessageType `json:"actionType"`
-	Message     string            `json:"action"`
+	ServerVersion string            `json:"version"`
+	MessageType   ClientMessageType `json:"actionType"`
+	Message       string            `json:"action"`
 }
 
 type DirectedServerMessage struct {
@@ -125,6 +126,8 @@ const (
 type ServerErrorMessage string
 
 const (
+	ServerErrorMessageOldServerVersion = "Internal server error."
+
 	ServerErrorMessageInternalServerError = "Internal server error."
 	ServerErrorMessageBadJson             = "Bad request, please upgrade your extension to a newer version"
 

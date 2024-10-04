@@ -62,14 +62,14 @@ async function intializePlayerInterceptor() {
 
 function handleState(clientState: CoreActionDetails['SendPlayerInterceptorClientStatus']) {
 	log(LogLevel.Info, 'Handle client status:', clientState, state)();
-	state.latestVideo = clientState.videoId;
-
 	if(clientState.clientStatus == 'viewer' && getCurrentVideoId().length === 0 || clientState.isShowingTruePage && state.hasLimitedInterractivity) {
 		triggerClientMessage('ShowTruePage', { videoId: clientState.videoId });
-	} else if(!clientState.isShowingTruePage && !state.hasLimitedInterractivity) {
+	} else if(!clientState.isShowingTruePage && state.latestVideo !== clientState.videoId) {
 		limitInteractivity(state);
-		state.hasLimitedInterractivity = !clientState.isShowingTruePage;
+		state.hasLimitedInterractivity = true;
 	}
+
+	state.latestVideo = clientState.videoId;
 
 	if(state.reflectionIntervalReference !== null && clientState.clientStatus === 'host' && clientState.isPrimaryTab == true) {
 		return;
@@ -167,18 +167,18 @@ function syncDetails(videoDetails: CoreActionDetails['UpdateDetails']) {
 	}, DETAIL_SYNC_TIME_MS);
 }
 
-function limitInteractivity(state: PlayerInterceptorState) {
-	function handleRefresh(event: MouseEvent) {
-		event.preventDefault();
-		event.stopPropagation();
+function handleRefresh(event: MouseEvent) {
+	event.preventDefault();
+	event.stopPropagation();
 
-		let shouldRefresh = true;
-		shouldRefresh = confirm('Are you sure you want to refresh?')
+	let shouldRefresh = true;
+	shouldRefresh = confirm('Are you sure you want to refresh?')
 
-		if(!shouldRefresh) return;
-		triggerClientMessage('ShowTruePage', { videoId: state.latestVideo });
-	}
+	if(!shouldRefresh) return;
+	triggerClientMessage('ShowTruePage', { videoId: state.latestVideo });
+}
 
+function limitInteractivity() {
 	const refreshList = [
 		document.querySelector<HTMLElement>('like-button-view-model button'),
 		document.querySelector<HTMLElement>('dislike-button-view-model button'),
@@ -194,14 +194,17 @@ function limitInteractivity(state: PlayerInterceptorState) {
 	]
 
 	for(const domElementOrList of refreshList) {
+		log(LogLevel.Info, 'Applying limited interractivity for:', domElementOrList)();
 		if(domElementOrList == null) continue;
 
 		if(domElementOrList['length'] == null) {
 			const domElement = domElementOrList as HTMLElement;
+			domElement?.removeEventListener('click', handleRefresh, true);
 			domElement?.addEventListener('click', handleRefresh, true);
 		} else {
 			const domList = domElementOrList as NodeListOf<HTMLElement>;
 			for(const domElement of domList) {
+				domElement?.removeEventListener('click', handleRefresh, true);
 				domElement?.addEventListener('click', handleRefresh, true);
 			}
 		}

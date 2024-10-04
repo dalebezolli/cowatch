@@ -65,15 +65,17 @@ type Manager struct {
 	clients               map[Token]*Client
 	activeRooms           map[RoomID]*Room
 	clientMessageHandlers map[ClientMessageType]ClientRequestHandler
+	serverVersion         string
 }
 
-func NewManager(connManager ConnectionManager) *Manager {
+func NewManager(serverVersion string, connManager ConnectionManager) *Manager {
 	var manager = &Manager{
 		connectionManager:     connManager,
 		publicToPrivateTokens: make(map[Token]Token),
 		clients:               make(map[Token]*Client),
 		activeRooms:           make(map[RoomID]*Room),
 		clientMessageHandlers: make(map[ClientMessageType]ClientRequestHandler),
+		serverVersion:         serverVersion,
 	}
 	manager.setupClientMessageHandlers()
 	return manager
@@ -98,6 +100,17 @@ func (manager *Manager) HandleMessages(writer http.ResponseWriter, request *http
 		}
 
 		client.LatestReply = time.Now()
+
+		if clientMessage.ServerVersion != manager.serverVersion && clientMessage.MessageType != ClientMessageTypePing {
+			logger.Info("[%s] [%s] Client version is misaligned with server version, expected: %q but received %q\n", client.PrivateToken, clientMessage.MessageType, manager.serverVersion, clientMessage.ServerVersion)
+			connection.WriteMessage(ServerMessage{
+				MessageType:    ServerMessageType(clientMessage.MessageType), // Send him whatever he sent back
+				MessageDetails: nil,
+				Status:         ServerMessageStatusError,
+				ErrorMessage:   ServerErrorMessageOldServerVersion,
+			})
+			continue
+		}
 
 		logger.Info("[%s] [%s] Handling Request: %s\n", client.PrivateToken, clientMessage.MessageType, clientMessage.Message)
 		clientMessageHandler, foundHandler := manager.clientMessageHandlers[clientMessage.MessageType]

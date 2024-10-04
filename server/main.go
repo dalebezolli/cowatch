@@ -16,6 +16,7 @@ var ClientInnactivityThreshold string
 const EndpointReflect = "/reflect"
 const tlsPEM = "server.pem"
 const tlsKEY = "server.key"
+const serverVersion = "0.0.5"
 
 // Returns true if both TLS files exist
 func checkForTLS(pemFile, keyFile string) bool {
@@ -52,7 +53,7 @@ func main() {
 	logger.Info("Starting cowatch in port %s\n", port)
 
 	connectionManager := NewGorillaConnectionManager()
-	managerInstance := NewManager(connectionManager)
+	managerInstance := NewManager(serverVersion, connectionManager)
 
 	http.HandleFunc(EndpointReflect, managerInstance.HandleMessages)
 

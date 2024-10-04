@@ -12,6 +12,7 @@ import { LogLevel, log } from "./log";
 import { getState } from "./state";
 import { Status, ClientMessageDetails, ClientMessageType } from "./types";
 
+const SERVER_VERSION = process.env.SERVER_VERSION;
 const LOCALSTORAGE_PRIVATETOKEN_KEY = 'cowatch_token';
 
 /**
@@ -106,7 +107,7 @@ function onClientMessageRequestAuthorize() {
 
 	const authorizationBody = { ...getState().client, privateToken: cachedToken };
 	log(LogLevel.Info, 'Authorizing with:', authorizationBody)();
-	getState().connection!.send(JSON.stringify({ actionType: 'Authorize', action: JSON.stringify(authorizationBody) }));
+	getState().connection!.send(JSON.stringify({ version: SERVER_VERSION, actionType: 'Authorize', action: JSON.stringify(authorizationBody) }));
 }
 
 function onClientMessageRequestHostRoom(action: ClientMessageDetails['HostRoom']) {
@@ -120,7 +121,7 @@ function onClientMessageRequestHostRoom(action: ClientMessageDetails['HostRoom']
 		return;
 	}
 
-	getState().connection!.send(JSON.stringify({ actionType: 'HostRoom', action: JSON.stringify(action) }));
+	getState().connection!.send(JSON.stringify({ version: SERVER_VERSION, actionType: 'HostRoom', action: JSON.stringify(action) }));
 }
 
 function onClientMessageRequestJoinRoom(action: ClientMessageDetails['JoinRoom']) {
@@ -134,7 +135,7 @@ function onClientMessageRequestJoinRoom(action: ClientMessageDetails['JoinRoom']
 		return;
 	}
 
-	getState().connection!.send(JSON.stringify({ actionType: 'JoinRoom', action: JSON.stringify({ roomID: action.roomID }) }));
+	getState().connection!.send(JSON.stringify({ version: SERVER_VERSION, actionType: 'JoinRoom', action: JSON.stringify({ roomID: action.roomID }) }));
 }
 
 function onClientMessageRequestDisconnectRoom() {
@@ -148,7 +149,7 @@ function onClientMessageRequestDisconnectRoom() {
 		return;
 	}
 
-	getState().connection!.send(JSON.stringify({ actionType: 'DisconnectRoom', action: ''}));
+	getState().connection!.send(JSON.stringify({ version: SERVER_VERSION, actionType: 'DisconnectRoom', action: ''}));
 }
 
 function onClientMessageRequestReflection(action: ClientMessageDetails['SendReflection']) {
@@ -167,7 +168,7 @@ function onClientMessageRequestReflection(action: ClientMessageDetails['SendRefl
 		return;
 	}
 
-	getState().connection!.send(JSON.stringify({ actionType: 'SendReflection', action: JSON.stringify({ ...action }) }));
+	getState().connection!.send(JSON.stringify({ version: SERVER_VERSION, actionType: 'SendReflection', action: JSON.stringify({ ...action }) }));
 }
 
 function onClientMessageRequestVideoDetails(action: ClientMessageDetails['SendVideoDetails']) {
@@ -186,5 +187,5 @@ function onClientMessageRequestVideoDetails(action: ClientMessageDetails['SendVi
 		return;
 	}
 
-	getState().connection!.send(JSON.stringify({ actionType: 'SendVideoDetails', action: JSON.stringify({ ...action }) }));
+	getState().connection!.send(JSON.stringify({ version: SERVER_VERSION, actionType: 'SendVideoDetails', action: JSON.stringify({ ...action }) }));
 }

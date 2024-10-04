@@ -9,7 +9,7 @@ import (
 func TestAuthorizationHandler(t *testing.T) {
 	t.Run("client sending no data", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 		mockClientPrivateID := mockManager.GenerateToken()
 		mockClient := NewClient(mockClientPrivateID)
 		receivedServerMessages := AuthorizeHandler(mockClient, mockManager, "")
@@ -45,7 +45,7 @@ func TestAuthorizationHandler(t *testing.T) {
 
 	t.Run("client receiving correct response after initial authentication", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 		mockClientPrivateID := mockManager.GenerateToken()
 		mockClient := NewClient(mockClientPrivateID)
 
@@ -108,7 +108,7 @@ func TestAuthorizationHandler(t *testing.T) {
 
 	t.Run("client reauthenticating after dropping connection", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 
 		existingPrivateID := mockManager.GenerateToken()
 		tempPrivateID := mockManager.GenerateToken()
@@ -187,7 +187,7 @@ func TestAuthorizationHandler(t *testing.T) {
 func TestHostRoomHandler(t *testing.T) {
 	t.Run("client receiving correct response after hosting room", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 		mockClientPrivateID := mockManager.GenerateToken()
 		mockClient := NewClient(mockClientPrivateID)
 
@@ -235,7 +235,7 @@ func TestHostRoomHandler(t *testing.T) {
 
 	t.Run("client hosted room exists & contains correct privileges", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 		mockClientPrivateID := mockManager.GenerateToken()
 		mockClient := NewClient(mockClientPrivateID)
 
@@ -300,7 +300,7 @@ func TestHostRoomHandler(t *testing.T) {
 
 	t.Run("client hosting room after hosting another room", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 		mockClientPrivateID := mockManager.GenerateToken()
 		mockClient := NewClient(mockClientPrivateID)
 
@@ -399,7 +399,7 @@ func TestHostRoomHandler(t *testing.T) {
 func TestUpdateRoomClientsWithLatestChange(t *testing.T) {
 	t.Run("updating room clients with a host only", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 
 		hostClient := NewClient(mockManager.GenerateToken())
 
@@ -445,7 +445,7 @@ func TestUpdateRoomClientsWithLatestChange(t *testing.T) {
 
 	t.Run("updating room clients with host and multiple users", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 
 		hostClient := NewClient(mockManager.GenerateToken())
 		viewer1Client := NewClient(mockManager.GenerateToken())
@@ -519,7 +519,7 @@ func TestUpdateRoomClientsWithLatestChange(t *testing.T) {
 func TestJoinRoomHandler(t *testing.T) {
 	t.Run("joining a room that exists and does not have a video loaded", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 
 		mockHost := NewClient(mockManager.GenerateToken())
 		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost, RoomSettings{Name: "Test"})
@@ -584,7 +584,7 @@ func TestJoinRoomHandler(t *testing.T) {
 
 	t.Run("joining a room that exists and has a video loaded", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 
 		mockHost := NewClient(mockManager.GenerateToken())
 		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost, RoomSettings{Name: "Test"})
@@ -664,7 +664,7 @@ func TestJoinRoomHandler(t *testing.T) {
 
 	t.Run("joining a room that does not exist", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 
 		mockViewer := NewClient(mockManager.GenerateToken())
 
@@ -702,7 +702,7 @@ func TestJoinRoomHandler(t *testing.T) {
 
 	t.Run("joining a room that's full", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 
 		mockHost := NewClient(mockManager.GenerateToken())
 		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost, RoomSettings{Name: "Test"})
@@ -757,7 +757,7 @@ func TestJoinRoomHandler(t *testing.T) {
 func TestDisconnectRoomHandler(t *testing.T) {
 	t.Run("disconnecting a client that's innactive", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 		mockClient := NewClient(mockManager.GenerateToken())
 
 		receivedResponse := DisconnectRoomHandler(mockClient, mockManager, "")
@@ -767,7 +767,7 @@ func TestDisconnectRoomHandler(t *testing.T) {
 
 	t.Run("disconnecting a viewer", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 
 		mockHost := NewClient(mockManager.GenerateToken())
 		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost, RoomSettings{Name: "Test"})
@@ -829,7 +829,7 @@ func TestDisconnectRoomHandler(t *testing.T) {
 
 	t.Run("disconnecting a host in a room with no viewers", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 
 		mockHost := NewClient(mockManager.GenerateToken())
 		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost, RoomSettings{Name: "Test"})
@@ -871,7 +871,7 @@ func TestDisconnectRoomHandler(t *testing.T) {
 
 	t.Run("disconnecting a host in a room with viewers", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 
 		mockHost := NewClient(mockManager.GenerateToken())
 		mockRoom, _ := NewRoom(mockManager.GenerateUniqueRoomID(), mockHost, RoomSettings{Name: "Test"})
@@ -946,7 +946,7 @@ func TestDisconnectRoomHandler(t *testing.T) {
 func TestReflectRoomHandler(t *testing.T) {
 	t.Run("host sending reflect room message with no vieweres", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 		mockClient := NewClient(mockManager.GenerateToken())
 
 		HostRoomHandler(mockClient, mockManager, "")
@@ -962,7 +962,7 @@ func TestReflectRoomHandler(t *testing.T) {
 
 	t.Run("host sending reflect room message with vieweres", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 		mockClient := NewClient(mockManager.GenerateToken())
 		mockViewer := NewClient(mockManager.GenerateToken())
 
@@ -1003,7 +1003,7 @@ func TestReflectRoomHandler(t *testing.T) {
 
 	t.Run("viewer sending reflect room message", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 		mockClient := NewClient(mockManager.GenerateToken())
 		mockViewer := NewClient(mockManager.GenerateToken())
 
@@ -1044,7 +1044,7 @@ func TestReflectRoomHandler(t *testing.T) {
 
 	t.Run("host sending reflect room for a non-existent room", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 		mockClient := NewClient(mockManager.GenerateToken())
 
 		requestRoomReflection, _ := json.Marshal(RoomReflection{
@@ -1078,7 +1078,7 @@ func TestReflectRoomHandler(t *testing.T) {
 func TestReflectRoomDetailsHandler(t *testing.T) {
 	t.Run("host sending reflect room message with no vieweres", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 		mockClient := NewClient(mockManager.GenerateToken())
 
 		HostRoomHandler(mockClient, mockManager, "")
@@ -1096,7 +1096,7 @@ func TestReflectRoomDetailsHandler(t *testing.T) {
 
 	t.Run("host sending reflect room message with vieweres", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 		mockClient := NewClient(mockManager.GenerateToken())
 		mockViewer := NewClient(mockManager.GenerateToken())
 
@@ -1138,7 +1138,7 @@ func TestReflectRoomDetailsHandler(t *testing.T) {
 
 	t.Run("viewer sending reflect room message", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 		mockClient := NewClient(mockManager.GenerateToken())
 		mockViewer := NewClient(mockManager.GenerateToken())
 
@@ -1180,7 +1180,7 @@ func TestReflectRoomDetailsHandler(t *testing.T) {
 
 	t.Run("host sending reflect room for a non-existent room", func(t *testing.T) {
 		mockConnectionManager := NewGorillaConnectionManager()
-		mockManager := NewManager(mockConnectionManager)
+		mockManager := NewManager(serverVersion, mockConnectionManager)
 		mockClient := NewClient(mockManager.GenerateToken())
 
 		requestRoomReflection, _ := json.Marshal(VideoDetails{
