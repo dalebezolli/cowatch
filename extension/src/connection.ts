@@ -72,7 +72,6 @@ export async function initializeConnection(clientState: ClientState) {
 			if(tenRTTChunk.length > 10) tenRTTChunk.shift();
 			averageRTT = Math.round(tenRTTChunk.reduce((acc, curr) => acc + curr, 0) / tenRTTChunk.length);
 
-			log(LogLevel.Debug, 'RTT:', {rtt, averageRTT, tenRTTChunk})();
 			triggerCoreAction('SendRoomUIPingDetails', { connection: clientState.serverStatus, averagePing: averageRTT, latestPing: rtt });
 
 			await sleep(PING_REQUEST_INTERVAL * 1000);
@@ -94,6 +93,10 @@ function handleConnectionMessage(event: MessageEvent<string>) {
 	if(messageData.status !== Status.OK) {
 		log(LogLevel.Error, `[ServerMessage:${messageData.actionType}]`, messageData.errorMessage)();
 		let resolutionStrategy: ResolutionStrategy = 'returnToInitial';
+
+		if(messageData.errorMessage.includes('Client running older version than expected')) {
+			resolutionStrategy = 'showUpdate';
+		}
 
 		if(messageData.actionType === 'HostRoom' && messageData.errorMessage.startsWith('The room name')) {
 			resolutionStrategy = 'displayOnInput';

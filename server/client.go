@@ -126,7 +126,7 @@ const (
 type ServerErrorMessage string
 
 const (
-	ServerErrorMessageOldServerVersion = "Internal server error."
+	ServerErrorMessageOldServerVersion = "Client running older version than expected"
 
 	ServerErrorMessageInternalServerError = "Internal server error."
 	ServerErrorMessageBadJson             = "Bad request, please upgrade your extension to a newer version"

@@ -8,6 +8,7 @@ import { onCoreAction, triggerClientMessage } from './events';
 import { Room, Client, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails, ServerStatus, ConnectionStatus, Timestamp } from './types';
 import { sleep } from './utils';
 
+const SERVER_ADDRESS = process.env.ADDRESS_OWL;
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
 const FAILED_INITIALIZATION_REATEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
 
@@ -102,6 +103,7 @@ enum CowatchStatus {
 	Options,
 	NotPrimaryTab,
 	Disconnected,
+	UpdateExtension,
 };
 
 function Cowatch() {
@@ -145,6 +147,12 @@ function Cowatch() {
 
 	function handleConnectionError(connectionError: ConnectionError) {
 		log(LogLevel.Info, 'Manage ui error:', connectionError)();
+
+		if(connectionError.resolutionStrategy === 'showUpdate') {
+			setContentStatus(CowatchStatus.UpdateExtension);
+			return;
+		}
+
 		if(connectionError.resolutionStrategy === 'displayOnInput' && connectionError.actionType === 'HostRoom') {
 			setHostError(connectionError.error);
 			return;
@@ -455,7 +463,22 @@ function CowatchContent({ room, client, status, hostError, joinError, pingDetail
 				<section className='box-border h-full py-[64px] flex gap-[24px] flex-col justify-start items-center'>
 					<p className='text-[1.6rem]'>Loading...</p>
 				</section>
-			)
+			);
+			break;
+		case CowatchStatus.UpdateExtension:
+			let browserType = navigator.userAgent.includes('Firefox') ? 'gecko' : 'chromium';
+			let url = SERVER_ADDRESS.replace('ws', 'http').replace('wss', 'https');
+
+			selectedContent = (
+				<section className='box-border h-full py-[64px] flex gap-[24px] flex-col justify-start items-center'>
+					<p className='text-[1.6rem]'>You're running an older version of cowatch.</p>
+					<Button
+						text='Update Now'
+						style={ButtonStyle.success}
+						download={`${url}/download/${browserType}`}
+					/>
+				</section>
+			);
 			break;
 	}
 
@@ -805,6 +828,7 @@ enum ButtonBorderRounding {
 
 type ButtonProps = {
 	text?: string,
+	download?: string,
 	icon?: SVGIcon,
 	iconPosition?: 'left' | 'right',
 
@@ -815,7 +839,7 @@ type ButtonProps = {
 	loadAfterClick?: boolean,
 };
 
-function Button({ text, icon, style, borderRounding, iconPosition, loadAfterClick, onClick }: ButtonProps) {
+function Button({ text, download, icon, style, borderRounding, iconPosition, loadAfterClick, onClick }: ButtonProps) {
 	const [loading, setLoading] = useState<boolean>(false);
 
 	function onClickHandler() {
@@ -875,20 +899,37 @@ bg-neutral-100 hover:bg-neutral-200 focus:bg-neutral-300 text-neutral-800
 			break;
 	}
 
+	let ContainerTag: keyof JSX.IntrinsicElements = 'button';
+	let isDownloadButton = download?.length > 0;
+	let downloadPath = '';
+	let downloadFile = '';
+	if(isDownloadButton) {
+		ContainerTag = 'a';
+		
+		const separator = download.lastIndexOf('/');
+		downloadPath = download.slice(0, separator);
+		downloadFile = download.slice(separator + 1);
+	}
+
+	log(LogLevel.Warn, 'Download:', {downloadFile, downloadPath, download})();
+
 	const displayedIcon = <Icon icon={icon} size={24} fillColor={fillColor} strokeColor={strokeColor} className={loading ? 'animate-spin' : ''} />;
 	return (
-		<button
+		<ContainerTag
 			className={`
 				flex gap-1.5 items-center justify-center border font-sans cursor-pointer
-				${ style === ButtonStyle.transparentBorder ? 'w-full' : 'w-fit'}
+				${ style === ButtonStyle.transparentBorder ? 'w-full' : 'w-fit' }
 				${className}
 			`}
-			onClick={onClickHandler}
+			onClick={ isDownloadButton ? null : onClickHandler}
+			href={ isDownloadButton ? download : null }
+			download={ isDownloadButton ? downloadFile : null }
+			target={ isDownloadButton ? '_blank' : null }
 		>
 			{ icon && (iconPosition == null || iconPosition === 'left') && displayedIcon }
-			{ text && <p className='font-bold text-[1.4rem]'>{ text }</p> }
+			{ text && <p className='font-bold text-[1.4rem]'>{text}</p> }
 			{ icon && iconPosition === 'right' && displayedIcon }
-		</button>
+		</ContainerTag>
 	)
 }
 

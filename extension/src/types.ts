@@ -59,7 +59,7 @@ export type RoomSettings = {
 	name: string,
 };
 
-export type ResolutionStrategy = 'returnToInitial' | 'stayOnCurrentView' | 'displayOnInput';
+export type ResolutionStrategy = 'returnToInitial' | 'stayOnCurrentView' | 'displayOnInput' | 'showUpdate';
 
 export type ConnectionError = {
 	error: string,

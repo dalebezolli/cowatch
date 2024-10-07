@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -14,6 +15,9 @@ var ClientCleanupRoutineInterval int
 var ClientInnactivityThreshold string
 
 const EndpointReflect = "/reflect"
+const EndpointDownload = "/download/{version}"
+const PathDownload = "./downloads"
+
 const tlsPEM = "server.pem"
 const tlsKEY = "server.key"
 const serverVersion = "0.0.5"
@@ -56,6 +60,7 @@ func main() {
 	managerInstance := NewManager(serverVersion, connectionManager)
 
 	http.HandleFunc(EndpointReflect, managerInstance.HandleMessages)
+	http.HandleFunc(EndpointDownload, HandleDownload)
 
 	go func() {
 		for {
@@ -68,4 +73,34 @@ func main() {
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		logger.Error("Failed while serving: %s\n", err)
 	}
+}
+
+func HandleDownload(w http.ResponseWriter, r *http.Request) {
+	version := r.PathValue("version")
+	logger.Info("Requested download for %q\n", version)
+
+	var file = version
+	var fileType = "none"
+	switch version {
+	case "chromium":
+		file = "chromium-latest.crx"
+		fileType = "application/x-chrome-extension"
+		break
+	case "gecko":
+		file = "firefox-latest.xpi"
+		fileType = "application/zip"
+		break
+	}
+
+	_, pathError := os.Stat(PathDownload + "/" + file)
+	if os.IsNotExist(pathError) {
+		logger.Debug("Path does not exist: %v", pathError)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(fmt.Sprintf("File %q doesn't exist.", file)))
+		return
+	}
+
+	w.Header().Add("Content-Type", fileType)
+	w.Header().Add("Content-Disposition", fmt.Sprintf("attatchment; filename=%q", file))
+	http.ServeFile(w, r, PathDownload+"/"+file)
 }
