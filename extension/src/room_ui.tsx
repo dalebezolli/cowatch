@@ -1,11 +1,11 @@
-import { useEffect, useState, Fragment, useRef, useCallback } from 'react';
+import { useEffect, useState, Fragment, useRef, useCallback, createContext, useContext } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import './room_ui.css';
 
 import { LogLevel, log } from './log';
 import { onCoreAction, triggerClientMessage } from './events';
-import { Room, Client, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails, ServerStatus, ConnectionStatus, Timestamp } from './types';
+import { Room, Client, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails, ServerStatus, ConnectionStatus } from './types';
 import { sleep } from './utils';
 
 const SERVER_ADDRESS = process.env.ADDRESS_OWL;
@@ -52,10 +52,187 @@ function attemptToInitializeRoot(): boolean {
 	containerOfContainerCowatchHeaderButtonsRoot.append(containerCowatchHeaderButton);
 	const cowatchHeaderRoot = createRoot(containerCowatchHeaderButton);
 
-	cowatchVideoDesktopRoot.render(<Cowatch />);
-	cowatchHeaderRoot.render(<HeaderCowatch />);
+	cowatchVideoDesktopRoot.render(
+		<ClientContextProvider>
+			<Cowatch />
+		</ClientContextProvider>
+	);
+	cowatchHeaderRoot.render(
+		<ClientContextProvider>
+			<HeaderCowatch />
+		</ClientContextProvider>
+	);
 
 	return true;
+}
+
+enum CowatchStatus {
+	Home,
+	HostOptions,
+	JoinOptions,
+	Loading,
+	Connected,
+	Options,
+	NotPrimaryTab,
+	Disconnected,
+	UpdateExtension,
+};
+
+type ClientContext = {
+	client: Client,
+	room: Room,
+	pingDetails: ConnectionStatus,
+
+	contentStatus: CowatchStatus,
+	setContentStatus: (status: CowatchStatus) => void,
+	hidden: boolean,
+	hostError: string,
+	joinError: string,
+};
+
+const ClientContext = createContext<ClientContext>(null);
+function ClientContextProvider({ children }) {
+	const [pingDetails, setPingDetails] = useState<ConnectionStatus>({ connection: 'connecting', latestPing: 0, averagePing: 0 });
+	const [clientState, setClientState] = useState<Client>({ name: '', image: '', publicToken: '' });
+	const [roomState, setRoomState] = useState<Room>({
+		roomID: '',
+		host: null,
+		viewers: [],
+		settings: { name: '' },
+		createdAt: -1,
+	});
+
+	const [hidden, setHidden] = useState(true);
+	const [contentStatus, setContentStatus] = useState<CowatchStatus>(CowatchStatus.Home);
+
+	const [hostError, setHostError] = useState<string>();
+	const [joinError, setJoinError] = useState<string>();
+
+	useEffect(() => {
+		onCoreAction('SendRoomUIClient', handleSendClient);
+		onCoreAction('SendRoomUIPingDetails', handleConnectionStatus);
+		onCoreAction('SendRoomUISystemStatus', handleSendSystemStatus);
+		onCoreAction('SendRoomUIUpdateRoom', handleUpdateRoom);
+		onCoreAction('SendError', handleConnectionError);
+
+		triggerClientMessage('ModuleStatus', { system: 'RoomUI', status: Status.OK });
+		triggerClientMessage('GetState', {});
+	}, []);
+
+	function handleSendClient(client: Client) {
+		if(client.publicToken === '') return;
+		log(LogLevel.Info, 'Update client with:', client)();
+		
+		setClientState(client);
+	}
+
+	function handleConnectionStatus(status: ConnectionStatus) {
+		setPingDetails(status);
+	}
+
+	function handleSendSystemStatus(status: RoomUISystemStatus) {
+		log(LogLevel.Info, 'Managing system status:', status)();
+		let ok = true;
+
+		ok &&= status.RoomUI == Status.OK;
+		ok &&= status.Connection == Status.OK;
+		ok &&= status.ClientCollector == Status.OK;
+		ok &&= status.PlayerInterceptor == Status.OK;
+		if(!ok) {
+			log(LogLevel.Error, 'Failed to initialize components', status)();
+			// handleError('Internal System Error.');
+			return;
+		}
+		log(LogLevel.Info, 'Modules injected...')();
+
+		setHidden(false);
+		ok &&= status.isPrimaryTab;
+		if(!ok) {
+			setContentStatus(CowatchStatus.NotPrimaryTab);
+			return;
+		}
+		log(LogLevel.Info, 'Tab is primary...')();
+
+		ok &&= status.serverStatus == 'connected';
+		ok &&= status.clientStatus == 'disconnected' || status.clientStatus == 'innactive';
+		if(!ok) {
+			log(LogLevel.Error, 'Client not connected yet', status)();
+			setContentStatus(CowatchStatus.Disconnected);
+			return;
+		}
+		log(LogLevel.Info, 'Client established connection with server')();
+
+		log(LogLevel.Info, 'Client connected and ready. Displaying UI...', status)();
+		setContentStatus(CowatchStatus.Home);
+	}
+
+	function handleUpdateRoom(roomDetails: RoomUIRoomDetails) {
+		if(roomDetails.status === 'innactive' || roomDetails.status === 'disconnected') {
+			setContentStatus(CowatchStatus.Home);
+			return;
+		}
+
+		setContentStatus(CowatchStatus.Connected);
+		setRoomState(roomDetails.room);
+	}
+
+	function handleConnectionError(connectionError: ConnectionError) {
+		log(LogLevel.Info, 'Manage ui error:', connectionError)();
+
+		if(connectionError.resolutionStrategy === 'showUpdate') {
+			setContentStatus(CowatchStatus.UpdateExtension);
+			return;
+		}
+
+		if(connectionError.resolutionStrategy === 'displayOnInput' && connectionError.actionType === 'HostRoom') {
+			setHostError(connectionError.error);
+			return;
+		}
+
+		if(connectionError.resolutionStrategy === 'displayOnInput' && connectionError.actionType === 'JoinRoom') {
+			setJoinError(connectionError.error);
+			return;
+		}
+
+		if(connectionError.resolutionStrategy === 'returnToInitial') {
+			setContentStatus(CowatchStatus.Home);
+		}
+
+		if(connectionError.resolutionStrategy === 'stayOnCurrentView') {
+			switch(connectionError.actionType) {
+				case 'HostRoom':
+					setContentStatus(CowatchStatus.Home);
+					break;
+				case 'JoinRoom':
+					setContentStatus(CowatchStatus.JoinOptions);
+					break;
+				case 'UpdateRoom':
+					setContentStatus(CowatchStatus.Connected);
+					break;
+				case 'DisconnectRoom':
+					setContentStatus(CowatchStatus.Home);
+					break;
+				case 'ReflectRoom':
+					setContentStatus(CowatchStatus.Connected);
+					break;
+			}
+		}
+	}
+
+	const contextValues = {
+		client: clientState,
+		room: roomState,
+
+		pingDetails,
+		contentStatus, setContentStatus,
+		hidden,
+		hostError, joinError
+		
+	}
+
+	return <ClientContext.Provider value={contextValues}>
+		{ children }
+	</ClientContext.Provider>
 }
 
 function HeaderCowatch() {
@@ -94,163 +271,9 @@ function HeaderCowatch() {
 	);
 }
 
-enum CowatchStatus {
-	Home,
-	HostOptions,
-	JoinOptions,
-	Loading,
-	Connected,
-	Options,
-	NotPrimaryTab,
-	Disconnected,
-	UpdateExtension,
-};
-
 function Cowatch() {
-	const [hidden, setHidden] = useState(true);
+	const { hidden } = useContext(ClientContext);
 	const [open, setOpen] = useState(true);
-	const [errors, setErrors] = useState<string[]>([]);
-	const [hostError, setHostError] = useState<string>();
-	const [joinError, setJoinError] = useState<string>();
-	const [contentStatus, setContentStatus] = useState<CowatchStatus>(CowatchStatus.Home);
-	const [pingDetails, setPingDetails] = useState<ConnectionStatus>({ connection: 'connecting', latestPing: 0, averagePing: 0 });
-	const [roomState, setRoomState] = useState<Room>({
-		roomID: '',
-		host: null,
-		viewers: [],
-		settings: { name: '' },
-		createdAt: -1,
-	});
-
-	const [clientState, setClientState] = useState<Client>({ name: '', image: '', publicToken: '' });
-
-	useEffect(() => {
-		onCoreAction('SendRoomUIClient', handleSendClient);
-		onCoreAction('SendRoomUIPingDetails', handleConnectionStatus);
-		onCoreAction('SendRoomUISystemStatus', handleSendSystemStatus);
-		onCoreAction('SendRoomUIUpdateRoom', handleUpdateRoom);
-		onCoreAction('SendError', handleConnectionError);
-
-		triggerClientMessage('ModuleStatus', { system: 'RoomUI', status: Status.OK });
-		triggerClientMessage('GetState', {});
-	}, []);
-
-	function handleUpdateRoom(roomDetails: RoomUIRoomDetails) {
-		if(roomDetails.status === 'innactive' || roomDetails.status === 'disconnected') {
-			setContentStatus(CowatchStatus.Home);
-			return;
-		}
-
-		setContentStatus(CowatchStatus.Connected);
-		setRoomState(roomDetails.room);
-	}
-
-	function handleConnectionError(connectionError: ConnectionError) {
-		log(LogLevel.Info, 'Manage ui error:', connectionError)();
-
-		if(connectionError.resolutionStrategy === 'showUpdate') {
-			setContentStatus(CowatchStatus.UpdateExtension);
-			return;
-		}
-
-		if(connectionError.resolutionStrategy === 'displayOnInput' && connectionError.actionType === 'HostRoom') {
-			setHostError(connectionError.error);
-			return;
-		}
-
-		if(connectionError.resolutionStrategy === 'displayOnInput' && connectionError.actionType === 'JoinRoom') {
-			setJoinError(connectionError.error);
-			return;
-		}
-
-		setErrors(prevError => {
-			if(connectionError.error === prevError[prevError.length - 1]) {
-				return prevError;
-			}
-
-			return [...prevError, connectionError.error]
-		});
-
-		if(connectionError.resolutionStrategy === 'returnToInitial') {
-			setContentStatus(CowatchStatus.Home);
-		}
-
-		if(connectionError.resolutionStrategy === 'stayOnCurrentView') {
-			switch(connectionError.actionType) {
-				case 'HostRoom':
-					setContentStatus(CowatchStatus.Home);
-					break;
-				case 'JoinRoom':
-					setContentStatus(CowatchStatus.JoinOptions);
-					break;
-				case 'UpdateRoom':
-					setContentStatus(CowatchStatus.Connected);
-					break;
-				case 'DisconnectRoom':
-					setContentStatus(CowatchStatus.Home);
-					break;
-				case 'ReflectRoom':
-					setContentStatus(CowatchStatus.Connected);
-					break;
-			}
-		}
-	}
-
-	function handleError(error: string) {
-		setErrors(prevError => [...prevError, error]);
-	}
-
-	function handleSendClient(client: Client) {
-		if(client.publicToken === '') return;
-		log(LogLevel.Info, 'Update client with:', client)();
-		
-		setClientState(client);
-	}
-
-	function handleConnectionStatus(status: ConnectionStatus) {
-		setPingDetails(status);
-	}
-
-
-	function handleSendSystemStatus(status: RoomUISystemStatus) {
-		log(LogLevel.Info, 'Managing system status:', status)();
-		let ok = true;
-
-		ok &&= status.RoomUI == Status.OK;
-		ok &&= status.Connection == Status.OK;
-		ok &&= status.ClientCollector == Status.OK;
-		ok &&= status.PlayerInterceptor == Status.OK;
-		if(!ok) {
-			log(LogLevel.Error, 'Failed to initialize components', status)();
-			handleError('Internal System Error.');
-			return;
-		}
-		log(LogLevel.Info, 'Modules injected...')();
-
-		setHidden(false);
-		ok &&= status.isPrimaryTab;
-		if(!ok) {
-			setContentStatus(CowatchStatus.NotPrimaryTab);
-			return;
-		}
-		log(LogLevel.Info, 'Tab is primary...')();
-
-		ok &&= status.serverStatus == 'connected';
-		ok &&= status.clientStatus == 'disconnected' || status.clientStatus == 'innactive';
-		if(!ok) {
-			log(LogLevel.Error, 'Client not connected yet', status)();
-			setContentStatus(CowatchStatus.Disconnected);
-			return;
-		}
-		log(LogLevel.Info, 'Client established connection with server')();
-
-		log(LogLevel.Info, 'Client connected and ready. Displaying UI...', status)();
-		setContentStatus(CowatchStatus.Home);
-	}
-
-	function onCloseError() {
-		setErrors(prevError => prevError.slice(0,prevError.length - 1));
-	}
 
 	const toggleClose = () => setOpen(!open);
 
@@ -264,30 +287,27 @@ function Cowatch() {
 		</div>
 	);
 	} else {
-		content = (
-			<section id='cowatch-root' className='
-				relative box-content dark:bg-neutral-900 bg-white
-				border dark:border-neutral-600 border-neutral-200 rounded-[8px]
-				font-sans dark:text-neutral-100 text-neutral-800
-				overflow-clip
-			'>
-				<CowatchHeader isConnected={contentStatus === CowatchStatus.Connected} roomTitle={roomState.settings.name} roomStartDate={roomState.createdAt} onPressClose={toggleClose} />
-				<CowatchContent room={roomState} client={clientState} status={contentStatus} pingDetails={pingDetails} onChangeStatus={setContentStatus} hostError={hostError} joinError={joinError} />
-			</section>
-		);
+		content = <section id='cowatch-root' className='
+			relative box-content dark:bg-neutral-900 bg-white
+			border dark:border-neutral-600 border-neutral-200 rounded-[8px]
+			font-sans dark:text-neutral-100 text-neutral-800
+			overflow-clip'>
+			<CowatchHeader onPressClose={toggleClose} />
+			<CowatchContent />
+		</section>
 	}
 
 	return content;
 }
 
 export type CowatchHeaderProps = {
-	isConnected: boolean,
-	roomTitle?: string,
-	roomStartDate?: Timestamp,
 	onPressClose: () => void,
 }
 
-function CowatchHeader({ isConnected, roomTitle, roomStartDate, onPressClose }: CowatchHeaderProps) {
+function CowatchHeader({ onPressClose }: CowatchHeaderProps) {
+	const { room, contentStatus } = useContext(ClientContext);
+	const isConnected = contentStatus === CowatchStatus.Connected;
+
 	let [currentDate, setCurrentDate] = useState(new Date());
 	let scrollInterval = useRef<number>();
 	let titleContainerRef = useCallback((node: HTMLDivElement) => {
@@ -329,7 +349,7 @@ function CowatchHeader({ isConnected, roomTitle, roomStartDate, onPressClose }: 
 			clearInterval(scrollInterval.current);
 			scrollInterval == undefined;
 		}
-	}, [roomTitle]);
+	}, [room.settings.name]);
 
 	useEffect(() => {
 		const timerInterval = setInterval(() => setCurrentDate(new Date()), 1000);
@@ -337,7 +357,7 @@ function CowatchHeader({ isConnected, roomTitle, roomStartDate, onPressClose }: 
 		() => clearInterval(timerInterval);
 	}, []);
 
-	let timeDifference = Math.abs(Math.floor(currentDate.getTime() / 1000) - roomStartDate);
+	let timeDifference = Math.abs(Math.floor(currentDate.getTime() / 1000) - room.createdAt);
 	let seconds = timeDifference;
 	let minutes = Math.floor(seconds / 60);
 	let hours = Math.floor(minutes / 60);
@@ -348,15 +368,17 @@ function CowatchHeader({ isConnected, roomTitle, roomStartDate, onPressClose }: 
 
 
 	const moduleTitle = isConnected ? 'cw' : 'cowatch';
-	const roomTitleElements = isConnected && roomTitle && (
+	const roomTitleElements = isConnected && room.settings.name && (
 		<Fragment>
 			<div className='w-[1px] h-[18px] dark:bg-neutral-200 bg-neutral-800'></div>
 			<div ref={titleContainerRef} className='overflow-hidden text-nowrap flex'>
-				<p className='text-[1.4rem] text-neutral-500' style={{transform : 'translateX(var(--pos))'}} >{roomTitle}</p>
+				<p className='text-[1.4rem] text-neutral-500' style={{transform : 'translateX(var(--pos))'}} >
+					{room.settings.name}
+				</p>
 			</div>
 		</Fragment>
 	);
-	const roomTimeElements = isConnected && roomStartDate && (
+	const roomTimeElements = isConnected && room.createdAt && (
 		<Fragment>
 			<p className='text-[1.4rem] text-neutral-500'>
 				{displayHours}:{displayMinutes}:{displaySeconds}
@@ -382,74 +404,29 @@ function CowatchHeader({ isConnected, roomTitle, roomStartDate, onPressClose }: 
 	);
 }
 
-// function CowatchError({ error, onClose }: CowatchErrorProps) {
-// 	if(!error) return;
-//
-// 	return (
-// 		<div className={cowatchError} onClick={onClose}>
-// 			<Icon icon={SVGIcon.Error} size={18} />
-// 			<p>{error}</p>
-// 		</div>
-// 	);
-// }
-
-export type CowatchContentProps = {
-	room: Room,
-	client: Client,
-	status: CowatchStatus,
-	hostError: string,
-	joinError: string,
-	pingDetails: ConnectionStatus, 
-	onChangeStatus: (status: CowatchStatus) => void,
-};
-
-function CowatchContent({ room, client, status, hostError, joinError, pingDetails, onChangeStatus }: CowatchContentProps) {
+function CowatchContent() {
+	const { contentStatus: status } = useContext(ClientContext);
 	let selectedContent: React.ReactElement;
-
-	function onRequestDisconnect() {
-		onChangeStatus(CowatchStatus.Loading);
-		triggerClientMessage('DisconnectRoom', {});
-	}
-
-	function onSettings() {
-		onChangeStatus(CowatchStatus.Options);
-	}
 
 	switch(status) {
 		case CowatchStatus.Home:
-			selectedContent = <CowatchContentHome
-				client={client}
-				onHost={() => onChangeStatus(CowatchStatus.HostOptions)}
-				onJoin={() => onChangeStatus(CowatchStatus.JoinOptions)}
-			/>;
+			selectedContent = <CowatchContentHome />;
 			break;
 		case CowatchStatus.HostOptions:
-			selectedContent = <CowatchContentHostOptions
-				client={client}
-				hostError={hostError}
-				onHost={(name) => triggerClientMessage('HostRoom', { name })}
-				onBack={() => onChangeStatus(CowatchStatus.Home)}
-			/>;
+			selectedContent = <CowatchContentHostOptions />;
 			break;
 		case CowatchStatus.JoinOptions:
-			selectedContent = <CowatchContentJoinOptions
-				client={client}
-				joinError={joinError}
-				onJoin={(roomID) => triggerClientMessage('JoinRoom', { roomID })}
-				onBack={() => onChangeStatus(CowatchStatus.Home)}
-			/>;
+			selectedContent = <CowatchContentJoinOptions />;
 			break;
 		case CowatchStatus.Options:
 			selectedContent = <div></div>;
 			// selectedContent = <CowatchContentOptions />;
 			break;
 		case CowatchStatus.Connected:
-			selectedContent = <CowatchContentConnected client={client} room={room} pingDetails={pingDetails} onDisconnect={onRequestDisconnect} onSettings={onSettings} />;
+			selectedContent = <CowatchContentConnected />;
 			break;
 		case CowatchStatus.NotPrimaryTab:
-			selectedContent = <CowatchContentSwitchTab
-				onSwitchActiveTab={() => triggerClientMessage('SwitchActiveTab', {})}
-			/>
+			selectedContent = <CowatchContentSwitchTab />
 			break;
 		case CowatchStatus.Disconnected:
 			selectedContent = (
@@ -489,13 +466,17 @@ function CowatchContent({ room, client, status, hostError, joinError, pingDetail
 	);
 }
 
-export type CowatchContentInitialProps = {
-	client: Client,
-	onHost: () => void,
-	onJoin: () => void,
-};
+function CowatchContentHome() {
+	const { client, setContentStatus } = useContext(ClientContext);
 
-function CowatchContentHome({ client, onHost, onJoin }: CowatchContentInitialProps) {
+	function onHost() {
+		setContentStatus(CowatchStatus.HostOptions);
+	}
+
+	function onJoin() {
+		setContentStatus(CowatchStatus.JoinOptions);
+	}
+
 	return (
 		<section className='box-border h-full py-[64px] flex gap-[24px] flex-col justify-start items-center'>
 			<div className='flex gap-[8px] items-center'>
@@ -511,11 +492,11 @@ function CowatchContentHome({ client, onHost, onJoin }: CowatchContentInitialPro
 	);
 }
 
-type CowatchContentSwitchTabProps = {
-	onSwitchActiveTab: () => void
-};
+function CowatchContentSwitchTab() {
+	function onSwitchActiveTab() {
+		triggerClientMessage('SwitchActiveTab', {});
+	}
 
-function CowatchContentSwitchTab({ onSwitchActiveTab }: CowatchContentSwitchTabProps) {
 	return (
 		<section className='box-border h-full py-[64px] flex gap-[24px] flex-col justify-start items-center'>
 			<p className='text-[1.6rem]'>Another cowatch is active, switch to this one?</p>
@@ -525,15 +506,17 @@ function CowatchContentSwitchTab({ onSwitchActiveTab }: CowatchContentSwitchTabP
 	)
 }
 
-type CowatchContentHostOptionsProps = {
-	client: Client,
-	hostError: string,
-	onHost: (roomName: string) => void,
-	onBack: () => void,
-}
-
-function CowatchContentHostOptions({ client, hostError, onHost, onBack }: CowatchContentHostOptionsProps) {
+function CowatchContentHostOptions() {
+	const { client, setContentStatus, hostError } = useContext(ClientContext);
 	const [error, setError] = useState<string>('');
+
+	function onHost(name: string) {
+		triggerClientMessage('HostRoom', { name })
+	}
+
+	function onBack() {
+		setContentStatus(CowatchStatus.Home);
+	}
 
 	function onAttemptHost(input: string) {
 		if(input.trim().length < 3) {
@@ -566,14 +549,17 @@ function CowatchContentHostOptions({ client, hostError, onHost, onBack }: Cowatc
 	);
 }
 
-type CowatchContentJoinOptionsProps = {
-	client: Client,
-	joinError: string,
-	onJoin: (roomID: string) => void,
-	onBack: () => void,
-};
+function CowatchContentJoinOptions() {
+	const { client, setContentStatus, joinError } = useContext(ClientContext);
 
-function CowatchContentJoinOptions({ client, joinError, onJoin, onBack }: CowatchContentJoinOptionsProps) {
+	function onJoin(roomID: string) {
+		triggerClientMessage('JoinRoom', { roomID });
+	}
+
+	function onBack() {
+		setContentStatus(CowatchStatus.Home);
+	}
+
 	return (
 		<section className='box-border h-full pt-[64px] pb-[16px] flex gap-[24px] flex-col justify-start items-center'>
 			<div className='flex gap-[8px] items-center'>
@@ -590,15 +576,14 @@ function CowatchContentJoinOptions({ client, joinError, onJoin, onBack }: Cowatc
 	);
 }
 
-type CowatchContentConnectedProps = {
-	client: Client,
-	room: Room,
-	pingDetails: ConnectionStatus,
-	onDisconnect: () => void,
-	onSettings: () => void,
-};
+function CowatchContentConnected() {
+	const { client, pingDetails, room, setContentStatus } = useContext(ClientContext);
 
-function CowatchContentConnected({ client, room, pingDetails, onDisconnect, onSettings }: CowatchContentConnectedProps) {
+	function onDisconnect() {
+		setContentStatus(CowatchStatus.Loading);
+		triggerClientMessage('DisconnectRoom', {});
+	}
+
 	return (
 		<section className='h-full flex flex-col'>
 			<ul className='w-full grow overflow-y-scroll'>
