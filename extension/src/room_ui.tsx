@@ -62,7 +62,7 @@ function attemptToInitializeRoot(): boolean {
 	cowatchHeaderRoot.render(
 		<CowatchContextProvider>
 			<ClientContextProvider>
-				<HeaderCowatch />
+				<HeaderButtonCowatch />
 			</ClientContextProvider>
 		</CowatchContextProvider>
 	);
@@ -254,7 +254,7 @@ function ClientContextProvider({ children }) {
 	</ClientContext.Provider>
 }
 
-function HeaderCowatch() {
+function HeaderButtonCowatch() {
 	const [hidden, setHidden] = useState<boolean>(true);
 
 	useEffect(() => {
