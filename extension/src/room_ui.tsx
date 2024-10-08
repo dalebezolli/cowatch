@@ -53,14 +53,18 @@ function attemptToInitializeRoot(): boolean {
 	const cowatchHeaderRoot = createRoot(containerCowatchHeaderButton);
 
 	cowatchVideoDesktopRoot.render(
-		<ClientContextProvider>
-			<Cowatch />
-		</ClientContextProvider>
+		<CowatchContextProvider>
+			<ClientContextProvider>
+				<Cowatch />
+			</ClientContextProvider>
+		</CowatchContextProvider>
 	);
 	cowatchHeaderRoot.render(
-		<ClientContextProvider>
-			<HeaderCowatch />
-		</ClientContextProvider>
+		<CowatchContextProvider>
+			<ClientContextProvider>
+				<HeaderCowatch />
+			</ClientContextProvider>
+		</CowatchContextProvider>
 	);
 
 	return true;
@@ -78,16 +82,38 @@ enum CowatchStatus {
 	UpdateExtension,
 };
 
+type CowatchContext = {
+	contentStatus: CowatchStatus,
+	setContentStatus: (status: CowatchStatus) => void,
+	hostError: string,
+	setHostError: (error: string) => void,
+	joinError: string,
+	setJoinError: (error: string) => void,
+}
+
+const CowatchContext = createContext<CowatchContext>(null);
+function CowatchContextProvider({ children }) {
+	const [contentStatus, setContentStatus] = useState<CowatchStatus>(CowatchStatus.Home);
+
+	const [hostError, setHostError] = useState<string>();
+	const [joinError, setJoinError] = useState<string>();
+
+	const contextValue = {
+		contentStatus, setContentStatus,
+		hostError, setHostError,
+		joinError, setJoinError
+	};
+
+	return <CowatchContext.Provider value={contextValue}>
+		{ children }
+	</CowatchContext.Provider>
+}
+
 type ClientContext = {
 	client: Client,
 	room: Room,
 	pingDetails: ConnectionStatus,
-
-	contentStatus: CowatchStatus,
-	setContentStatus: (status: CowatchStatus) => void,
 	hidden: boolean,
-	hostError: string,
-	joinError: string,
 };
 
 const ClientContext = createContext<ClientContext>(null);
@@ -101,12 +127,9 @@ function ClientContextProvider({ children }) {
 		settings: { name: '' },
 		createdAt: -1,
 	});
-
 	const [hidden, setHidden] = useState(true);
-	const [contentStatus, setContentStatus] = useState<CowatchStatus>(CowatchStatus.Home);
 
-	const [hostError, setHostError] = useState<string>();
-	const [joinError, setJoinError] = useState<string>();
+	const { setContentStatus } = useContext(CowatchContext);
 
 	useEffect(() => {
 		onCoreAction('SendRoomUIClient', handleSendClient);
@@ -222,12 +245,8 @@ function ClientContextProvider({ children }) {
 	const contextValues = {
 		client: clientState,
 		room: roomState,
-
 		pingDetails,
-		contentStatus, setContentStatus,
 		hidden,
-		hostError, joinError
-		
 	}
 
 	return <ClientContext.Provider value={contextValues}>
@@ -405,7 +424,7 @@ function CowatchHeader({ onPressClose }: CowatchHeaderProps) {
 }
 
 function CowatchContent() {
-	const { contentStatus: status } = useContext(ClientContext);
+	const { contentStatus: status } = useContext(CowatchContext);
 	let selectedContent: React.ReactElement;
 
 	switch(status) {
@@ -467,7 +486,8 @@ function CowatchContent() {
 }
 
 function CowatchContentHome() {
-	const { client, setContentStatus } = useContext(ClientContext);
+	const { client } = useContext(ClientContext);
+	const { setContentStatus } = useContext(CowatchContext);
 
 	function onHost() {
 		setContentStatus(CowatchStatus.HostOptions);
@@ -507,7 +527,8 @@ function CowatchContentSwitchTab() {
 }
 
 function CowatchContentHostOptions() {
-	const { client, setContentStatus, hostError } = useContext(ClientContext);
+	const { client } = useContext(ClientContext);
+	const { setContentStatus, hostError } = useContext(CowatchContext);
 	const [error, setError] = useState<string>('');
 
 	function onHost(name: string) {
@@ -550,7 +571,8 @@ function CowatchContentHostOptions() {
 }
 
 function CowatchContentJoinOptions() {
-	const { client, setContentStatus, joinError } = useContext(ClientContext);
+	const { client } = useContext(ClientContext);
+	const { setContentStatus, joinError } = useContext(CowatchContext);
 
 	function onJoin(roomID: string) {
 		triggerClientMessage('JoinRoom', { roomID });
@@ -577,7 +599,8 @@ function CowatchContentJoinOptions() {
 }
 
 function CowatchContentConnected() {
-	const { client, pingDetails, room, setContentStatus } = useContext(ClientContext);
+	const { client, pingDetails, room } = useContext(ClientContext);
+	const { setContentStatus } = useContext(CowatchContext);
 
 	function onDisconnect() {
 		setContentStatus(CowatchStatus.Loading);
