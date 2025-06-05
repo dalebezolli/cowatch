@@ -5,8 +5,7 @@ import { getState, initializeState } from './state';
 import { initializeConnection } from './connection';
 import { initializeConnectionMessages } from './connection_messages';
 import { initializeClientMessageHandlers } from './client_message_handlers';
-import { triggerClientMessage, triggerCoreAction } from './events';
-import { Status } from './types';
+import { triggerCoreAction } from './events';
 
 onStartup();
 
