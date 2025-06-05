@@ -5,7 +5,7 @@ import Image from "next/image";
 export default function Home() {
 	return (
 		<Fragment>
-			<div className="z-30 top-0 w-full fixed bg-dark/50 backdrop-blur-xs">
+			<div className="z-50 top-0 w-full fixed bg-dark/50 backdrop-blur-xs">
 				<CenterContainer>
 					<Header links={[
 						{text: "HOME", path: "/"},
@@ -16,7 +16,7 @@ export default function Home() {
 			</div>
 
 			<div className="h-[64px]"></div>
-			<div className="max-md:hidden z-50 inset-0 fixed pointer-events-none">
+			<div className="max-md:hidden -z-20 inset-0 fixed pointer-events-none">
 				<div className="absolute left-[20%] w-px h-full bg-white/15"></div>
 				<div className="absolute right-[20%] w-px h-full bg-white/15"></div>
 			</div>
@@ -72,11 +72,11 @@ export default function Home() {
 				</CenterContainer>
 
 
-				<div className="h-[3000px] bg-red-400/20">
-
-
-					<h2>Test</h2>
-				</div>
+				<CenterContainer className="mt-[64px] mb-[256px]">
+					<GlassDisplay>
+						Hello world
+					</GlassDisplay>
+				</CenterContainer>
 			</main>
 		</Fragment>
 	);
@@ -89,6 +89,22 @@ function CenterContainer({ width="1920", className="", children}: PropsWithChild
 	return (
 		<div className={`px-8 lg:px-16 mx-auto ${className}`} style={{ maxWidth: width+"px"}}>
 			{children}
+		</div>
+	)
+}
+
+function GlassDisplay({className="", children}: PropsWithChildren<{className?: string;}>) {
+	return (
+		<div className="w-max h-max relative p-px">
+			<div className="-z-10 absolute inset-0 rounded-[16px] bg-gradient-to-b from-[#707070] to-[#0E152C] p-px" style={{
+				mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+				maskComposite: "exclude",
+				WebkitMaskComposite: "xor",
+			}}>
+			</div>
+			<section className={`p-[32px] bg-[#252525]/40 rounded-[16px] backdrop-blur-2xl ${className}`}>
+				{children}
+			</section>
 		</div>
 	)
 }
