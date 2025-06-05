@@ -23,6 +23,8 @@ function Header(props: HeaderNavigationProps) {
 			<HeaderNavigation {...props} />
 
 			<div className="hidden md:block flex-1/3"></div>
+
+
 		</header>
 	);
 }
