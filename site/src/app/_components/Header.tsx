@@ -9,14 +9,13 @@ function Header(props: HeaderNavigationProps) {
 	return (
 		<header className="
 			w-full h-[64px]
-			flex mobile:flex-row-reverse gap-4 items-center desktop:px-8
-			mobile:group-data-[scroll=true]:py-2
+			flex gap-4 items-center
 			transition-all duration-200
 			relative z-40
 
 			text-light font-medium
 			">
-			<Link href="/" className="flex-1/3 items-center gap-4 z-50 text-cyan font-bold">
+			<Link href="/" className="justify-center flex-1/3 items-center gap-4 z-50 text-cyan font-bold">
 				cowatch
 			</Link>
 
@@ -35,7 +34,7 @@ type HeaderNavigationProps = {
 
 function HeaderNavigation({ links }: HeaderNavigationProps) {
 	return (
-		<nav className="group flex flex-1/3">
+		<nav className="max-md:hidden group flex flex-1/3">
 			<ul className="flex-1/2 flex justify-end items-center md:justify-center gap-[90px] uppercase text-sm">
 				{
 					links.map(l => (
