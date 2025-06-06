@@ -22,24 +22,24 @@ export default function Home() {
 			</div>
 
 			<main className="relative text-center text-light font-medium">
-				<div className="-z-50 bottom-0 left-1/2 fixed -translate-x-1/2 translate-y-[57%]">
+				<div className="-z-50 bottom-0 md:left-1/2 fixed md:-translate-x-1/2 translate-y-[40%] sm:translate-y-[60%] md:translate-y-[57%]">
 					<Image width={960} height={960} src="/out.png" alt="none" />
 				</div>
 
 				<CenterContainer width="800" className="mt-[64px] mb-[256px] flex flex-col items-center gap-8">
 					<div className="flex items-center gap-2">
-						<div className="w-[112px] h-px bg-light/35 mr-2"></div>
+						<div className="w-[64px] md:w-[112px] h-px bg-light/35 mr-2"></div>
 
-						<h1>cowatch</h1>
-						<p className="opacity-35" aria-hidden="true">Youtube</p>
+						<h1 className="max-md:text-sm">cowatch</h1>
+						<p className="max-md:text-sm opacity-35" aria-hidden="true">Youtube</p>
 
-						<div className="w-[112px] h-px bg-light/35 ml-2"></div>
+						<div className="w-[64px] md:w-[112px] h-px bg-light/35 ml-2"></div>
 					</div>
 
-					<p className="text-cyan text-[2.5rem] font-bold">Watch with friends</p>
+					<p className="text-cyan text-3xl md:text-[2.5rem] font-bold">Watch with friends</p>
 
-					<p>cowatch let’s you effortlessly share your favorite content with anyone you want.</p>
-					<p>Feel the ultimate, lag-free, YouTube native visual quality, with your friends, by signing up for the <span className="text-cyan">closed alpha</span> experience today.</p>
+					<p className="max-md:text-sm">cowatch let’s you effortlessly share your favorite content with anyone you want.</p>
+					<p className="max-md:text-sm">Feel the ultimate, lag-free, YouTube native visual quality, with your friends, by signing up for the <span className="text-cyan">closed alpha</span> experience today.</p>
 
 
 					<Button>
@@ -50,7 +50,7 @@ export default function Home() {
 					</Button>
 
 					<div className="flex gap-2 items-center">
-						<p className="opacity-35">Available for</p>
+						<p className="opacity-35 max-md:text-sm">Available for</p>
 
 						<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
 							<g>
@@ -92,7 +92,7 @@ export default function Home() {
 					</GlassDisplay>
 				</CenterContainer>
 
-				<CenterContainer className="my-[128px] flex flex-col gap-[32px] items-center">
+				<CenterContainer className="my-[128px] flex flex-col gap-[32px] items-center overflow-hidden">
 					<h2 className="text-4xl font-bold text-light-cyan max-xl:mt-8 mb-6">Want to join in the fun?</h2>
 
 					<div className="relative">
