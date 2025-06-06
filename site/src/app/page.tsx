@@ -92,8 +92,8 @@ export default function Home() {
 					</GlassDisplay>
 				</CenterContainer>
 
-				<CenterContainer className="my-[128px] flex flex-col gap-[32px] items-center overflow-hidden">
-					<h2 className="text-4xl font-bold text-light-cyan max-xl:mt-8 mb-6">Want to join in the fun?</h2>
+				<CenterContainer className="my-[128px] flex flex-col gap-[16px] md:gap-[32px] items-center overflow-hidden max-md:text-sm">
+					<h2 className="text-2xl md:text-4xl font-bold text-light-cyan max-xl:mt-8 mb-6">Want to join in the fun?</h2>
 
 					<div className="relative">
 						<div className="absolute inset-0 py-20 px-24">
