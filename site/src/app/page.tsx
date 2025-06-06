@@ -68,23 +68,23 @@ export default function Home() {
 				</CenterContainer>
 
 
-				<CenterContainer className="mt-[64px] mb-[256px] flex flex-col justify-center gap-[192px] w-min">
-					<GlassDisplay className="flex max-xl:flex-col max-xl:gap-16 xl:items-center justify-between xl:w-[1200px]">
-						<div className="flex flex-col gap-4 text-left max-w-[390px]">
-							<h2 className="text-4xl font-bold text-light-cyan max-xl:mt-8 mb-6">Have a party with just one click</h2>
+				<CenterContainer className="mt-[64px] mb-[256px] flex flex-col items-center justify-center gap-[64] md:gap-[192px]">
+					<GlassDisplay outerClassName="xl:max-w-[1200px]" className="flex max-xl:flex-col max-md:gap-8 max-xl:gap-16 gap-24 xl:items-center justify-between">
+						<div className="flex flex-col gap-2 md:gap-4 text-left max-w-[390px] max-md:text-sm">
+							<h2 className="text-2xl md:text-4xl font-bold text-light-cyan max-xl:mt-8 mb-4 md:mb-6">Have a party with just one click</h2>
 							<p>Pick a session name and create a room with just one click.</p>
 							<p>Share your room and have up to 5 of your friends, family or pets connect with one click.</p>
 							<p>It has never been easier.</p>
 						</div>
 
-						<Image width={658} height={497} src="/mock-1.png" alt="test" />
+						<Image width={658} height={497} src="/mock-1.png" alt="test" className="w-full" />
 					</GlassDisplay>
 
-					<GlassDisplay className="flex max-xl:flex-col max-xl:gap-16 xl:items-center justify-between xl:w-[1200px]">
-						<Image width={658} height={497} src="/mock-2.png" alt="test" />
+					<GlassDisplay outerClassName="xl:max-w-[1200px]" className="flex max-xl:flex-col max-md:gap-8 max-xl:gap-16 gap-24 xl:items-center justify-between">
+						<Image width={658} height={497} src="/mock-2.png" alt="test" className="w-full" />
 
-						<div className="flex flex-col gap-4 text-left max-w-[390px]">
-							<h2 className="text-4xl font-bold text-light-cyan max-xl:mt-8 mb-6">One Room, Many Unique Experiences</h2>
+						<div className="flex flex-col gap-2 md:gap-4 text-left max-w-[390px] max-md:text-sm">
+							<h2 className="text-2xl md:text-4xl font-bold text-light-cyan max-xl:mt-8 mb-4 md:mb-6">One Room, Many Unique Experiences</h2>
 							<p>Comfort yourself with your unique video quality and subtitles.</p>
 							<p>Not all your friends have fast enough internet for 4K or understand English perfectly.</p>
 							<p>Let them choose their own viewing experience while you enjoy your perfect settings.</p>
@@ -189,16 +189,16 @@ function CenterContainer({ width="1920", className="", children}: PropsWithChild
 	)
 }
 
-function GlassDisplay({className="", children}: PropsWithChildren<{className?: string;}>) {
+function GlassDisplay({outerClassName="", className="", children}: PropsWithChildren<{outerClassName?: string; className?: string;}>) {
 	return (
-		<div className="relative p-px shadow-[0_0_73px_55px_#000000]">
+		<div className={`relative p-px shadow-[0_0_73px_55px_#000000] ${outerClassName}`}>
 			<div className="-z-10 absolute inset-0 rounded-[16px] bg-gradient-to-b from-[#707070] to-[#0E152C] p-px" style={{
 				mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
 				maskComposite: "exclude",
 				WebkitMaskComposite: "xor",
 			}}>
 			</div>
-			<section className={`p-[32px] bg-[#252525]/20 rounded-[16px] backdrop-blur-md sepia-20 ${className}`}>
+			<section className={`w-full p-[32px] bg-[#252525]/20 rounded-[16px] backdrop-blur-md sepia-20 ${className}`}>
 				{children}
 			</section>
 		</div>
