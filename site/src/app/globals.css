@@ -5,8 +5,33 @@
 	--color-light: #E5F3F3;
 	--color-cyan: #00FFFF;
 	--color-light-cyan: #CDFDFF;
+
+	@keyframes FadeIn {
+		0% {
+			opacity: 0;
+		}
+		100% {
+			opacity: 1;
+		}
+	}
 }
 
 body {
   font-family: var(--font-montserrat), Arial, Helvetica, sans-serif;
+}
+
+.alternating-partially-visible {
+	opacity: 0.30;
+}
+
+.alternating-invisible {
+	opacity: 0;
+}
+
+.alternating-is-below {
+	transform: translateY(16px);
+}
+
+.alternating-is-above {
+	transform: translateY(-16px);
 }
