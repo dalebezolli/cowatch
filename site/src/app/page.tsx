@@ -95,8 +95,12 @@ export default function Home() {
 					</GlassDisplay>
 				</CenterContainer>
 
-				<CenterContainer id="download" className="py-[128px] flex flex-col gap-[16px] md:gap-[32px] items-center overflow-hidden max-md:text-sm animate-[1s_ease-in_0.25s_backwards_FadeIn]">
+				<CenterContainer id="download" className="relative py-[128px] flex flex-col gap-[16px] md:gap-[32px] items-center bg-linear-to-b from-transparent to-dark to-40% overflow-hidden max-md:text-sm animate-[1s_ease-in_0.25s_backwards_FadeIn]">
 					<h2 className="text-2xl md:text-4xl font-bold text-light-cyan max-xl:mt-8 mb-6">Want to join in the fun?</h2>
+
+					<div className="absolute top-[60%] left-[30%] w-px h-px bg-transparent shadow-[0_0_250px_150px] shadow-white/30 animate-[pulse_5s_cubic-bezier(0.4,0,0.6,1)_1s_infinite]"></div>
+					<div className="absolute top-[50%] right-[30%] w-px h-px bg-transparent shadow-[0_0_200px_100px] shadow-cyan/30"></div>
+					<div className="absolute top-[70%] right-[20%] w-px h-px bg-transparent shadow-[0_0_300px_200px] shadow-cyan/30 animate-[pulse_9s_cubic-bezier(0.4,0,0.6,1)_infinite]"></div>
 
 					<Letter>
 						<p className="mb-4">We’re currently in Closed Alpha and need your feedback to make cowatch better.</p>
