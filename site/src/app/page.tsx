@@ -2,6 +2,7 @@ import { Fragment, HTMLAttributes, PropsWithChildren } from "react";
 import Header from "./_components/Header";
 import Image from "next/image";
 import AlternatingTitle from "./_components/AlternatingTitle";
+import Letter from "./_components/Letter";
 
 export default function Home() {
 	return (
@@ -24,6 +25,7 @@ export default function Home() {
 
 			<main className="relative text-center text-light font-medium">
 				<div className="-z-50 bottom-0 md:left-1/2 fixed md:-translate-x-1/2 translate-y-[40%] sm:translate-y-[60%] md:translate-y-[57%]">
+					{ /* <div className="absolute w-px h-px bg-white shadow-[0_0_250px_200px] shadow-white"></div> */ }
 					<Image width={960} height={960} src="/out.png" alt="none" />
 				</div>
 
@@ -96,68 +98,18 @@ export default function Home() {
 				<CenterContainer id="download" className="py-[128px] flex flex-col gap-[16px] md:gap-[32px] items-center overflow-hidden max-md:text-sm animate-[1s_ease-in_0.25s_backwards_FadeIn]">
 					<h2 className="text-2xl md:text-4xl font-bold text-light-cyan max-xl:mt-8 mb-6">Want to join in the fun?</h2>
 
-					<div className="relative">
-						<div className="absolute inset-0 py-20 px-24">
-							<p className="mb-4">We’re currently in Closed Alpha and need your feedback to make cowatch better.</p>
-							<p className="mb-10">And because we don’t want to leave you alone, once you join you’ll get the chance to invite one of your friends for them to skip the line.</p>
+					<Letter>
+						<p className="mb-4">We’re currently in Closed Alpha and need your feedback to make cowatch better.</p>
+						<p className="mb-10">And because we don’t want to leave you alone, once you join you’ll get the chance to invite one of your friends for them to skip the line.</p>
 
-							<Button>
-								Join Now
+						<Button>
+							Join Now
 
-								<svg width="15" height="16" viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-									<path d="M15 8.18027C15 12.6021 12.0215 15.749 7.62295 15.749C3.40574 15.749 0 12.2865 0 7.99902C0 3.71152 3.40574 0.249023 7.62295 0.249023C9.67623 0.249023 11.4037 1.01465 12.7346 2.27715L10.6598 4.30527C7.9457 1.64277 2.89857 3.64277 2.89857 7.99902C2.89857 10.7021 5.02254 12.8928 7.62295 12.8928C10.6414 12.8928 11.7725 10.6928 11.9508 9.55215H7.62295V6.88652H14.8801C14.9508 7.2834 15 7.66465 15 8.18027Z" fill="white"/>
-								</svg>
-							</Button>
-						</div>
-
-						<svg width="590" height="609" viewBox="0 0 590 609" fill="none" xmlns="http://www.w3.org/2000/svg">
-							<path d="M294 9.00098C294.417 8.98751 294.812 9.15985 295.186 9.50781C320.996 18.7989 494.275 153.001 494.275 153.001L556 264.001H38L98.0996 153.001C98.2107 152.913 266.188 19.3014 291.802 9.56152C292.202 9.17843 292.625 8.98686 293.075 9.00098C293.217 9.00543 293.372 9.02185 293.541 9.04883C293.707 9.02131 293.86 9.00548 294 9.00098Z" fill="#161616"/>
-							<rect width="518" height="344" transform="translate(38 264)" fill="#161616"/>
-							<rect x="68" y="37.9993" width="458" height="465" rx="8" fill="url(#paint0_linear_62_261)"/>
-							<path d="M495 55.9988H509V69.9988" stroke="#2F6496"/>
-							<path d="M101 55.9988H87V69.9988" stroke="#2F6496"/>
-							<path d="M0.5 68.9993L98.0945 407.999H493.867L589.5 68.9993H0.5Z" fill="url(#paint1_linear_62_261)"/>
-							<path d="M556 608H38V265C38 265 106.217 273.676 114.5 280.5C122.783 287.324 241 421 241 421L297 560.626L353 421C353 421 471.217 287.324 479.5 280.5C487.783 273.676 556 265 556 265V608Z" fill="url(#paint2_linear_62_261)"/>
-							<path d="M384.854 386C384.854 386 528.697 520.5 532 528C535.303 535.5 556 608 556 608H38C38 608 58.6967 535.5 62 528C65.3033 520.5 209.146 386 209.146 386H384.854Z" fill="url(#paint3_linear_62_261)"/>
-							<path d="M384.854 386L385.196 385.635L385.052 385.5H384.854V386ZM532 528L532.458 527.798L532 528ZM556 608V608.5H556.663L556.481 607.863L556 608ZM38 608L37.5192 607.863L37.3373 608.5H38V608ZM62 528L61.5424 527.798L62 528ZM209.146 386V385.5H208.948L208.804 385.635L209.146 386ZM384.854 386C384.513 386.365 384.514 386.365 384.515 386.367C384.516 386.368 384.517 386.369 384.52 386.371C384.524 386.375 384.53 386.381 384.539 386.389C384.557 386.406 384.583 386.43 384.617 386.462C384.686 386.527 384.79 386.624 384.926 386.751C385.198 387.006 385.602 387.384 386.129 387.877C387.183 388.864 388.73 390.312 390.7 392.159C394.639 395.851 400.271 401.134 407.039 407.497C420.575 420.223 438.658 437.269 456.844 454.55C475.03 471.831 493.318 489.344 507.265 503.005C514.239 509.836 520.125 515.702 524.369 520.092C526.492 522.288 528.201 524.111 529.428 525.5C530.043 526.195 530.533 526.777 530.893 527.24C531.262 527.714 531.467 528.03 531.542 528.201L532 528L532.458 527.798C532.327 527.501 532.051 527.1 531.682 526.626C531.304 526.139 530.799 525.54 530.178 524.838C528.935 523.433 527.215 521.597 525.088 519.397C520.834 514.997 514.941 509.124 507.965 502.291C494.012 488.624 475.72 471.107 457.533 453.825C439.345 436.543 421.261 419.495 407.724 406.768C400.955 400.405 395.323 395.121 391.384 391.429C389.414 389.583 387.867 388.134 386.812 387.147C386.285 386.654 385.881 386.275 385.609 386.021C385.473 385.893 385.369 385.797 385.3 385.732C385.266 385.7 385.24 385.675 385.222 385.659C385.214 385.651 385.207 385.645 385.203 385.641C385.2 385.639 385.199 385.637 385.198 385.636C385.197 385.635 385.196 385.635 384.854 386ZM532 528L531.542 528.201C532.353 530.042 534.256 535.943 536.665 543.81C539.069 551.659 541.966 561.422 544.759 570.953C547.552 580.483 550.242 589.779 552.234 596.693C553.23 600.15 554.051 603.011 554.624 605.008C554.91 606.006 555.134 606.788 555.286 607.321C555.362 607.588 555.421 607.792 555.46 607.929C555.479 607.998 555.494 608.05 555.504 608.084C555.509 608.102 555.513 608.115 555.515 608.124C555.517 608.128 555.518 608.132 555.518 608.134C555.519 608.135 555.519 608.136 555.519 608.136C555.519 608.137 555.519 608.137 556 608C556.481 607.863 556.481 607.862 556.481 607.862C556.48 607.861 556.48 607.86 556.48 607.859C556.479 607.857 556.478 607.854 556.477 607.849C556.474 607.84 556.471 607.827 556.466 607.81C556.456 607.775 556.441 607.723 556.421 607.654C556.382 607.517 556.324 607.313 556.247 607.046C556.095 606.513 555.871 605.731 555.585 604.732C555.012 602.735 554.191 599.873 553.195 596.416C551.203 589.502 548.512 580.204 545.719 570.672C542.925 561.14 540.027 551.372 537.622 543.517C535.222 535.682 533.298 529.707 532.458 527.798L532 528ZM556 608V607.5H38V608V608.5H556V608ZM38 608C38.4808 608.137 38.4809 608.137 38.481 608.136C38.4812 608.136 38.4814 608.135 38.4817 608.134C38.4824 608.132 38.4833 608.128 38.4846 608.124C38.4871 608.115 38.4908 608.102 38.4958 608.084C38.5057 608.05 38.5206 607.998 38.5402 607.929C38.5795 607.792 38.6378 607.588 38.714 607.321C38.8663 606.788 39.0902 606.006 39.3764 605.008C39.9487 603.011 40.77 600.15 41.7659 596.693C43.7577 589.779 46.4478 580.483 49.2411 570.953C52.0344 561.422 54.9305 551.659 57.3345 543.81C59.7442 535.943 61.6468 530.042 62.4576 528.201L62 528L61.5424 527.798C60.7015 529.707 58.7783 535.682 56.3783 543.517C53.9726 551.372 51.0752 561.14 48.2814 570.672C45.4876 580.204 42.7971 589.502 40.805 596.416C39.809 599.873 38.9875 602.735 38.4151 604.732C38.1289 605.731 37.9049 606.513 37.7525 607.046C37.6763 607.313 37.618 607.517 37.5787 607.654C37.5591 607.723 37.5442 607.775 37.5342 607.81C37.5293 607.827 37.5255 607.84 37.523 607.849C37.5217 607.854 37.5208 607.857 37.5202 607.859C37.5198 607.86 37.5196 607.861 37.5194 607.862C37.5193 607.862 37.5192 607.863 38 608ZM62 528L62.4576 528.201C62.5332 528.03 62.738 527.714 63.1074 527.24C63.4674 526.777 63.9574 526.195 64.5715 525.5C65.7992 524.111 67.5078 522.288 69.6306 520.092C73.8751 515.702 79.7611 509.836 86.7349 503.005C100.682 489.344 118.97 471.831 137.156 454.55C155.342 437.269 173.425 420.223 186.961 407.497C193.729 401.134 199.361 395.851 203.3 392.159C205.27 390.312 206.817 388.864 207.871 387.877C208.398 387.384 208.802 387.006 209.074 386.751C209.21 386.624 209.314 386.527 209.383 386.462C209.417 386.43 209.443 386.406 209.461 386.389C209.47 386.381 209.476 386.375 209.48 386.371C209.483 386.369 209.484 386.368 209.485 386.367C209.486 386.365 209.487 386.365 209.146 386C208.804 385.635 208.803 385.635 208.802 385.636C208.801 385.637 208.8 385.639 208.797 385.641C208.793 385.645 208.786 385.651 208.778 385.659C208.76 385.675 208.734 385.7 208.7 385.732C208.631 385.797 208.527 385.893 208.391 386.021C208.119 386.275 207.715 386.654 207.188 387.147C206.133 388.134 204.586 389.583 202.616 391.429C198.677 395.121 193.045 400.405 186.276 406.768C172.739 419.495 154.655 436.543 136.467 453.825C118.28 471.107 99.9877 488.624 86.0352 502.291C79.0593 509.124 73.1657 514.997 68.9116 519.397C66.785 521.597 65.0645 523.433 63.8223 524.838C63.2014 525.54 62.6962 526.139 62.3181 526.626C61.9494 527.1 61.6732 527.501 61.5424 527.798L62 528ZM209.146 386V386.5H384.854V386V385.5H209.146V386Z" fill="url(#paint4_linear_62_261)"/>
-							<g filter="url(#filter0_d_62_261)">
-								<circle cx="294.5" cy="238.5" r="0.5" fill="#D9D9D9"/>
-							</g>
-							<defs>
-								<filter id="filter0_d_62_261" x="56.2" y="0.199757" width="476.6" height="476.6" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
-									<feFlood floodOpacity="0" result="BackgroundImageFix"/>
-									<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-									<feMorphology radius="196" operator="dilate" in="SourceAlpha" result="effect1_dropShadow_62_261"/>
-									<feOffset/>
-									<feGaussianBlur stdDeviation="20.9"/>
-									<feComposite in2="hardAlpha" operator="out"/>
-									<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0.466667 0 0 0 0 1 0 0 0 0.1 0"/>
-									<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_62_261"/>
-									<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_62_261" result="shape"/>
-								</filter>
-								<linearGradient id="paint0_linear_62_261" x1="297" y1="37.9993" x2="297" y2="358.499" gradientUnits="userSpaceOnUse">
-									<stop stopColor="#0E0060"/>
-									<stop offset="1" stopColor="#9FA6F0"/>
-								</linearGradient>
-								<linearGradient id="paint1_linear_62_261" x1="295" y1="124.535" x2="295" y2="257.59" gradientUnits="userSpaceOnUse">
-									<stop stopColor="#0077FF" stopOpacity="0"/>
-									<stop offset="1" stopColor="#50A1FF" stopOpacity="0.8"/>
-								</linearGradient>
-								<linearGradient id="paint2_linear_62_261" x1="297" y1="265" x2="297" y2="608" gradientUnits="userSpaceOnUse">
-									<stop stopColor="#1C182D"/>
-									<stop offset="1" stopColor="#252525"/>
-								</linearGradient>
-								<linearGradient id="paint3_linear_62_261" x1="297" y1="386" x2="297" y2="608" gradientUnits="userSpaceOnUse">
-									<stop stopColor="#1C182D"/>
-									<stop offset="1" stopColor="#252525"/>
-								</linearGradient>
-								<linearGradient id="paint4_linear_62_261" x1="297" y1="386" x2="297" y2="608" gradientUnits="userSpaceOnUse">
-									<stop stopColor="#34388E"/>
-									<stop offset="1" stopColor="#424242" stopOpacity="0"/>
-								</linearGradient>
-							</defs>
-						</svg>
-					</div>
+							<svg width="15" height="16" viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+								<path d="M15 8.18027C15 12.6021 12.0215 15.749 7.62295 15.749C3.40574 15.749 0 12.2865 0 7.99902C0 3.71152 3.40574 0.249023 7.62295 0.249023C9.67623 0.249023 11.4037 1.01465 12.7346 2.27715L10.6598 4.30527C7.9457 1.64277 2.89857 3.64277 2.89857 7.99902C2.89857 10.7021 5.02254 12.8928 7.62295 12.8928C10.6414 12.8928 11.7725 10.6928 11.9508 9.55215H7.62295V6.88652H14.8801C14.9508 7.2834 15 7.66465 15 8.18027Z" fill="white"/>
+							</svg>
+						</Button>
+					</Letter>
 
 					<p className="text-[#8F8F8F]">or</p>
 					<p>Stay in touch by following us in our socials</p>
@@ -204,7 +156,7 @@ function GlassDisplay({outerClassName="", className="", children}: PropsWithChil
 	)
 }
 
-function Button({className="", children}: PropsWithChildren<{className: string;}>) {
+function Button({className="", children}: PropsWithChildren<{className?: string;}>) {
 	return (
 		<button className={`font-semibold mb-6 px-[2px] py-px cursor-pointer rounded-full bg-radial-[at_50%_100%] from-white to-[#79768B] shadow-2xl shadow-white/15 ${className}`}>
 			<div className="flex items-center gap-4 px-8 py-4 rounded-full bg-black shadow-[inset_0_0_16px] shadow-[#00D0FF]/35">

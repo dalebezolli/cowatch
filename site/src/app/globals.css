@@ -14,10 +14,48 @@
 			opacity: 1;
 		}
 	}
+
+	@keyframes Letter-Scaling {
+		0% { scale: 0; }
+		100% { scale: 1; }
+	}
+
+	@keyframes Letter-Position {
+		0% { translate: 0; }
+		100% { translate: 0 16px; }
+	}
+
+	@keyframes Paper-Position {
+		0% { translate: 0 100%; }
+		100% { translate: 0 0; }
+	}
+
+	@keyframes Highlight-Visibility {
+		0% { opacity: 0; }
+		100% { opacity: 1; }
+	}
+
 }
 
 body {
   font-family: var(--font-montserrat), Arial, Helvetica, sans-serif;
+}
+
+.letter-front, .letter-back {
+	transform-origin: center bottom;
+	animation: 200ms ease-out both Letter-Scaling, 1s ease-in-out both Letter-Position;
+}
+
+.letter-content {
+	animation: 200ms ease-out both 1s Highlight-Visibility;
+}
+
+.paper {
+	animation: 900ms cubic-bezier(.11,.66,0,1.13) 100ms both Paper-Position;
+}
+
+.highlight {
+	animation: 900ms cubic-bezier(.11,.66,0,1.15) 100ms both Highlight-Visibility;
 }
 
 .alternating-partially-visible {
