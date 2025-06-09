@@ -45,7 +45,7 @@ export default function Home() {
 					<p className="max-md:text-sm animate-[1s_ease-in_0.25s_backwards_FadeIn]">Feel the ultimate, lag-free, YouTube native visual quality, with your friends, by signing up for the <span className="text-cyan">closed alpha</span> experience today.</p>
 
 
-					<Button className="animate-[1s_ease-in_0.25s_backwards_FadeIn]">
+					<Button className="animate-[1s_ease-in_0.25s_backwards_FadeIn]" link="#download">
 						Get Started
 						<svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 							<path d="M12.4211 8.53034L6.34786 14.6036C6.05496 14.8965 5.58008 14.8965 5.28721 14.6036L4.57886 13.8952C4.28646 13.6028 4.2859 13.1289 4.57761 12.8358L9.39077 8L4.57761 3.16422C4.2859 2.87112 4.28646 2.39722 4.57886 2.10481L5.28721 1.39647C5.58011 1.10356 6.05499 1.10356 6.34786 1.39647L12.4211 7.46969C12.714 7.76256 12.714 8.23744 12.4211 8.53034Z" fill="white"/>
@@ -102,7 +102,7 @@ export default function Home() {
 						<p className="mb-4">We’re currently in Closed Alpha and need your feedback to make cowatch better.</p>
 						<p className="mb-10">And because we don’t want to leave you alone, once you join you’ll get the chance to invite one of your friends for them to skip the line.</p>
 
-						<Button>
+						<Button link="#">
 							Join Now
 
 							<svg width="15" height="16" viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -156,15 +156,15 @@ function GlassDisplay({outerClassName="", className="", children}: PropsWithChil
 	)
 }
 
-function Button({className="", children}: PropsWithChildren<{className?: string;}>) {
+function Button({link, className="", children}: PropsWithChildren<{link: string, className?: string;}>) {
 	return (
-		<button className={`group relative font-semibold mb-6 cursor-pointer rounded-full shadow-2xl shadow-white/15 ${className}`}>
+		<a href={link} className={`block w-fit group relative font-semibold mb-6 cursor-pointer rounded-full shadow-2xl shadow-white/15 ${className}`}>
 			<div className="top-full left-1/2 absolute w-[150px] h-[100px] -translate-1/2 bg-radial from-white/15 via-transparent group-hover:animate-button-highlight"></div>
 				<div className="overflow-clip relative rounded-full px-[2px] py-[2px] bg-[#79768B] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:w-[100px] after:h-[100px] after:bg-radial after:from-white after:via-transparent hover:after:animate-button">
 					<div className="relative z-[5] flex items-center gap-4 hover:gap-6 px-8 py-4 rounded-full bg-black shadow-[inset_0_0_16px] shadow-[#00D0FF]/45 transition-all ease-out">
 						{children}
 					</div>
 				</div>
-		</button>
+		</a>
 	)
 }
