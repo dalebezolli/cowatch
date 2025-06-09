@@ -25,8 +25,8 @@ export default function Home() {
 
 			<main className="relative text-center text-light font-medium">
 				<div className="-z-50 bottom-0 md:left-1/2 fixed md:-translate-x-1/2 translate-y-[40%] sm:translate-y-[60%] md:translate-y-[57%]">
-					{ /* <div className="absolute w-px h-px bg-white shadow-[0_0_250px_200px] shadow-white"></div> */ }
-					<Image width={960} height={960} src="/out.png" alt="none" />
+					<Image width={960} height={960} src="/out.png" alt="none" className="relative z-10" />
+					<div className="z-0 absolute top-[35%] left-[45%] w-px h-px bg-white shadow-[0_0_250px_200px] shadow-white"></div>
 				</div>
 
 				<CenterContainer width="800" className="mt-[64px] mb-[256px] flex flex-col items-center gap-8">
