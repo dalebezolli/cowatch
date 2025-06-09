@@ -158,10 +158,13 @@ function GlassDisplay({outerClassName="", className="", children}: PropsWithChil
 
 function Button({className="", children}: PropsWithChildren<{className?: string;}>) {
 	return (
-		<button className={`font-semibold mb-6 px-[2px] py-px cursor-pointer rounded-full bg-radial-[at_50%_100%] from-white to-[#79768B] shadow-2xl shadow-white/15 ${className}`}>
-			<div className="flex items-center gap-4 px-8 py-4 rounded-full bg-black shadow-[inset_0_0_16px] shadow-[#00D0FF]/35">
-				{children}
-			</div>
+		<button className={`group relative font-semibold mb-6 cursor-pointer rounded-full shadow-2xl shadow-white/15 ${className}`}>
+			<div className="top-full left-1/2 absolute w-[150px] h-[100px] -translate-1/2 bg-radial from-white/15 via-transparent group-hover:animate-button-highlight"></div>
+				<div className="overflow-clip relative rounded-full px-[2px] py-[2px] bg-[#79768B] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:w-[100px] after:h-[100px] after:bg-radial after:from-white after:via-transparent hover:after:animate-button">
+					<div className="relative z-[5] flex items-center gap-4 hover:gap-6 px-8 py-4 rounded-full bg-black shadow-[inset_0_0_16px] shadow-[#00D0FF]/45 transition-all ease-out">
+						{children}
+					</div>
+				</div>
 		</button>
 	)
 }
