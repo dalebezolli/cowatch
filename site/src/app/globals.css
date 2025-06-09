@@ -46,9 +46,9 @@
 
 	@keyframes ButtonHighlightHover {
 		0% { top: 90%; left: 50%; }
-		15% { top: 90%; left: 0%; }
-		25% { top: 0%; left: 0%; }
-		75% { top: 0%; left: 90%; }
+		15% { top: 90%; left: 10%; }
+		25% { top: 10%; left: 10%; }
+		75% { top: 10%; left: 90%; }
 		85% { top: 90%; left: 90%; }
 		100% { top: 90%; left: 50%; }
 	}
