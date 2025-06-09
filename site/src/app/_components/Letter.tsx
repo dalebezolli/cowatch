@@ -88,7 +88,7 @@ export default function Letter({ children }: PropsWithChildren) {
 						<rect width="517.999999" height="218.27544" rx="0" ry="0" transform="matrix(1 0 0 3.541397 38.663002-148.499994)" fill="#fff" strokeWidth="0" />
 					</clipPath>
 				</g>
-				<path id="highlight" className="opacity-0" d="M0.5,68.9993L98.0945,407.999h395.7725L589.5,68.9993h-589Z" opacity="1" fill="url(#highlight-fill)" />
+				<path id="highlight" className="opacity-0" d="M0.5,68.9993L98.0945,420.999h395.7725L589.5,68.9993h-589Z" opacity="1" fill="url(#highlight-fill)" />
 				<g id="letter-front" className="scale-0" transform="translate(0.000001 16)">
 					<path d="M556,608h-518v-343c0,0,68.217,8.676,76.5,15.5s126.5,140.5,126.5,140.5l56,139.626L353,421c0,0,118.217-133.676,126.5-140.5s76.5-15.5,76.5-15.5v343Z" fill="url(#egFVcG1dxoQ14-fill)" />
 					<path d="M384.854,386c0,0,143.843,134.5,147.146,142s24,80,24,80h-518c0,0,20.6967-72.5,24-80s147.146-142,147.146-142h175.708Z" fill="url(#egFVcG1dxoQ15-fill)" />
