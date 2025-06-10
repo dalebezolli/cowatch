@@ -1,22 +1,12 @@
-import { Fragment, HTMLAttributes, PropsWithChildren } from "react";
-import Header from "./_components/Header";
+import { Fragment, PropsWithChildren } from "react";
 import Image from "next/image";
 import AlternatingTitle from "./_components/AlternatingTitle";
 import Letter from "./_components/Letter";
+import CenterContainer from "./_components/CenterContainer";
 
 export default function Home() {
 	return (
 		<Fragment>
-			<div className="z-50 top-0 w-full fixed bg-dark/50 backdrop-blur-xs animate-[1s_ease-in_0.25s_backwards_FadeIn]">
-				<CenterContainer>
-					<Header links={[
-						{text: "HOME", path: "#home"},
-						{text: "FEATURES", path: "#features"},
-						{text: "DOWNLOAD", path: "#download"},
-					]} />
-				</CenterContainer>
-			</div>
-
 			<div id="#home" className="h-[64px]"></div>
 			<div className="max-md:hidden -z-20 inset-0 fixed pointer-events-none">
 				<div className="absolute left-[20%] w-px h-full bg-white/15"></div>
@@ -131,17 +121,6 @@ export default function Home() {
 			</main>
 		</Fragment>
 	);
-}
-
-function CenterContainer({ width="1920", className="", children, ...rest}: PropsWithChildren<{
-	width?: string;
-	className?: string;
-}> & HTMLAttributes<HTMLDivElement>) {
-	return (
-		<div className={`px-8 lg:px-16 mx-auto ${className}`} style={{ maxWidth: width+"px"}} {...rest}>
-			{children}
-		</div>
-	)
 }
 
 function GlassDisplay({outerClassName="", className="", children}: PropsWithChildren<{outerClassName?: string; className?: string;}>) {
