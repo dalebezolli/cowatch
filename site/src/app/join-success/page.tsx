@@ -5,7 +5,6 @@ import CenterContainer from "../_components/CenterContainer";
 export default function Home() {
 	return (
 		<Fragment>
-			<div id="#home" className="h-[64px]"></div>
 			<div className="max-md:hidden -z-20 inset-0 fixed pointer-events-none">
 				<div className="absolute left-[20%] w-px h-full bg-white/15"></div>
 				<div className="absolute right-[20%] w-px h-full bg-white/15"></div>
