@@ -3,11 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/cowatch/logger"
+	"github.com/joho/godotenv"
 )
 
 var port string
@@ -36,14 +38,18 @@ func main() {
 	flag.IntVar(&ClientCleanupRoutineInterval, "cleanup-interval", 30, "The amount of time (sec) the client cleanup will take to rerun")
 	flag.Parse()
 
+	if err := godotenv.Load(); err != nil {
+		log.Fatalln("No .env file found.")
+	}
+
 	logFileName := "log_" + time.Now().Format("2006_01_02_15_04_05.000")
 	logFile, errorOpeningLogFile := os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
 
-	tlsExists := checkForTLS(tlsPEM, tlsKEY)
-	if !tlsExists {
-		logger.Error("TLS Encryption files not found. Please check that %q and %q exist.\n", tlsPEM, tlsKEY)
-		return
-	}
+	// tlsExists := checkForTLS(tlsPEM, tlsKEY)
+	// if !tlsExists {
+	// 	logger.Error("TLS Encryption files not found. Please check that %q and %q exist.\n", tlsPEM, tlsKEY)
+	// 	return
+	// }
 
 	if errorOpeningLogFile != nil {
 		logger.Error("Failed to setup logger: %s\n", errorOpeningLogFile)
@@ -54,6 +60,12 @@ func main() {
 		defer logFile.Close()
 	}
 
+	auth, _ := initializeAuth(AuthConfig{
+		clientID:     os.Getenv("GOOGLE_AUTH_CLIENT_ID"),
+		clientSecret: os.Getenv("GOOGLE_AUTH_CLIENT_SECRET"),
+		redirectURL:  "http://localhost:" + port + os.Getenv("GOOGLE_AUTH_REDIRECT"),
+	})
+
 	logger.Info("Starting cowatch in port %s\n", port)
 
 	connectionManager := NewGorillaConnectionManager()
@@ -61,6 +73,7 @@ func main() {
 
 	http.HandleFunc(EndpointReflect, managerInstance.HandleMessages)
 	http.HandleFunc(EndpointDownload, HandleDownload)
+	http.Handle("/", auth.handleAuthRoutes())
 
 	go func() {
 		for {
