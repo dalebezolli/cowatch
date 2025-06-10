@@ -96,7 +96,7 @@ export default function Home() {
 						<p className="mb-4">We’re currently in Closed Alpha and need your feedback to make cowatch better.</p>
 						<p className="mb-10">And because we don’t want to leave you alone, once you join you’ll get the chance to invite one of your friends for them to skip the line.</p>
 
-						<Button link="#">
+						<Button link={process.env.SERVER_AUTH_URI ?? "/join-error"}>
 							Join Now
 
 							<svg width="15" height="16" viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
