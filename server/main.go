@@ -57,7 +57,7 @@ func main() {
 	auth, err := initializeAuth(AuthConfig{
 		clientID:     os.Getenv("GOOGLE_AUTH_CLIENT_ID"),
 		clientSecret: os.Getenv("GOOGLE_AUTH_CLIENT_SECRET"),
-		redirectURL:  "http://localhost:" + port + os.Getenv("GOOGLE_AUTH_REDIRECT"),
+		redirectURL:  os.Getenv("GOOGLE_AUTH_REDIRECT"),
 	}, db)
 	if err != nil {
 		log.Fatalln("Failed to initialize authentication: ", err)
