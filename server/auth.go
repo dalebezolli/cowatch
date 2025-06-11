@@ -121,7 +121,7 @@ type GoogleUser struct {
 	Id    string `json:"id"`
 	Email string `json:"email"`
 	Name  string `json:"name"`
-	Icon  string `json:"icon"`
+	Icon  string `json:"picture"`
 }
 
 func (g *GoogleUser) ToUser() *User {
@@ -169,6 +169,7 @@ func (auth *AuthService) routeAuthCallback() http.HandlerFunc {
 		}
 
 		var googleUser GoogleUser
+
 		err = json.Unmarshal(bodyStr, &googleUser)
 		if err != nil {
 			logger.Error("[%s] Failed to parse user information body: %s\n", stateConfig.ProcessId, err.Error())
