@@ -10,6 +10,9 @@ import (
 
 	"github.com/cowatch/logger"
 	"github.com/joho/godotenv"
+
+	"database/sql"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var port string
@@ -45,6 +48,21 @@ func main() {
 	logFileName := "log_" + time.Now().Format("2006_01_02_15_04_05.000")
 	logFile, errorOpeningLogFile := os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
 
+	db, err := sql.Open("sqlite3", os.Getenv("SQLITE3_DB"))
+	if err != nil {
+		log.Fatalln("Failed to open database:", err)
+	}
+	defer db.Close()
+
+	auth, err := initializeAuth(AuthConfig{
+		clientID:     os.Getenv("GOOGLE_AUTH_CLIENT_ID"),
+		clientSecret: os.Getenv("GOOGLE_AUTH_CLIENT_SECRET"),
+		redirectURL:  "http://localhost:" + port + os.Getenv("GOOGLE_AUTH_REDIRECT"),
+	}, db)
+	if err != nil {
+		log.Fatalln("Failed to initialize authentication: ", err)
+	}
+
 	// tlsExists := checkForTLS(tlsPEM, tlsKEY)
 	// if !tlsExists {
 	// 	logger.Error("TLS Encryption files not found. Please check that %q and %q exist.\n", tlsPEM, tlsKEY)
@@ -59,12 +77,6 @@ func main() {
 
 		defer logFile.Close()
 	}
-
-	auth, _ := initializeAuth(AuthConfig{
-		clientID:     os.Getenv("GOOGLE_AUTH_CLIENT_ID"),
-		clientSecret: os.Getenv("GOOGLE_AUTH_CLIENT_SECRET"),
-		redirectURL:  "http://localhost:" + port + os.Getenv("GOOGLE_AUTH_REDIRECT"),
-	})
 
 	logger.Info("Starting cowatch in port %s\n", port)
 
