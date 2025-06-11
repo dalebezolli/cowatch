@@ -19,7 +19,7 @@ export default function Home() {
 					<div className="absolute top-[70%] right-[20%] w-px h-px bg-transparent shadow-[0_0_300px_200px] shadow-cyan/30 animate-[pulse_9s_cubic-bezier(0.4,0,0.6,1)_infinite]"></div>
 
 					<Letter>
-						<p className="mb-4">Our hardworking elves are processing your request to join our alpha testers. Once it’s ready we’ll update you through your email and our discord server.</p>
+						<p className="mb-4">Our hardworking elves are processing your request to join our alpha testers. Once it’s ready we’ll update you through your email.</p>
 						<p className="mb-10">Until then, feel free to join our discord server and follow us on twitter.</p>
 
 						<div className="flex gap-4">

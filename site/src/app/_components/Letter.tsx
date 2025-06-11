@@ -33,7 +33,7 @@ export default function Letter({ children }: PropsWithChildren) {
 
 	return (
 		<div className="relative">
-			<div id="letter-content" className="absolute inset-0 pt-28 pb-20 opacity-0 px-24 flex flex-col items-center">
+			<div id="letter-content" className="absolute inset-0 pt-28 pb-20 opacity-0 px-28 flex flex-col items-center">
 				{children}
 			</div>
 
