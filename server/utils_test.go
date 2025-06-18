@@ -56,7 +56,7 @@ func TestQueryParams(t *testing.T) {
 		expectedValue := reflect.ValueOf(expected)
 		receivedValue := reflect.ValueOf(received)
 
-		for i:= 0; i < expectedValue.NumField(); i++ {
+		for i := 0; i < expectedValue.NumField(); i++ {
 			if expectedValue.Field(i).String() != receivedValue.Field(i).String() {
 				t.Errorf("Field %s expected %q got %q", expectedType.Field(i).Name, expectedValue.Field(i).String(), receivedValue.Field(i).String())
 			}

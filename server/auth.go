@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/cowatch/logger"
@@ -103,15 +102,18 @@ func (auth *AuthService) handleAuthRoutes() *http.ServeMux {
 }
 
 func (auth *AuthService) routeAuth() http.HandlerFunc {
-	processID := uuid.NewString()
-
 	return func(w http.ResponseWriter, r *http.Request) {
+		stateConfig := StateQueryParams{
+			ProcessId: uuid.NewString(),
+			Action:    StateQueryParamsAction(r.URL.Query().Get("action")),
+		}
+
+		queryParams, _ := formatQueryParams(stateConfig)
+
 		http.Redirect(
 			w,
 			r,
-			auth.authConfig.AuthCodeURL(formatStateString(StateConfig{
-				ProcessId: processID,
-			}), oauth2.AccessTypeOffline),
+			auth.authConfig.AuthCodeURL(queryParams, oauth2.AccessTypeOffline),
 			http.StatusTemporaryRedirect,
 		)
 	}
@@ -137,34 +139,36 @@ func (g *GoogleUser) ToUser() *User {
 func (auth *AuthService) routeAuthCallback() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")
-		state := r.URL.Query().Get("state")
-		stateConfig := parseStateString(state)
+		stateStr := r.URL.Query().Get("state")
+
+		var params StateQueryParams
+		parseQueryParams(stateStr, &params)
 
 		if code == "" {
-			logger.Error("[%s] Failed to retrieve code for authenticated user\n", stateConfig.ProcessId)
-			http.Redirect(w, r, os.Getenv("JOIN_ERROR_REDIRECT")+"?id="+stateConfig.ProcessId, http.StatusPermanentRedirect)
+			logger.Error("[%s] Failed to retrieve code for authenticated user\n", params.ProcessId)
+			http.Redirect(w, r, os.Getenv("JOIN_ERROR_REDIRECT")+"?id="+params.ProcessId, http.StatusPermanentRedirect)
 			return
 		}
 
 		token, err := auth.authConfig.Exchange(context.Background(), code)
 		if err != nil {
-			logger.Error("[%s] Failed to exchange auth code for token: %s\n", stateConfig.ProcessId, err.Error())
-			http.Redirect(w, r, os.Getenv("JOIN_ERROR_REDIRECT")+"?id="+stateConfig.ProcessId, http.StatusPermanentRedirect)
+			logger.Error("[%s] Failed to exchange auth code for token: %s\n", params.ProcessId, err.Error())
+			http.Redirect(w, r, os.Getenv("JOIN_ERROR_REDIRECT")+"?id="+params.ProcessId, http.StatusPermanentRedirect)
 			return
 		}
 
 		client := auth.authConfig.Client(context.Background(), token)
 		response, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 		if err != nil {
-			logger.Error("[%s] Failed to collect user information: %s\n", stateConfig.ProcessId, err.Error())
-			http.Redirect(w, r, os.Getenv("JOIN_ERROR_REDIRECT")+"?id="+stateConfig.ProcessId, http.StatusPermanentRedirect)
+			logger.Error("[%s] Failed to collect user information: %s\n", params.ProcessId, err.Error())
+			http.Redirect(w, r, os.Getenv("JOIN_ERROR_REDIRECT")+"?id="+params.ProcessId, http.StatusPermanentRedirect)
 			return
 		}
 
 		bodyStr, err := io.ReadAll(response.Body)
 		if err != nil {
-			logger.Error("[%s] Failed to read user information body: %s\n", stateConfig.ProcessId, err.Error())
-			http.Redirect(w, r, os.Getenv("JOIN_ERROR_REDIRECT")+"?id="+stateConfig.ProcessId, http.StatusPermanentRedirect)
+			logger.Error("[%s] Failed to read user information body: %s\n", params.ProcessId, err.Error())
+			http.Redirect(w, r, os.Getenv("JOIN_ERROR_REDIRECT")+"?id="+params.ProcessId, http.StatusPermanentRedirect)
 			return
 		}
 
@@ -172,43 +176,53 @@ func (auth *AuthService) routeAuthCallback() http.HandlerFunc {
 
 		err = json.Unmarshal(bodyStr, &googleUser)
 		if err != nil {
-			logger.Error("[%s] Failed to parse user information body: %s\n", stateConfig.ProcessId, err.Error())
-			http.Redirect(w, r, os.Getenv("JOIN_ERROR_REDIRECT")+"?id="+stateConfig.ProcessId, http.StatusPermanentRedirect)
+			logger.Error("[%s] Failed to parse user information body: %s\n", params.ProcessId, err.Error())
+			http.Redirect(w, r, os.Getenv("JOIN_ERROR_REDIRECT")+"?id="+params.ProcessId, http.StatusPermanentRedirect)
 			return
 		}
 
 		user := googleUser.ToUser()
 		err = user.InsertToDB(auth.db)
 		if err != nil {
-			logger.Error("[%s] Failed to store user to db: %s\n", stateConfig.ProcessId, err.Error())
+			logger.Error("[%s] Failed to store user to db: %s\n", params.ProcessId, err.Error())
 
-			logger.Info("Is registered? %t\n", errors.Is(err, ErrUserAlreadyRegistered))
-
-			queryParams := "?id=" + stateConfig.ProcessId
-			if errors.Is(err, ErrUserAlreadyRegistered) {
-				queryParams += "&err=" + ErrUserAlreadyRegistered.Error()
+			callbackParams := CallbackQueryParams{
+				ProcessId: params.ProcessId,
+				Action:    params.Action,
 			}
 
-			http.Redirect(w, r, os.Getenv("JOIN_ERROR_REDIRECT")+queryParams, http.StatusPermanentRedirect)
+			if errors.Is(err, ErrUserAlreadyRegistered) {
+				callbackParams.Error = ErrUserAlreadyRegistered.Error()
+			}
+
+			callbackQueryParams, _ := formatQueryParams(callbackParams)
+
+			http.Redirect(w, r, os.Getenv("JOIN_ERROR_REDIRECT")+"?"+callbackQueryParams, http.StatusPermanentRedirect)
 			return
 		}
 
-		http.Redirect(w, r, os.Getenv("JOIN_SUCCESS_REDIRECT"), http.StatusPermanentRedirect)
+		if params.Action == StateQueryParamActionJoin {
+			http.Redirect(w, r, os.Getenv("JOIN_SUCCESS_REDIRECT"), http.StatusPermanentRedirect)
+		}
+
+		http.Redirect(w, r, "http://localhost:3000", http.StatusPermanentRedirect)
 	}
 }
 
-type StateConfig struct {
-	ProcessId string
+type StateQueryParams struct {
+	ProcessId string                 `param:"id"`
+	Action    StateQueryParamsAction `param:"action"`
 }
 
-func formatStateString(config StateConfig) string {
-	return "id:" + config.ProcessId
-}
+type StateQueryParamsAction string
 
-func parseStateString(str string) *StateConfig {
-	id := strings.Trim(str, "id:")
+const (
+	StateQueryParamActionJoin    = "join"
+	StateQueryParamActionConnect = "connect"
+)
 
-	return &StateConfig{
-		ProcessId: id,
-	}
+type CallbackQueryParams struct {
+	ProcessId string                 `param:"id"`
+	Action    StateQueryParamsAction `param:"action"`
+	Error     string                 `param:"err"`
 }

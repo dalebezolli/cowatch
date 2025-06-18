@@ -90,7 +90,7 @@ func parseQueryParams(str string, params any) error {
 		if isParsingKey && bytes[i] == '=' {
 			currentKey = string(bytes[itemStart:i])
 			isParsingKey = false
-			itemStart = i+1
+			itemStart = i + 1
 		}
 
 		if !isParsingKey && bytes[i] == '&' {
@@ -100,7 +100,7 @@ func parseQueryParams(str string, params any) error {
 			}
 
 			isParsingKey = true
-			itemStart = i+1
+			itemStart = i + 1
 		}
 	}
 
