@@ -5,10 +5,11 @@ import './room_ui.css';
 
 import { LogLevel, log } from './log';
 import { onCoreAction, triggerClientMessage } from './events';
-import { Room, Client, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails, ServerStatus, ConnectionStatus } from './types';
+import { Room, Client, ConnectionError, Status, RoomUISystemStatus, RoomUIRoomDetails, ServerStatus, ConnectionStatus, AuthorizedClient } from './types';
 import { sleep } from './utils';
 
 const SERVER_ADDRESS = process.env.ADDRESS_OWL;
+const AUTH_ADDRESS = process.env.ADDRESS_AUTH;
 const FAILED_INITIALIZATION_TOTAL_ATTEMPTS = parseInt(process.env.TOTAL_ATTEMPTS);
 const FAILED_INITIALIZATION_REATEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
 
@@ -158,8 +159,6 @@ function ClientContextProvider({ children }) {
 		let ok = true;
 
 		ok &&= status.RoomUI == Status.OK;
-		ok &&= status.Connection == Status.OK;
-		ok &&= status.ClientCollector == Status.OK;
 		ok &&= status.PlayerInterceptor == Status.OK;
 		if(!ok) {
 			log(LogLevel.Error, 'Failed to initialize components', status)();
@@ -448,11 +447,7 @@ function CowatchContent() {
 			selectedContent = <CowatchContentSwitchTab />
 			break;
 		case CowatchStatus.Disconnected:
-			selectedContent = (
-				<section className='box-border h-full py-[64px] flex gap-[24px] flex-col justify-start items-center'>
-					<p className='text-[1.6rem]'>Connecting to server</p>
-				</section>
-			);
+			selectedContent = <CowatchContentLogin />;
 			break;
 		case CowatchStatus.Loading:
 			selectedContent = (
@@ -524,6 +519,67 @@ function CowatchContentSwitchTab() {
 			<Button text='Switch' style={ButtonStyle.default} onClick={onSwitchActiveTab} />
 		</section>
 	)
+}
+
+function CowatchContentLogin() {
+	const [isLoggingIn, setIsLoggingIn] = useState(false);
+	const [loginError, setLoginError] = useState("");
+
+	useEffect(() => {
+		const privateToken = localStorage.getItem('cowatch-token') ?? "";
+
+		if(!isLoggingIn && privateToken != "") {
+			let authHTTPURL = SERVER_ADDRESS.replace("ws", "http").replace("wss", "https")+`/auth-await?token=${privateToken}`;
+			fetch(authHTTPURL)
+				.then(response => response.json())
+				.then(data => triggerClientMessage('CollectClient', { status: Status.OK, client: data }))
+				.catch(err => log(LogLevel.Error, "Error while authenticating existing user:", err)())
+			return;
+		}
+
+		if(!isLoggingIn) return;
+
+		const authWebsocketURL = SERVER_ADDRESS+"/auth-await";
+		const ws = new WebSocket(authWebsocketURL);
+		ws.addEventListener("message", (event) => {
+			const data: {sucess: boolean, client: string, user: AuthorizedClient, error: string} = JSON.parse(event.data);
+			log(LogLevel.Info, "Received message:", data)();
+
+
+			if(data.error == "" && data.user == null) {
+				window.open(`${AUTH_ADDRESS}?action=connect&client=${data.client}`);
+				return;
+			}
+
+			if(data.error) {
+				setLoginError(data.error);
+				setIsLoggingIn(false);
+				ws.close();
+				return;
+			}
+
+			if(data.user) {
+				localStorage.setItem('cowatch-token', data.user.privateToken);
+				triggerClientMessage('CollectClient', { status: Status.OK, client: data.user });
+			}
+		});
+	}, [isLoggingIn]);
+
+	function attemptToLogin() {
+		setLoginError("");
+		setIsLoggingIn(true);
+	}
+
+	return (
+		<section className='box-border h-full py-[64px] flex gap-[24px] flex-col justify-start items-center'>
+			<p className='text-[1.6rem]'>To start log in using Google</p>
+
+			<Button key={loginError} style={ButtonStyle.default} text='Login' loadAfterClick={true} onClick={attemptToLogin} />
+			{ loginError != "" &&
+				<p className='text-red-400 text-[1.6rem]'>{loginError}</p>
+			}
+		</section>
+	);
 }
 
 function CowatchContentHostOptions() {
@@ -918,8 +974,6 @@ bg-neutral-100 hover:bg-neutral-200 focus:bg-neutral-300 text-neutral-800
 		downloadPath = download.slice(0, separator);
 		downloadFile = download.slice(separator + 1);
 	}
-
-	log(LogLevel.Warn, 'Download:', {downloadFile, downloadPath, download})();
 
 	const displayedIcon = <Icon icon={icon} size={24} fillColor={fillColor} strokeColor={strokeColor} className={loading ? 'animate-spin' : ''} />;
 	return (

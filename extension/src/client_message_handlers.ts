@@ -7,7 +7,8 @@
  */
 
 import * as browser from 'webextension-polyfill';
-import { onClientMessage, triggerClientMessage, triggerCoreAction } from "./events";
+import { initializeConnection } from './connection';
+import { onClientMessage, triggerCoreAction } from "./events";
 import { LogLevel, log } from "./log";
 import { getState } from "./state";
 import { Status, ClientMessageDetails, ClientMessageType } from "./types";
@@ -42,7 +43,15 @@ export function initializeClientMessageHandlers() {
 
 function onClientMessageCollectClient(action: ClientMessageDetails['CollectClient']) {
 	if(action.status === Status.ERROR) return;
-	getState().client = { ...action.client, publicToken: '', privateToken: '' };
+	getState().client = { ...action.client };
+	getState().clientStatus = 'innactive';
+
+	triggerCoreAction('SendRoomUIClient', { ...getState().client });
+
+	if(getState().serverStatus === 'failed') {
+		log(LogLevel.Info, 'Creating Cowatch Server Connection...')();
+		initializeConnection(getState());
+	}
 }
 
 function onClientSwitchActiveTab() {
@@ -58,13 +67,11 @@ function onClientMessageGetState() {
 	triggerCoreAction('SendState', { ...getState() });
 }
 
+/**
+ * Broadcast extension's module updates
+ */
 async function onClientMessageModuleStatus(action: ClientMessageDetails['ModuleStatus']) {
 	getState().systemStatuses[action.system] = action.status;
-
-	let systemsOk = true;
-	for(let systemOk of Object.values(getState().systemStatuses)) {
-		systemsOk &&= Status.OK === systemOk;
-	}
 
 	log(LogLevel.Info,
 		'Current system statuses:', {
@@ -73,16 +80,6 @@ async function onClientMessageModuleStatus(action: ClientMessageDetails['ModuleS
 		clientStatus: getState().clientStatus,
 		isPrimaryTab: getState().isPrimaryTab
 	})();
-	if(!systemsOk) return;
-
-	log(LogLevel.Info, 'Sending client to room ui.', getState().client)();
-	const { name, image, publicToken }  = getState().client;
-	triggerCoreAction('SendRoomUIClient', { name, image, publicToken });
-
-	if(getState().clientStatus === 'disconnected' && getState().serverStatus === 'connected') {
-		log(LogLevel.Info, 'Authorizing client.')();
-		triggerClientMessage('Authorize', {});
-	}
 
 	triggerCoreAction('SendRoomUISystemStatus', {
 		...getState().systemStatuses,

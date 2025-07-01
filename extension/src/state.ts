@@ -7,7 +7,6 @@ export function initializeState() {
 	clientState = {
 		systemStatuses: {
 			RoomUI: Status.ERROR,
-			ClientCollector: Status.ERROR,
 			PlayerInterceptor: Status.ERROR,
 			Connection: Status.ERROR,
 		},

@@ -33,10 +33,12 @@ async function onStartup() {
 			});
 		}
 
-		if(getState().serverStatus === 'failed') {
-			log(LogLevel.Info, 'Creating Cowatch Server Connection...')();
-			initializeConnection(getState());
-		}
+		// WARN: Stopped to manage authentication first
+		// // TODO: Figure out best location to add this code
+		// if(getState().serverStatus === 'failed') {
+		// 	log(LogLevel.Info, 'Creating Cowatch Server Connection...')();
+		// 	initializeConnection(getState());
+		// }
 	});
 	browser.runtime.sendMessage({ action: 'GetCurrentID' });
 
@@ -44,15 +46,7 @@ async function onStartup() {
 	injectRoomUI();
 
 	log(LogLevel.Info, 'Injecting client info collector...')();
-	collectClient();
 	connectYoutubeInterceptor();
-}
-
-function collectClient() {
-	const domScriptClientCollector = document.createElement('script');
-	domScriptClientCollector.src = browser.runtime.getURL('./client_collector.js');
-	domScriptClientCollector.defer = true;
-	document.head.append(domScriptClientCollector);
 }
 
 function connectYoutubeInterceptor() {

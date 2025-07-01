@@ -2,6 +2,7 @@ import { log, LogLevel } from './log';
 import { sleep } from './utils'
 import { ClientState, ResolutionStrategy, ServerMessage, ServerMessageDetails, ServerMessageType, Status, Timestamp } from './types';
 import { triggerCoreAction, triggerClientMessage } from './events';
+import { getState } from './state';
 
 const FAILED_CONNECTION_REATTEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
 const COWATCH_OWL_SERVER_WEBSOCKET = `${process.env.ADDRESS_OWL}/${process.env.ENDPOINT_WS_OWL}`;
@@ -135,7 +136,7 @@ async function attemptConnection(): Promise<WebSocket> {
 
 		try {
 			connection = await new Promise((resolve: (value: WebSocket) => void, reject: (value: Error) => void) => {
-				const connectionSetup = new WebSocket(COWATCH_OWL_SERVER_WEBSOCKET);
+				const connectionSetup = new WebSocket(`${COWATCH_OWL_SERVER_WEBSOCKET}?auth=${getState().client.privateToken}`);
 
 				connectionSetup.addEventListener('open', () => resolve(connectionSetup));
 				connectionSetup.addEventListener('error', () => reject(new Error('Failed to establish connection with the server.')));
@@ -143,6 +144,7 @@ async function attemptConnection(): Promise<WebSocket> {
 
 			isConnected = true;
 		} catch(error) {
+			triggerCoreAction('SendError', { actionType: 'Authorize', error: 'We\'re experiencing problems with logging you in...', resolutionStrategy: 'stayOnCurrentView' });
 			connectionAttempt++;
 			await sleep(FAILED_CONNECTION_REATTEMPT_MS);
 		}

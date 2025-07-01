@@ -1,8 +1,3 @@
-declare module '*.module.css' {
-  const classes: { readonly [key: string]: string };
-  export default classes;
-}
-
 export enum Status {
 	OK = 'ok',
 	ERROR = 'error',
@@ -73,7 +68,7 @@ export type ConnectionStatus = {
 	averagePing: number,
 };
 
-export type System = 'RoomUI' | 'PlayerInterceptor' | 'ClientCollector' | 'Connection';
+export type System = 'RoomUI' | 'PlayerInterceptor' | 'Connection';
 export type RoomUISystemStatus = {
 		[T in System]: Status;
 	} & {
@@ -100,7 +95,7 @@ export type ClientMessageDetails = {
 	'Authorize': {},
 	'CollectClient': {
 		status: Status,
-		client: Client,
+		client: AuthorizedClient,
 		errorMessage?: string,
 	},
 	'SwitchActiveTab': {},

@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -61,6 +62,7 @@ type ConnectionManager interface {
 
 type Manager struct {
 	connectionManager     ConnectionManager
+	authManager           *AuthService
 	publicToPrivateTokens map[Token]Token
 	clients               map[Token]*Client
 	activeRooms           map[RoomID]*Room
@@ -68,9 +70,10 @@ type Manager struct {
 	serverVersion         string
 }
 
-func NewManager(serverVersion string, connManager ConnectionManager) *Manager {
+func NewManager(serverVersion string, connManager ConnectionManager, authManager *AuthService) *Manager {
 	var manager = &Manager{
 		connectionManager:     connManager,
+		authManager:           authManager,
 		publicToPrivateTokens: make(map[Token]Token),
 		clients:               make(map[Token]*Client),
 		activeRooms:           make(map[RoomID]*Room),
@@ -82,16 +85,43 @@ func NewManager(serverVersion string, connManager ConnectionManager) *Manager {
 }
 
 func (manager *Manager) HandleMessages(writer http.ResponseWriter, request *http.Request) {
+	privateToken := request.URL.Query().Get("auth")
+
+	if privateToken == "" {
+		logger.Error("Failed to provide authorization during logging in.\n")
+		writer.WriteHeader(401)
+		fmt.Fprintf(writer, "Unauthorized")
+		return
+	}
+
+	user := manager.authManager.findUserFromPrivateToken(privateToken)
+
+	logger.Info("User with id %s exists? %t\n", privateToken, user != nil)
+
+	if user == nil {
+		logger.Error("Failed to provide authorization during logging in.\n")
+		writer.WriteHeader(401)
+		fmt.Fprintf(writer, "Unauthorized")
+		return
+	}
+
 	connection, errorUpgrading := manager.connectionManager.NewConnection(writer, request)
 	clientAddress := connection.GetAddr()
 	if errorUpgrading != nil {
 		logger.Error("[%s] Failed to upgrade to websocket: %s\n", clientAddress, errorUpgrading)
 	}
 
-	tempPrivateToken := manager.GenerateToken()
-	manager.connectionManager.RegisterClientConnection(tempPrivateToken, &connection)
+	client := NewClient(Token(privateToken))
+	client.UpdateClientDetails(Client{
+		Name:         user.Name,
+		Image:        user.Icon,
+		PublicToken:  Token(user.PublicId),
+		PrivateToken: Token(user.Id),
+		Type:         ClientTypeInnactive,
+	})
+	manager.connectionManager.RegisterClientConnection(Token(privateToken), &connection)
+	manager.RegisterClient(client)
 
-	client := NewClient(tempPrivateToken)
 	logger.Info("[%s] Established connection for %q\n", clientAddress, client.PrivateToken)
 	for {
 		clientMessage, errorGetClientMessage := connection.ReadMessage()
@@ -280,7 +310,6 @@ func (manager *Manager) disconnectClientFromRoom(client *Client) []DirectedServe
 
 func (manager *Manager) setupClientMessageHandlers() {
 	manager.clientMessageHandlers[ClientMessageTypePing] = PingHandler
-	manager.clientMessageHandlers[ClientMessageTypeAuthorize] = AuthorizeHandler
 
 	manager.clientMessageHandlers[ClientMessageTypeHostRoom] = HostRoomHandler
 	manager.clientMessageHandlers[ClientMessageTypeJoinRoom] = JoinRoomHandler
