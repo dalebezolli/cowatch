@@ -21,6 +21,8 @@ async function onStartup() {
 		log(LogLevel.Info, 'Background message: ', message)();
 		getState().isPrimaryTab = message.isActive;
 
+		log(LogLevel.Debug, 'browser:onMessage - Client status:', getState().client)();
+
 		if(!message.isActive) {
 			getState().clientStatus = 'disconnected';
 			getState().serverStatus = 'failed';
@@ -33,12 +35,16 @@ async function onStartup() {
 			});
 		}
 
-		// WARN: Stopped to manage authentication first
-		// // TODO: Figure out best location to add this code
-		// if(getState().serverStatus === 'failed') {
-		// 	log(LogLevel.Info, 'Creating Cowatch Server Connection...')();
-		// 	initializeConnection(getState());
-		// }
+		if(getState().serverStatus === 'failed') {
+			log(LogLevel.Info, 'Creating Cowatch Server Connection...')();
+			triggerCoreAction('SendRoomUISystemStatus', {
+				...getState().systemStatuses,
+				clientStatus: getState().clientStatus,
+				serverStatus: getState().serverStatus,
+				isPrimaryTab: getState().isPrimaryTab
+			});
+			// initializeConnection(getState());
+		}
 	});
 	browser.runtime.sendMessage({ action: 'GetCurrentID' });
 

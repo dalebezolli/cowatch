@@ -144,6 +144,7 @@ async function attemptConnection(): Promise<WebSocket> {
 
 			isConnected = true;
 		} catch(error) {
+			log(LogLevel.Error, "attemptConnection:", error)();
 			triggerCoreAction('SendError', { actionType: 'Authorize', error: 'We\'re experiencing problems with logging you in...', resolutionStrategy: 'stayOnCurrentView' });
 			connectionAttempt++;
 			await sleep(FAILED_CONNECTION_REATTEMPT_MS);
