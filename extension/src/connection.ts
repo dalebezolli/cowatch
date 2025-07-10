@@ -4,6 +4,7 @@ import { ClientState, ResolutionStrategy, ServerMessage, ServerMessageDetails, S
 import { triggerCoreAction, triggerClientMessage } from './events';
 import { getState } from './state';
 
+const SERVER_VERSION = process.env.SERVER_VERSION;
 const FAILED_CONNECTION_REATTEMPT_MS = parseInt(process.env.REATTEMPT_TIME);
 const COWATCH_OWL_SERVER_WEBSOCKET = `${process.env.ADDRESS_OWL}/${process.env.ENDPOINT_WS_OWL}`;
 const EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER = parseInt(process.env.EXPECTED_SERVER_RESPONSE_TIME_MULTIPLIER);
@@ -30,9 +31,11 @@ export async function initializeConnection(clientState: ClientState) {
 		let connection = await attemptConnection();
 		log(LogLevel.Info, 'Successfully established connection to server.')();
 
+
 		clientState.serverStatus = 'connected';
 		clientState.connection = connection;
 		clientState.connection.addEventListener('message', handleConnectionMessage);
+		clientState.connection.send(JSON.stringify({ version: SERVER_VERSION, actionType: 'AttemptReconnect', action: "" }));
 
 		triggerClientMessage('ModuleStatus', { system: 'Connection', status: Status.OK});
 

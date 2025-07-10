@@ -111,14 +111,22 @@ func (manager *Manager) HandleMessages(writer http.ResponseWriter, request *http
 		logger.Error("[%s] Failed to upgrade to websocket: %s\n", clientAddress, errorUpgrading)
 	}
 
-	client := NewClient(Token(privateToken))
-	client.UpdateClientDetails(Client{
-		Name:         user.Name,
-		Image:        user.Icon,
-		PublicToken:  Token(user.PublicId),
-		PrivateToken: Token(user.Id),
-		Type:         ClientTypeInnactive,
-	})
+	var client *Client
+	previousClient, isRelogging := manager.GetClient(Token(privateToken))
+	if isRelogging == true {
+		logger.Info("[%s] Old client data: %+v\n", clientAddress, previousClient)
+		client = previousClient
+	} else {
+		client = NewClient(Token(privateToken))
+		client.UpdateClientDetails(Client{
+			Name:         user.Name,
+			Image:        user.Icon,
+			PublicToken:  Token(user.PublicId),
+			PrivateToken: Token(user.Id),
+			Type:         ClientTypeInnactive,
+		})
+	}
+
 	manager.connectionManager.RegisterClientConnection(Token(privateToken), &connection)
 	manager.RegisterClient(client)
 

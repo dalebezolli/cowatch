@@ -43,7 +43,6 @@ async function onStartup() {
 				serverStatus: getState().serverStatus,
 				isPrimaryTab: getState().isPrimaryTab
 			});
-			// initializeConnection(getState());
 		}
 	});
 	browser.runtime.sendMessage({ action: 'GetCurrentID' });
