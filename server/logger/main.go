@@ -11,12 +11,13 @@ import (
 type Logger struct {
 	LogFile *os.File
 
-	ShouldLogDate  bool
-	ShouldLogLevel bool
+	ShouldLogDate           bool
+	ShouldLogLevel          bool
 	PrintTraceOnWarnOrError bool
 }
 
 type LogLevel string
+
 const (
 	LogLevelDebug = "DEBUG"
 	LogLevelInfo  = "INFO"
@@ -25,8 +26,8 @@ const (
 )
 
 var logger = Logger{
-	ShouldLogDate: true,
-	ShouldLogLevel: true,
+	ShouldLogDate:           true,
+	ShouldLogLevel:          true,
 	PrintTraceOnWarnOrError: true,
 }
 
@@ -108,7 +109,7 @@ func writeToFile(data string) {
 	}
 
 	const PERM_READ_WRITE = 3
-	if fileInfo.Mode() >> 7 != PERM_READ_WRITE {
+	if fileInfo.Mode()>>7 != PERM_READ_WRITE {
 		return
 	}
 
