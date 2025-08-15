@@ -1,27 +1,33 @@
 package http
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/cowatch/internal/extra"
 	"github.com/cowatch/internal/model"
 	"github.com/cowatch/internal/repository"
 )
 
+type AuthContextKey struct {
+	name string
+}
+
+func (a *AuthContextKey) String() string { return "cowatch/auth context value " + a.name }
+
 func (s *Server) auth(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Authorization") == "" {
-		cErr := extra.CErrAddDetails(extra.CErrAuthMissingAuthorizationHeader, "missing process-id")
+		cErr := model.CErrAddDetails(model.CErrAuthMissingAuthorizationHeader, "missing process-id")
 		s.Send(w, nil, &cErr)
 		return
 	}
 
 	privateId := model.PrivateID(strings.TrimLeft(r.Header.Get("Authorization"), "Bearer "))
 	user := s.authService.Authenticate(privateId)
-	var err *extra.CowatchError = nil
+	var err *model.CowatchError = nil
 	if user == nil {
-		err = &extra.CErrAuthUserNotFound
+		err = &model.CErrAuthUserNotFound
 	}
 
 	s.Send(w, user, err)
@@ -31,7 +37,7 @@ func (s *Server) authRedirectToProvider(w http.ResponseWriter, r *http.Request) 
 	queryParams := r.URL.Query()
 
 	if !queryParams.Has("process-id") {
-		cErr := extra.CErrAddDetails(extra.CErrAuthFormattingQueryParams, "missing process-id")
+		cErr := model.CErrAddDetails(model.CErrAuthFormattingQueryParams, "missing process-id")
 		s.Send(w, nil, &cErr)
 		return
 	}
@@ -43,7 +49,7 @@ func (s *Server) authRedirectToProvider(w http.ResponseWriter, r *http.Request) 
 	strAuthState, err := formatQueryParams(authState)
 	if err != nil {
 		fmt.Printf("authRedirectToProvider: State couldn't be marshaled %s", err)
-		cErr := extra.CErrAddDetails(extra.CErrAuthFormattingQueryParams, err.Error())
+		cErr := model.CErrAddDetails(model.CErrAuthFormattingQueryParams, err.Error())
 		s.Send(w, nil, &cErr)
 		return
 	}
@@ -67,7 +73,7 @@ func (s *Server) authManageResponse(w http.ResponseWriter, r *http.Request) {
 	parseQueryParams(stateStr, &authState)
 
 	if code == "" {
-		s.Send(w, nil, &extra.CErrAuthMissingCodeParamInCallback)
+		s.Send(w, nil, &model.CErrAuthMissingCodeParamInCallback)
 		return
 	}
 
@@ -79,7 +85,7 @@ func (s *Server) authConfirmOverWebsocket(w http.ResponseWriter, r *http.Request
 	conn, err := s.upgrader.Upgrade(w, r, nil)
 
 	if err != nil {
-		cErr := extra.CErrAddDetails(extra.CErrWebsocketUpgrade, err.Error())
+		cErr := model.CErrAddDetails(model.CErrWebsocketUpgrade, err.Error())
 		s.Send(w, nil, &cErr)
 		return
 	}
@@ -88,4 +94,27 @@ func (s *Server) authConfirmOverWebsocket(w http.ResponseWriter, r *http.Request
 	conn.WriteJSON(ServerMessage{
 		Data: processID,
 	})
+}
+
+func (s *Server) middlewareIsAuthenticated(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") == "" {
+			cErr := model.CErrAddDetails(model.CErrAuthMissingAuthorizationHeader, "missing private id")
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			s.Send(w, nil, &cErr)
+			return
+		}
+
+		privateId := model.PrivateID(strings.TrimLeft(r.Header.Get("Authorization"), "Bearer "))
+		user := s.authService.Authenticate(privateId)
+		if user == nil {
+			cErr := model.CErrAddDetails(model.CErrAuthFailedToGetAuthUser, "user does not exist")
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			s.Send(w, nil, &cErr)
+			return
+		}
+
+		req := r.WithContext(context.WithValue(r.Context(), AuthContextKey{"user"}, user))
+		next(w, req)
+	}
 }

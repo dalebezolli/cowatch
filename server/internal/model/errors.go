@@ -1,4 +1,4 @@
-package extra
+package model
 
 import "errors"
 
@@ -57,6 +57,17 @@ var (
 		Message: "Failed to establish websocket communication",
 		Details: "The websocket upgrade process failed with the error",
 	}
+
+	CErrRoomFailedToInitialize = CowatchError{
+		Code:    "ROOM_FAILED_TO_INIT",
+		Message: "Failed to create a new room",
+		Details: "The room failed to start",
+	}
+
+	CErrRoomDoesNotExist = CowatchError{
+		Code:    "ROOM_NOT_EXISTS",
+		Message: "Room does not exist",
+	}
 )
 
 var (
@@ -66,4 +77,7 @@ var (
 	ErrNoUserRepo    = errors.New("No User Repo speicified")
 
 	ErrUserAlreadyRegistered = errors.New("User is already registered")
+
+	ErrNoRoomOwnerDefined = errors.New("No room owner defined")
+	ErrNoWatcher          = errors.New("Watcher does not exist")
 )

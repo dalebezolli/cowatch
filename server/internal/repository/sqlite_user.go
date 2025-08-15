@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/cowatch/internal/extra"
 	"github.com/cowatch/internal/model"
 )
 
@@ -50,7 +49,7 @@ func (r *UserRepo) Insert(user *model.User) error {
 	var emailCopy string
 	err := row.Scan(&emailCopy)
 	if err == nil {
-		return fmt.Errorf("Insert: %s %w", user.Email, extra.ErrUserAlreadyRegistered)
+		return fmt.Errorf("Insert: %s %w", user.Email, model.ErrUserAlreadyRegistered)
 	}
 
 	fmt.Println("Saving user with auth ID: ", user.AuthId)

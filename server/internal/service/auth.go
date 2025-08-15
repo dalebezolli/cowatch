@@ -3,7 +3,6 @@ package service
 import (
 	"log"
 
-	"github.com/cowatch/internal/extra"
 	"github.com/cowatch/internal/model"
 	"github.com/cowatch/internal/repository"
 	"github.com/gorilla/websocket"
@@ -17,15 +16,15 @@ type AuthService struct {
 
 func NewAuthService(relay *AuthRelay, authRepo repository.AuthRepository, userRepo *repository.UserRepo) (*AuthService, error) {
 	if authRepo == nil {
-		return nil, extra.ErrNoAuthRepo
+		return nil, model.ErrNoAuthRepo
 	}
 
 	if relay == nil {
-		return nil, extra.ErrNoAuthRelay
+		return nil, model.ErrNoAuthRelay
 	}
 
 	if userRepo == nil {
-		return nil, extra.ErrNoUserRepo
+		return nil, model.ErrNoUserRepo
 	}
 
 	return &AuthService{
@@ -39,18 +38,18 @@ func (a *AuthService) Authenticate(privateID model.PrivateID) *model.User {
 	return a.userRepo.GetUserFromPrivateId(privateID)
 }
 
-func (a *AuthService) GetAuthRedirect(processId repository.ProcessID, state string) (string, *extra.CowatchError) {
+func (a *AuthService) GetAuthRedirect(processId repository.ProcessID, state string) (string, *model.CowatchError) {
 	if !a.relay.DoesListenerExist(processId) {
-		return "", &extra.CErrAuthFailedToIdentifyProcessWaitingForAuth
+		return "", &model.CErrAuthFailedToIdentifyProcessWaitingForAuth
 	}
 
 	return a.repository.GetAuthRedirect(state), nil
 }
 
-func (a *AuthService) HandleAuthCallback(oauthCode string, authState repository.AuthState) (*model.User, *extra.CowatchError) {
+func (a *AuthService) HandleAuthCallback(oauthCode string, authState repository.AuthState) (*model.User, *model.CowatchError) {
 	user, err := a.repository.GetAuthUser(oauthCode)
 	if err != nil {
-		cErr := extra.CErrAddDetails(extra.CErrAuthFailedToGetAuthUser, err.Error())
+		cErr := model.CErrAddDetails(model.CErrAuthFailedToGetAuthUser, err.Error())
 		return nil, &cErr
 	}
 
