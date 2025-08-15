@@ -1,7 +1,9 @@
 package http
 
 import (
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/cowatch/internal/domain/room"
 	"github.com/cowatch/internal/model"
@@ -52,19 +54,43 @@ func (s *Server) connectToRoom(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) readPump(w *Watcher) {
+	defer func() {
+		s.cleanReadPump(w)
+	}()
+
 	go func() {
 		<-w.stopChan
-		w.conn.Close()
-		close(w.stopChan)
-		delete(s.watchers, w.user.Id)
+		s.cleanReadPump(w)
 	}()
 
 	for {
-		_, nextMsg, err := w.conn.ReadMessage()
+		var nextMsg room.RoomEvent
+		err := w.conn.ReadJSON(&nextMsg)
+
 		if err != nil {
+			if strings.Contains(err.Error(), "use of closed network connection") {
+				return
+			}
+
+			log.Printf("readPump: Error while reading next message %s for message: %+v", err, nextMsg)
 			return
 		}
 
-		w.room.HandleRoomEvent(w.user.Id, room.RoomEvent(nextMsg))
+		nextMsg.From = w.user.Id
+		w.room.HandleRoomEvent(nextMsg)
 	}
+}
+
+func (s *Server) cleanReadPump(w *Watcher) {
+	if _, exists := s.watchers[w.user.Id]; !exists {
+		return
+	}
+
+	err := w.conn.Close()
+	if err != nil {
+		return
+	}
+
+	close(w.stopChan)
+	delete(s.watchers, w.user.Id)
 }
