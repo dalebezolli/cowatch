@@ -49,6 +49,7 @@ func (s *Server) connectToRoom(w http.ResponseWriter, r *http.Request) {
 	watcher := newWatcher(conn, user, requestedRoom)
 
 	s.watchers[user.Id] = watcher
+	requestedRoom.AddUser(user.Id)
 
 	go s.readPump(watcher)
 }

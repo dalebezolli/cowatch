@@ -6,17 +6,23 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func (s *Server) TriggerUserMessage(to model.PrivateID, response room.RoomResponse) error {
-	watcher, exists := s.watchers[to]
-	if !exists {
-		return model.ErrNoWatcher
-	}
+func (s *Server) TriggerUserMessage(to []model.PrivateID, response room.RoomResponse) error {
+	for _, watcherId := range to {
+		watcher, exists := s.watchers[watcherId]
+		if !exists {
+			return model.ErrNoWatcher
+		}
 
-	watcher.conn.WriteMessage(websocket.TextMessage, []byte(response))
+		watcher.conn.WriteMessage(websocket.TextMessage, []byte(response))
 
-	if response == "dc" {
-		watcher.stopChan <- true
+		if response == "dc" {
+			watcher.stopChan <- true
+		}
 	}
 
 	return nil
+}
+
+func (s *Server) CloseRoom(roomID room.RoomID) {
+	delete(s.rooms, roomID)
 }
