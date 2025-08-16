@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/cowatch/internal/domain/room"
 	"github.com/cowatch/internal/model"
@@ -15,8 +16,15 @@ type Watcher struct {
 	user *model.User
 	room *room.Room
 
-	stopChan chan bool
+	stopChan   chan bool
+	tickerPing *time.Ticker
 }
+
+const (
+	watcherMaxMessageSize = 512
+	pingPeriod            = 10 * time.Second
+	pongWait              = (pingPeriod * 3) / 2
+)
 
 func newWatcher(conn *websocket.Conn, user *model.User, room *room.Room) *Watcher {
 	return &Watcher{
@@ -52,6 +60,7 @@ func (s *Server) connectToRoom(w http.ResponseWriter, r *http.Request) {
 	requestedRoom.AddUser(user.Id)
 
 	go s.readPump(watcher)
+	go s.ping(watcher)
 }
 
 func (s *Server) readPump(w *Watcher) {
@@ -64,6 +73,13 @@ func (s *Server) readPump(w *Watcher) {
 		s.cleanReadPump(w)
 	}()
 
+	w.conn.SetReadLimit(watcherMaxMessageSize)
+	w.conn.SetReadDeadline(time.Now().Add(pongWait))
+	w.conn.SetPongHandler(func(string) error {
+		w.conn.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
+
 	for {
 		var nextMsg room.RoomEvent
 		err := w.conn.ReadJSON(&nextMsg)
@@ -73,12 +89,27 @@ func (s *Server) readPump(w *Watcher) {
 				return
 			}
 
-			log.Printf("readPump: Error while reading next message %s for message: %+v", err, nextMsg)
+			log.Printf("readPump: Error while reading next message %s for message: %+v\n", err, nextMsg)
 			return
 		}
 
 		nextMsg.From = w.user.Id
 		w.room.HandleRoomEvent(nextMsg)
+	}
+}
+
+func (s *Server) ping(w *Watcher) {
+	w.tickerPing = time.NewTicker(pingPeriod)
+
+	defer func() {
+		w.tickerPing.Stop()
+	}()
+
+	for {
+		<-w.tickerPing.C
+		if err := w.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+			return
+		}
 	}
 }
 
@@ -92,6 +123,7 @@ func (s *Server) cleanReadPump(w *Watcher) {
 		return
 	}
 
+	w.tickerPing.Stop()
 	close(w.stopChan)
 	delete(s.watchers, w.user.Id)
 }
