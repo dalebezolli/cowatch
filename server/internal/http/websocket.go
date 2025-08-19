@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func (s *Server) TriggerUserMessage(to []model.PrivateID, response *room.RoomResponse) error {
+func (s *Server) TriggerUserMessage(to []model.PrivateID, response room.RoomResponse) error {
 	for _, watcherId := range to {
 		watcher, exists := s.watchers[watcherId]
 		if !exists {

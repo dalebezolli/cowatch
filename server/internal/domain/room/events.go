@@ -28,9 +28,9 @@ func (r *Room) RunEventLoop() {
 				var reflectData ReflectEventData
 				json.Unmarshal([]byte(nextEvent.Details), &reflectData)
 
-				r.OnReflectEvent(nextEvent.From, &reflectData, nextEvent.RequestDate)
+				r.OnReflectEvent(nextEvent.From, reflectData, nextEvent.RequestDate)
 			case RoomEventTypeDisconnect:
-				r.eventManager.TriggerUserMessage([]model.PrivateID{nextEvent.From}, &RoomResponse{Type: RoomResponseTypeDisconnect})
+				r.eventManager.TriggerUserMessage([]model.PrivateID{nextEvent.From}, RoomResponse{Type: RoomResponseTypeDisconnect})
 			}
 
 			cancel()
@@ -38,7 +38,7 @@ func (r *Room) RunEventLoop() {
 
 		case <-ctx.Done():
 			fmt.Println("Closing room due to inactivity, sending dc request to:", r.GetUsers())
-			r.eventManager.TriggerUserMessage(r.GetUsers(), &RoomResponse{Type: RoomResponseTypeDisconnect})
+			r.eventManager.TriggerUserMessage(r.GetUsers(), RoomResponse{Type: RoomResponseTypeDisconnect})
 			cancel()
 			return
 		}
@@ -50,7 +50,7 @@ func (r *Room) SendRoomEvent(event RoomEvent) {
 }
 
 type WSRoomMessageTriggerer interface {
-	TriggerUserMessage(to []model.PrivateID, response *RoomResponse) error
+	TriggerUserMessage(to []model.PrivateID, response RoomResponse) error
 	CloseRoom(roomID RoomID)
 }
 
@@ -87,7 +87,7 @@ const (
 	RoomResponseTypeDisconnect       RoomResponseType = "disconnect"
 )
 
-func (r *Room) OnReflectEvent(from model.PrivateID, eventData *ReflectEventData, requestDate time.Time) {
+func (r *Room) OnReflectEvent(from model.PrivateID, eventData ReflectEventData, requestDate time.Time) {
 	if len(eventData.VideoId) == 0 || requestDate.IsZero() || len(from) == 0 {
 		return
 	}
@@ -108,7 +108,7 @@ func (r *Room) OnReflectEvent(from model.PrivateID, eventData *ReflectEventData,
 		At:              requestDate,
 	}
 
-	r.eventManager.TriggerUserMessage(r.GetUsers(), &RoomResponse{
+	r.eventManager.TriggerUserMessage(r.GetUsers(), RoomResponse{
 		Type:    RoomResponseTypeReflect,
 		Details: r.latestReflection,
 	})
