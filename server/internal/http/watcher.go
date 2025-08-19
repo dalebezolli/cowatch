@@ -84,6 +84,8 @@ func (s *Server) readPump(w *Watcher) {
 		var nextMsg room.RoomEvent
 		err := w.conn.ReadJSON(&nextMsg)
 
+		log.Printf("Received %+v\n", nextMsg)
+
 		if err != nil {
 			if strings.Contains(err.Error(), "use of closed network connection") {
 				return
@@ -94,7 +96,7 @@ func (s *Server) readPump(w *Watcher) {
 		}
 
 		nextMsg.From = w.user.Id
-		w.room.HandleRoomEvent(nextMsg)
+		w.room.SendRoomEvent(nextMsg)
 	}
 }
 
@@ -114,6 +116,7 @@ func (s *Server) ping(w *Watcher) {
 }
 
 func (s *Server) cleanReadPump(w *Watcher) {
+	// Breaks concurrency ^-^
 	if _, exists := s.watchers[w.user.Id]; !exists {
 		return
 	}

@@ -1,6 +1,8 @@
 package room
 
 import (
+	"time"
+
 	"github.com/cowatch/internal/model"
 	"github.com/google/uuid"
 )
@@ -11,11 +13,11 @@ type Room struct {
 	Name   string `json:"name"`
 	RoomID RoomID `json:"id"`
 
-	watchers    map[model.PrivateID]bool
-	hosts       map[model.PrivateID]bool
-	playlist    []*VideoDetails
-	latestState *VideoState
-	owner       model.PrivateID
+	watchers         map[model.PrivateID]bool
+	hosts            map[model.PrivateID]bool
+	playlist         []*VideoDetails
+	latestReflection *VideoState
+	owner            model.PrivateID
 
 	eventChan    chan RoomEvent
 	eventManager WSRoomMessageTriggerer
@@ -27,10 +29,11 @@ type VideoDetails struct {
 }
 
 type VideoState struct {
-	VideoID    string
-	VideoState int
-	SecondsIn  float32
-	QueuedBy   model.PrivateID
+	VideoId         string          `json:"videoId"`
+	PlaybackState   int             `json:"playbackState"`
+	PlaybackSeconds int             `json:"playbackSeconds"`
+	From            model.PrivateID `json:"-"`
+	At              time.Time       `json:"sentAt"`
 }
 
 func NewRoom(name string, owner model.PrivateID, eventManager WSRoomMessageTriggerer) (*Room, error) {
@@ -38,19 +41,23 @@ func NewRoom(name string, owner model.PrivateID, eventManager WSRoomMessageTrigg
 		return nil, model.ErrNoRoomOwnerDefined
 	}
 
-	return &Room{
+	room := &Room{
 		Name:   name,
 		RoomID: RoomID(uuid.NewString()),
 
-		watchers:    make(map[model.PrivateID]bool),
-		hosts:       make(map[model.PrivateID]bool),
-		playlist:    make([]*VideoDetails, 0, 10),
-		latestState: nil,
-		owner:       owner,
+		watchers:         make(map[model.PrivateID]bool),
+		hosts:            make(map[model.PrivateID]bool),
+		playlist:         make([]*VideoDetails, 0, 10),
+		latestReflection: nil,
+		owner:            owner,
 
 		eventChan:    make(chan RoomEvent),
 		eventManager: eventManager,
-	}, nil
+	}
+
+	room.UpgradeToHost(owner)
+
+	return room, nil
 }
 
 func (r *Room) AddUser(watcher model.PrivateID) {

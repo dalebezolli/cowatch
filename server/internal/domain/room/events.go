@@ -2,6 +2,7 @@ package room
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -19,14 +20,17 @@ func (r *Room) RunEventLoop() {
 	ctx, cancel := context.WithTimeout(context.Background(), roomInactivityTime)
 
 	for {
-		fmt.Println("runEventLoop: Waiting for a message")
-
 		select {
 		case nextEvent := <-r.eventChan:
-			if nextEvent.Type == RoomEventTypeDisconnect {
-				r.eventManager.TriggerUserMessage([]model.PrivateID{r.owner}, "dc")
-			} else {
-				r.eventManager.TriggerUserMessage([]model.PrivateID{r.owner}, "Received response!!!")
+
+			switch t := nextEvent.Type; t {
+			case RoomEventTypeReflect:
+				var reflectData ReflectEventData
+				json.Unmarshal([]byte(nextEvent.Details), &reflectData)
+
+				r.OnReflectEvent(nextEvent.From, &reflectData, nextEvent.RequestDate)
+			case RoomEventTypeDisconnect:
+				r.eventManager.TriggerUserMessage([]model.PrivateID{nextEvent.From}, &RoomResponse{Type: RoomResponseTypeDisconnect})
 			}
 
 			cancel()
@@ -34,34 +38,78 @@ func (r *Room) RunEventLoop() {
 
 		case <-ctx.Done():
 			fmt.Println("Closing room due to inactivity, sending dc request to:", r.GetUsers())
-			r.eventManager.TriggerUserMessage(r.GetUsers(), "dc")
+			r.eventManager.TriggerUserMessage(r.GetUsers(), &RoomResponse{Type: RoomResponseTypeDisconnect})
 			cancel()
 			return
 		}
 	}
 }
 
-func (r *Room) HandleRoomEvent(event RoomEvent) {
+func (r *Room) SendRoomEvent(event RoomEvent) {
 	r.eventChan <- event
 }
 
 type WSRoomMessageTriggerer interface {
-	TriggerUserMessage(to []model.PrivateID, response RoomResponse) error
+	TriggerUserMessage(to []model.PrivateID, response *RoomResponse) error
 	CloseRoom(roomID RoomID)
 }
 
 type RoomEvent struct {
 	From        model.PrivateID `json:"from"`
 	RequestDate time.Time       `json:"requestDate"`
-
-	Type    RoomEventType `json:"type"`
-	Details interface{}   `json:"details"`
+	Type        RoomEventType   `json:"type"`
+	Details     string          `json:"details"`
 }
 
 type RoomEventType string
 
 const (
+	RoomEventTypeReflect    RoomEventType = "reflect"
 	RoomEventTypeDisconnect RoomEventType = "disconnect"
 )
 
-type RoomResponse string
+type ReflectEventData struct {
+	VideoId         string `json:"videoId"`
+	PlaybackState   int    `json:"playbackState"`
+	PlaybackSeconds int    `json:"playbackSeconds"`
+}
+
+type RoomResponse struct {
+	Type    RoomResponseType `json:"type"`
+	Details any              `json:"details"`
+}
+
+type RoomResponseType string
+
+const (
+	RoomResponseTypeReflect          RoomResponseType = "reflect"
+	RoomResponseTypeGetAvailableHost RoomResponseType = "get-available-host"
+	RoomResponseTypeDisconnect       RoomResponseType = "disconnect"
+)
+
+func (r *Room) OnReflectEvent(from model.PrivateID, eventData *ReflectEventData, requestDate time.Time) {
+	if len(eventData.VideoId) == 0 || requestDate.IsZero() || len(from) == 0 {
+		return
+	}
+
+	if !r.IsHost(from) {
+		return
+	}
+
+	if r.latestReflection != nil && from != r.latestReflection.From && eventData.VideoId == r.latestReflection.VideoId {
+		return
+	}
+
+	r.latestReflection = &VideoState{
+		VideoId:         eventData.VideoId,
+		PlaybackState:   eventData.PlaybackState,
+		PlaybackSeconds: eventData.PlaybackSeconds,
+		From:            from,
+		At:              requestDate,
+	}
+
+	r.eventManager.TriggerUserMessage(r.GetUsers(), &RoomResponse{
+		Type:    RoomResponseTypeReflect,
+		Details: r.latestReflection,
+	})
+}

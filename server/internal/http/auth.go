@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -99,6 +100,7 @@ func (s *Server) authConfirmOverWebsocket(w http.ResponseWriter, r *http.Request
 func (s *Server) middlewareIsAuthenticated(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") == "" {
+			log.Println("Attempted to resolve request but it's missing the authorization header")
 			cErr := model.CErrAddDetails(model.CErrAuthMissingAuthorizationHeader, "missing private id")
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			s.Send(w, nil, &cErr)
@@ -108,6 +110,7 @@ func (s *Server) middlewareIsAuthenticated(next http.HandlerFunc) http.HandlerFu
 		privateId := model.PrivateID(strings.TrimLeft(r.Header.Get("Authorization"), "Bearer "))
 		user := s.authService.Authenticate(privateId)
 		if user == nil {
+			log.Printf("Attempted to resolve request but no user could be found for the key: %s\n", privateId)
 			cErr := model.CErrAddDetails(model.CErrAuthFailedToGetAuthUser, "user does not exist")
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			s.Send(w, nil, &cErr)
