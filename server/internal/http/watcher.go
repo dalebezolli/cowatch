@@ -126,6 +126,7 @@ func (s *Server) cleanReadPump(w *Watcher) {
 		return
 	}
 
+	w.room.RemoveUser(w.user.Id)
 	w.tickerPing.Stop()
 	close(w.stopChan)
 	delete(s.watchers, w.user.Id)

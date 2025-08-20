@@ -40,6 +40,10 @@ func (r *Room) RunEventLoop() {
 				}
 
 				r.eventManager.TriggerUserMessage([]model.PrivateID{nextEvent.From}, response)
+			case RoomEventTypeGetNextAvailableHost:
+				r.eventManager.TriggerUserMessage(r.GetActiveUsers(), RoomResponse{
+					Type: RoomResponseTypeGetNextAvailableHost,
+				})
 			case RoomEventTypeReflect:
 				var reflectData ReflectEventData
 				json.Unmarshal([]byte(nextEvent.Details), &reflectData)
@@ -53,8 +57,8 @@ func (r *Room) RunEventLoop() {
 			ctx, cancel = context.WithTimeout(context.Background(), roomInactivityTime)
 
 		case <-ctx.Done():
-			fmt.Println("Closing room due to inactivity, sending dc request to:", r.GetUsers())
-			r.eventManager.TriggerUserMessage(r.GetUsers(), RoomResponse{Type: RoomResponseTypeDisconnect})
+			fmt.Println("Closing room due to inactivity, sending dc request to:", r.GetActiveUsers())
+			r.eventManager.TriggerUserMessage(r.GetActiveUsers(), RoomResponse{Type: RoomResponseTypeDisconnect})
 			cancel()
 			return
 		}
@@ -80,9 +84,13 @@ type RoomEvent struct {
 type RoomEventType string
 
 const (
-	RoomEventTypeInitConnection RoomEventType = "initConnection"
-	RoomEventTypeReflect        RoomEventType = "reflect"
-	RoomEventTypeDisconnect     RoomEventType = "disconnect"
+	// Internal requests that are managed from the server
+	RoomEventTypeInitConnection       RoomEventType = "initConnection"
+	RoomEventTypeGetNextAvailableHost RoomEventType = "getNextAvailableHost"
+
+	// User sent events
+	RoomEventTypeReflect    RoomEventType = "reflect"
+	RoomEventTypeDisconnect RoomEventType = "disconnect"
 )
 
 type ReflectEventData struct {
@@ -99,10 +107,11 @@ type RoomResponse struct {
 type RoomResponseType string
 
 const (
-	RoomResponseTypeInitConnection   RoomResponseType = "initConnection"
-	RoomResponseTypeReflect          RoomResponseType = "reflect"
-	RoomResponseTypeGetAvailableHost RoomResponseType = "get-available-host"
-	RoomResponseTypeDisconnect       RoomResponseType = "disconnect"
+	RoomResponseTypeInitConnection       RoomResponseType = "initConnection"
+	RoomResponseTypeGetNextAvailableHost RoomResponseType = "getNextAvailableHost"
+
+	RoomResponseTypeReflect    RoomResponseType = "reflect"
+	RoomResponseTypeDisconnect RoomResponseType = "disconnect"
 )
 
 type RoomResponseDetailsInitConnection struct {
@@ -132,7 +141,7 @@ func (r *Room) OnReflectEvent(from model.PrivateID, eventData ReflectEventData, 
 		At:              requestDate,
 	}
 
-	r.eventManager.TriggerUserMessage(r.GetUsers(), RoomResponse{
+	r.eventManager.TriggerUserMessage(r.GetActiveUsers(), RoomResponse{
 		Type:    RoomResponseTypeReflect,
 		Details: r.latestReflection,
 	})

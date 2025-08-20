@@ -70,7 +70,7 @@ func (r *Room) AddUser(watcher model.PrivateID) {
 	})
 }
 
-func (r *Room) GetUsers() []model.PrivateID {
+func (r *Room) GetActiveUsers() []model.PrivateID {
 	watchers := make([]model.PrivateID, 0, len(r.watchers))
 	for watcher, exists := range r.watchers {
 		if !exists {
@@ -84,6 +84,14 @@ func (r *Room) GetUsers() []model.PrivateID {
 
 func (r *Room) RemoveUser(id model.PrivateID) {
 	r.watchers[id] = false
+
+	if r.latestReflection != nil && id == r.latestReflection.From {
+		r.SendRoomEvent(RoomEvent{
+			Type:        RoomEventTypeGetNextAvailableHost,
+			From:        id,
+			RequestDate: time.Now(),
+		})
+	}
 }
 
 func (r *Room) UpgradeToHost(id model.PrivateID) {
