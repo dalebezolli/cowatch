@@ -62,11 +62,20 @@ func NewRoom(name string, owner model.PrivateID, eventManager WSRoomMessageTrigg
 
 func (r *Room) AddUser(watcher model.PrivateID) {
 	r.watchers[watcher] = true
+
+	r.SendRoomEvent(RoomEvent{
+		Type:        RoomEventTypeInitConnection,
+		From:        watcher,
+		RequestDate: time.Now(),
+	})
 }
 
 func (r *Room) GetUsers() []model.PrivateID {
 	watchers := make([]model.PrivateID, 0, len(r.watchers))
-	for watcher := range r.watchers {
+	for watcher, exists := range r.watchers {
+		if !exists {
+			continue
+		}
 		watchers = append(watchers, watcher)
 	}
 
@@ -74,7 +83,7 @@ func (r *Room) GetUsers() []model.PrivateID {
 }
 
 func (r *Room) RemoveUser(id model.PrivateID) {
-	delete(r.watchers, id)
+	r.watchers[id] = false
 }
 
 func (r *Room) UpgradeToHost(id model.PrivateID) {

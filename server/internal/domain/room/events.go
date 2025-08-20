@@ -24,6 +24,22 @@ func (r *Room) RunEventLoop() {
 		case nextEvent := <-r.eventChan:
 
 			switch t := nextEvent.Type; t {
+			case RoomEventTypeInitConnection:
+				responseDetails := RoomResponseDetailsInitConnection{
+					IsOwner: nextEvent.From == r.owner,
+					IsHost:  r.IsHost(nextEvent.From),
+				}
+
+				if r.latestReflection != nil {
+					responseDetails.Reflection = r.latestReflection
+				}
+
+				response := RoomResponse{
+					Type:    RoomResponseTypeInitConnection,
+					Details: responseDetails,
+				}
+
+				r.eventManager.TriggerUserMessage([]model.PrivateID{nextEvent.From}, response)
 			case RoomEventTypeReflect:
 				var reflectData ReflectEventData
 				json.Unmarshal([]byte(nextEvent.Details), &reflectData)
@@ -64,8 +80,9 @@ type RoomEvent struct {
 type RoomEventType string
 
 const (
-	RoomEventTypeReflect    RoomEventType = "reflect"
-	RoomEventTypeDisconnect RoomEventType = "disconnect"
+	RoomEventTypeInitConnection RoomEventType = "initConnection"
+	RoomEventTypeReflect        RoomEventType = "reflect"
+	RoomEventTypeDisconnect     RoomEventType = "disconnect"
 )
 
 type ReflectEventData struct {
@@ -82,10 +99,17 @@ type RoomResponse struct {
 type RoomResponseType string
 
 const (
+	RoomResponseTypeInitConnection   RoomResponseType = "initConnection"
 	RoomResponseTypeReflect          RoomResponseType = "reflect"
 	RoomResponseTypeGetAvailableHost RoomResponseType = "get-available-host"
 	RoomResponseTypeDisconnect       RoomResponseType = "disconnect"
 )
+
+type RoomResponseDetailsInitConnection struct {
+	IsOwner    bool        `json:"isOwner"`
+	IsHost     bool        `json:"isHost"`
+	Reflection *VideoState `json:"reflection"`
+}
 
 func (r *Room) OnReflectEvent(from model.PrivateID, eventData ReflectEventData, requestDate time.Time) {
 	if len(eventData.VideoId) == 0 || requestDate.IsZero() || len(from) == 0 {
