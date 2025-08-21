@@ -68,6 +68,12 @@ func (r *Room) AddUser(watcher model.PrivateID) {
 		From:        watcher,
 		RequestDate: time.Now(),
 	})
+
+	r.SendRoomEvent(RoomEvent{
+		Type:        RoomEventTypeUpdateWatchers,
+		From:        watcher,
+		RequestDate: time.Now(),
+	})
 }
 
 func (r *Room) GetActiveUsers() []model.PrivateID {
@@ -92,6 +98,12 @@ func (r *Room) RemoveUser(id model.PrivateID) {
 			RequestDate: time.Now(),
 		})
 	}
+
+	r.SendRoomEvent(RoomEvent{
+		Type:        RoomEventTypeUpdateWatchers,
+		From:        id,
+		RequestDate: time.Now(),
+	})
 }
 
 func (r *Room) UpgradeToHost(id model.PrivateID) {

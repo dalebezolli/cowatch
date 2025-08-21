@@ -40,6 +40,8 @@ func (r *Room) RunEventLoop() {
 				}
 
 				r.eventManager.TriggerUserMessage([]model.PrivateID{nextEvent.From}, response)
+			case RoomEventTypeUpdateWatchers:
+				r.OnUpdateWatchers()
 			case RoomEventTypeGetNextAvailableHost:
 				r.eventManager.TriggerUserMessage(r.GetActiveUsers(), RoomResponse{
 					Type: RoomResponseTypeGetNextAvailableHost,
@@ -87,6 +89,7 @@ const (
 	// Internal requests that are managed from the server
 	RoomEventTypeInitConnection       RoomEventType = "initConnection"
 	RoomEventTypeGetNextAvailableHost RoomEventType = "getNextAvailableHost"
+	RoomEventTypeUpdateWatchers       RoomEventType = "updateWatchers"
 
 	// User sent events
 	RoomEventTypeReflect    RoomEventType = "reflect"
@@ -107,9 +110,12 @@ type RoomResponse struct {
 type RoomResponseType string
 
 const (
+	// Internal requests that are managed from the server
 	RoomResponseTypeInitConnection       RoomResponseType = "initConnection"
 	RoomResponseTypeGetNextAvailableHost RoomResponseType = "getNextAvailableHost"
+	RoomResponseTypeUpdateWatchers       RoomResponseType = "updateWatchers"
 
+	// User sent events
 	RoomResponseTypeReflect    RoomResponseType = "reflect"
 	RoomResponseTypeDisconnect RoomResponseType = "disconnect"
 )
@@ -118,6 +124,17 @@ type RoomResponseDetailsInitConnection struct {
 	IsOwner    bool        `json:"isOwner"`
 	IsHost     bool        `json:"isHost"`
 	Reflection *VideoState `json:"reflection"`
+}
+
+type RoomResponseDetailsUpdateWatchers struct {
+	Watchers []RawWatcher
+}
+
+type RawWatcher struct {
+	PublicId string `json:"publicId"`
+	IsHost   bool   `json:"isHost"`
+	IsOwner  bool   `json:"isOwner"`
+	IsActive bool   `json:"isActive"`
 }
 
 func (r *Room) OnReflectEvent(from model.PrivateID, eventData ReflectEventData, requestDate time.Time) {
@@ -144,5 +161,25 @@ func (r *Room) OnReflectEvent(from model.PrivateID, eventData ReflectEventData, 
 	r.eventManager.TriggerUserMessage(r.GetActiveUsers(), RoomResponse{
 		Type:    RoomResponseTypeReflect,
 		Details: r.latestReflection,
+	})
+}
+
+func (r *Room) OnUpdateWatchers() {
+	watcherList := make([]RawWatcher, 0, len(r.watchers))
+
+	for id, active := range r.watchers {
+		watcherList = append(watcherList, RawWatcher{
+			PublicId: string(id),
+			IsActive: active,
+			IsHost:   r.IsHost(id),
+			IsOwner:  r.owner == id,
+		})
+	}
+
+	r.eventManager.TriggerUserMessage(r.GetActiveUsers(), RoomResponse{
+		Type: RoomResponseTypeUpdateWatchers,
+		Details: RoomResponseDetailsUpdateWatchers{
+			Watchers: watcherList,
+		},
 	})
 }
