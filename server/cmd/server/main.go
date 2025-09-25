@@ -13,6 +13,8 @@ import (
 )
 
 var serverAddress = flag.String("addr", ":8080", "Address of the server")
+var serverTLSCert = flag.String("tls-cert", "", "Path to TLS Certification")
+var serverTLSKey = flag.String("tls-key", "", "Path to TLS Key")
 
 func main() {
 	flag.Parse()
@@ -45,6 +47,10 @@ func main() {
 
 	if err != nil {
 		log.Fatalf("main: %s\n", err)
+	}
+
+	if *serverTLSCert != "" && *serverTLSKey != "" {
+		server.UseTLS(*serverTLSCert, *serverTLSKey)
 	}
 
 	if err := server.ListenAndServe(); err != nil {

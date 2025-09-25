@@ -1,5 +1,5 @@
 # cowatch - Watch YouTube with friends
-> Web Extension for Firefox (& Chrome in the very near future)
+> Web Extension for Firefox & Chrome
 
 The past few years we've seen many platforms ***pop*** that offer the ability to watch videos or listen to music with your friends.
 Some were great but failed due to costs or bad management, others clunky and most of them took you outside of YouTube.
@@ -57,7 +57,11 @@ To install it in Firefox you'll need to:
 - Fire up a firefox instance
 - Write in the url bar `about:debugging#/runtime/this-firefox`
 - Press on *"Load Temporary Add-on..."*
-- Navigate to `dist/firefox` and click on the `manifest.json`
+- Navigate to `dist/firefox` and select the file `manifest.json`
+
+> [!TIP]
+> If you want to use Chrome, TLS must be enabled.
+> To achieve this generate a new, recogniseable from Chrome certificate using [mkcert](https://github.com/FiloSottile/mkcert)
 
 ## Contributing
 Will be discussed about in the very near future

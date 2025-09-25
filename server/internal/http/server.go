@@ -15,6 +15,9 @@ type Server struct {
 	mux      *http.ServeMux
 	address  string
 
+	certFile string
+	keyFile  string
+
 	authService *service.AuthService
 	watchers    map[model.PrivateID]*Watcher
 	rooms       map[room.RoomID]*room.Room
@@ -49,8 +52,19 @@ func NewServer(authService *service.AuthService, address string) (*Server, error
 	return &s, nil
 }
 
+func (s *Server) UseTLS(certFile, keyFile string) *Server {
+	s.certFile = certFile
+	s.keyFile = keyFile
+
+	return s
+}
+
 func (s *Server) ListenAndServe() error {
-	return http.ListenAndServe(s.address, s.mux)
+	if s.certFile != "" && s.keyFile != "" {
+		return http.ListenAndServeTLS(s.address, s.certFile, s.keyFile, s.mux)
+	} else {
+		return http.ListenAndServe(s.address, s.mux)
+	}
 }
 
 type ServerMessage struct {
